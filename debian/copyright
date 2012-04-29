@@ -1,0 +1,28 @@
+Format-Specification: http://anonscm.debian.org/viewvc/dep/web/deps/dep5.mdwn?view=markup&pathrev=135
+Maintainer: Philip Kime <Philip@kime.org.uk>
+Source: http://biblatex-biber.sourceforge.net/
+Name: biber
+
+Files: *
+Copyright: Philip Kime <Philip@kime.org.uk>
+License: GPL-1+ or Artistic-2.0
+
+Files: debian/*
+Copyright: 2012, Danai SAE-HAN (韓達耐) <danai@debian.org>
+License: GPL-1+
+
+License: Artistic
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the Artistic License, which comes with Perl.
+ .
+ On Debian systems, the complete text of the Artistic License can be
+ found in `/usr/share/common-licenses/Artistic'.
+
+License: GPL-1+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 1, or (at your option)
+ any later version.
+ .
+ On Debian systems, the complete text of version 1 of the GNU General
+ Public License can be found in `/usr/share/common-licenses/GPL-1'.

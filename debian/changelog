@@ -1,0 +1,6 @@
+biber (0.9.9+git2012426-1) unstable; urgency=low
+
+  * Initial Release.
+  * Closing ITP bug report (Closes: #570018).
+
+ -- Danai SAE-HAN (韓達耐) <danai@debian.org>  Mon, 30 Apr 2012 00:30:31 +0200

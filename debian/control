@@ -1,0 +1,30 @@
+Source: biber
+Section: perl
+Priority: optional
+Maintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>
+Uploaders: Danai SAE-HAN (韓達耐) <danai@debian.org>
+Build-Depends: debhelper (>= 9),
+ perl
+Standards-Version: 3.9.3
+Homepage: http://biblatex-biber.sourceforge.net/
+Vcs-Git: git://github.com/plk/biber.git
+Vcs-Browser: https://github.com/plk/biber.git
+
+Package: biber
+Architecture: all
+Depends: ${misc:Depends},
+ ${perl:Depends}
+Description: Biber is a much-augmented BibTeX replacement for BibLaTeX users
+ The biblatex package by Philipp Lehman is becoming the definitive
+ citation management tool for LaTeX users. Biblatex has relied on the
+ venerable BibTeX program only for sorting and generating a very
+ generic .bbl file without any formatting instruction. Everything else
+ is taken care of by biblatex, which provides a powerful and flexible
+ macro interface for authors of citation styles.
+ .
+ Biber offers a large superset of BibTeX functionality for BibLaTeX
+ users. In addition it offers full UTF-8 (Unicode 6.0) capabilities,
+ fully customisable sorting, output to GraphViz to help visualise
+ complex crossrefs, support for remote data sources, structural
+ validation of the data against the (customisable) data model, and a
+ lot more.
