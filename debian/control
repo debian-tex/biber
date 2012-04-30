@@ -39,7 +39,7 @@ Depends: ${misc:Depends},
  libxml-libxslt-perl,
  libxml-writer-string-perl,
  libmozilla-ca-perl (>= 20120309)
-Description: A much-augmented BibTeX replacement for BibLaTeX users
+Description: Much-augmented BibTeX replacement for BibLaTeX users
  The biblatex package by Philipp Lehman is becoming the definitive
  citation management tool for LaTeX users. Biblatex has relied on the
  venerable BibTeX program only for sorting and generating a very
