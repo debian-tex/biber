@@ -1,0 +1,644 @@
+namespace bcf = "https://sourceforge.net/projects/biblatex"
+
+start =
+  element bcf:controlfile {
+    # This is usually the same as the biblatex version string but not necessarily.
+    # Sometimes the BCF format version doesn't change between biblatex releases
+    attribute version { xsd:string {minLength="1"}},
+
+    # "Global" Biber options. It's not clear what a non-global biber option
+    # would be but just in case, we have the option ...
+    element bcf:options {
+      attribute component { "biber" },
+      attribute type { "global" },
+      bblencoding,
+      bibencoding,
+      debug,
+      mincrossrefs,
+      sortcase,
+      sortlocale?,
+      sortupper
+    },
+
+    # Global BibLaTeX options. That is, options that apply to all
+    # entrytypes (unless a more specifically scoped option is specified)
+    element bcf:options {
+      attribute component { "biblatex" },
+      attribute type { "global" },
+      alphaothers,
+      labelalpha,
+      labelnamespec,
+      labelyear,
+      labelyearspec,
+      maxalphanames,
+      maxbibnames,
+      maxcitenames,
+      maxitems,
+      minalphanames,
+      minbibnames,
+      mincitenames,
+      minitems,
+      singletitle,
+      sortalphaothers?,
+      sortscheme,
+      uniquelist,
+      uniquename,
+      useauthor,
+      useeditor,
+      useprefix,
+      usetranslator
+    },
+    
+    # Per-entrytype BibLaTeX options
+    element bcf:options {
+      attribute component { "biblatex" },
+      attribute type { xsd:NCName },
+      alphaothers?,
+      labelalpha?,
+      labelnamespec?,
+      labelyear?,
+      labelyearspec?,
+      maxalphanames?,
+      maxbibnames?,
+      maxcitenames?,
+      maxitems?,
+      minalphanames?,
+      minbibnames?,
+      mincitenames?,
+      minitems?,
+      singletitle?,
+      skipbib?,
+      skiplab?,
+      skiplos?,
+      sortalphaothers?,
+      uniquelist?,
+      uniquename?,
+      useauthor?,
+      useeditor?,
+      useprefix?,
+      usetranslator?
+    }*,
+
+    # Display modes for biblatexml
+    element bcf:displaymodes {
+      attribute type { xsd:NCName }?,
+      element bcf:displaymode {
+        element bcf:dtarget { "*" | xsd:string {minLength="1"}}+,
+        element bcf:dmode {
+          attribute order { xsd:integer },
+          ("original" | "uniform" | "romanised"  | "translated")
+        }+
+      }+
+    }+,
+
+    # field/entrytype mapping
+    element bcf:sourcemap {
+      element bcf:maps {
+        attribute datatype { "bibtex" | "biblatexml" | "ris" | "zoterordfxml" | "endnotexml" },
+        attribute map_overwrite { "0" | "1" }?,
+        map+
+      }+
+    }?,
+
+    # labelalpha template specification
+    element bcf:labelalphatemplate {
+      attribute type { xsd:string }?, # per-type?
+      element bcf:labelelement {
+        attribute order { xsd:integer },
+        element bcf:labelpart {          
+          attribute final { "0" | "1" }?,
+          attribute substring_width { xsd:integer | "v" | "vf" | "l" }?,
+          attribute substring_fixed_threshold { xsd:integer }?,
+          attribute substring_width_max { xsd:integer }?,
+          attribute substring_side { "left" | "right" }?,
+          attribute substring_compound { "0" | "1" }?,
+          attribute ifnamecount { xsd:integer }?,
+          attribute namecount { xsd:integer }?,
+          xsd:string
+        }+
+      }+
+    }*,
+
+    # Cross-reference inheritance specifications
+    element bcf:inheritance {
+      # Defaults
+      element bcf:defaults {
+        # Whether to inherit all fields
+        attribute inherit_all { "true" | "false" },
+        # Should we overwrite the target field if it exists?
+        attribute override_target { "true" | "false" },
+        # Default inherit_all and override_target settings for entrytype source/target pairs
+        element bcf:type_pair {
+          attribute source { "*" | xsd:string {minLength="1"}},
+          attribute target { "*" | xsd:string {minLength="1"}},
+          attribute inherit_all { "true" | "false" }?,
+          attribute override_target { "true" | "false" }?,
+          empty
+        }*
+      },
+      # An inheritance specification
+      element bcf:inherit {
+        # applies to these pairs of source/target entrytypes
+        element bcf:type_pair {
+          attribute source { "*" | xsd:string {minLength="1"}},
+          attribute target { "*" | xsd:string {minLength="1"}},
+          empty
+        }+,
+        # and here are the field specifications
+        element bcf:field {
+          (
+            # either a "skip this field" specification
+            # so we can say inherit all except certain fields OR ...
+            (attribute source { xsd:string },
+              attribute skip { "true" | "false" }) |
+            # ... a source and target field with an optional override attribute
+            (attribute source { xsd:string {minLength="1"}},
+              attribute target { xsd:string {minLength="1"}},
+              attribute override_target { "true" | "false" }?)
+          ),
+          empty
+        }+
+      }*
+    },
+    # nosort specification
+    element bcf:nosorts {
+      element bcf:nosort {
+        attribute field { xsd:string },
+        attribute value { xsd:string }
+      }+
+    }?,
+    # Global sorting specification
+    sorting,
+    # Structure specification
+    element bcf:structure {
+      # Valid datetypes
+      element bcf:datetypes {
+        element bcf:datetype { xsd:NCName }+
+      },
+      # Valid entrytypes
+      element bcf:entrytypes {
+        element bcf:entrytype { xsd:NCName }+
+      },
+      # Entrytype and field alias specifications
+      element bcf:aliases {
+        element bcf:alias {
+          (
+            (
+              # entrytype alias specification
+              attribute type { "entrytype" },
+              # alias name
+              element bcf:name { xsd:NCName },
+              # canonical name
+              element bcf:realname { xsd:NCName },
+              # Any other fields that need setting when resolving the alias
+              # for example when "phdthesis" -> "thesis", we also need to set
+              # "type" = "phdthesis"
+              element bcf:field {
+                attribute name { xsd:NCName },
+                xsd:NCName
+              }* ) |
+            (
+              # field alias specification
+              attribute type { "field" },
+              # alias name
+              element bcf:name { xsd:NCName },
+              # canonical name
+              element bcf:realname { xsd:NCName }
+            )
+          )
+        }+
+      }?,
+      # BibLaTeX field types. Biber uses this to determine how to output various types
+      # to the .bbl
+      element bcf:fields {
+        element bcf:field {
+          # fieldtype is "field" or "list"
+          attribute fieldtype { "field" | "list" },
+          # datatype of field content
+          attribute datatype { "literal" | "datepart" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "special" },
+          # Are we allowed to output a null field value to the .bbl for this field?
+          attribute nullok { "true" }?,
+          # Should this field be skipped and not output to the .bbl?
+          attribute skip_output { "true" }?,
+          xsd:NCName
+        }+
+      },
+      # Allowable fields for entrytypes
+      # Only one specification per entrytype: even though it might be nice to have several 
+      # so that one could share information, this would be hard to manage and confusing as it
+      # not be visible in one place which fields were valid for an entrytype.
+      element bcf:entryfields {
+        (element bcf:entrytype { "ALL" } |
+         element bcf:entrytype { xsd:NCName }+),
+        (element bcf:field { "ALL" } |
+         element bcf:field { xsd:NCName }+)
+      }+,
+      # Constraints on field (co-)existence and format
+      element bcf:constraints {
+        # Set of entrytypes that this constraint applies to
+        # An entrytype can be specified in multiple constraints
+        #
+        # Special entrytype "ALL" can be used to cover, well, all entrytypes ...
+        (element bcf:entrytype { "ALL" } |
+         element bcf:entrytype { xsd:NCName }+),    
+        # A constraint specification
+        element bcf:constraint {
+          (
+            # Conditional constraints have an antecedent and consequent
+            # both of which have a quantifier. This allows you to enforce
+            # constraints like:
+            #
+            # if field a,b,c are all present then one of x,y,z must be
+            # if one of field a,b,c are present then none of x,y,z must be
+            # etc.
+            (attribute type { "conditional" },
+              element bcf:antecedent {
+                attribute quant { "all" | "one" | "none"},
+                element bcf:field { xsd:NCName }+
+              },
+              element bcf:consequent {
+                attribute quant { "all" | "one" | "none"},
+                element bcf:field { xsd:NCName }+
+              }
+            ) |
+            # Datatype and format constraints
+            (attribute type { "data" },
+              # datespec is a BibLaTeX date range specification
+              # range* attributes are for limiting integer type range
+              attribute datatype { "integer" | "datespec" }?,
+              attribute rangemin { xsd:int }?,
+              attribute rangemax { xsd:int }?,                                      
+              element bcf:field { xsd:NCName }+
+            ) |
+            # Mandatoriness constraints which say which fields must appear
+            (attribute type { "mandatory" },
+              (element bcf:field { xsd:NCName } |
+                # An XOR set of fields so you can enforce:
+                #
+                # One (but not more) of fields a,b,c must exist
+                element bcf:fieldxor {
+                  element bcf:field {
+                    attribute coerce { "true" }?,
+                    xsd:NCName
+                  }+
+                } |
+                # An OR set of fields so you can enforce:
+                #
+                # One (possibly more of fields a,b,c must exist
+                element bcf:fieldor {
+                  element bcf:field { xsd:NCName }+
+                }
+                )+
+              )
+            )
+          }*
+        }+
+      }?,
+      # Section specifications
+      secspec+,
+      listspec+
+    }
+
+listspec = 
+    element bcf:sortlist {
+      attribute section { xsd:integer },
+      attribute type { "entry" | "key" | "shorthand" },
+      attribute label { xsd:string {minLength="1"}},
+      (filter | orfilter )*,
+      element bcf:sorting {
+        sort+
+      }?
+    }*
+
+
+sorting = 
+  element bcf:sorting {
+    # presort default strings for different entry types
+    element bcf:presort {
+      attribute type { xsd:NCName }?,
+      text
+    }+,
+    # excludes of certain fields for sorting for specified types
+    element bcf:sortexclusion {
+      attribute type { text },
+      element bcf:exclusion { xsd:NCName }+
+    }*,
+    sort+
+  }
+
+sort =
+  # sort specification
+  element bcf:sort {
+    # order of this specification in the set of all sort specifications
+    attribute order { xsd:integer },
+    # Should we stop generating sorting information after this item?
+    attribute final { xsd:integer }?,
+    # Sort ascending or descending
+    attribute sort_direction { "ascending" | "descending" }?,
+    # Sort case sensitive or not?
+    attribute sortcase { "0" | "1" }?,
+    # Sort upper before lower?
+    attribute sortupper { "0" | "1" }?,
+    # A sort item specification - a field or pseudo-field to get sort information from
+    element bcf:sortitem {
+      # order of this item in the set of all other item specifications
+      attribute order { xsd:integer },
+      # Just use a part of the item information for sorting?
+      attribute substring_side { "left" | "right" }?,
+      attribute substring_width { xsd:integer }?,
+      # Pad the item information when sorting with it?
+      attribute pad_side { "left" | "right" }?,
+      attribute pad_width { xsd:integer }?,
+      attribute pad_char { xsd:string { minLength = "1" maxLength = "1" } }?,
+      text
+    }+
+  }+
+
+# Section specification
+secspec =
+  # data sources
+  element bcf:bibdata {
+    # which sections the datafiles are for
+    attribute section { xsd:integer },
+    element bcf:datasource {
+      attribute type { "file" },
+      attribute datatype { "bibtex" | "biblatexml" | "ris" | "zoterordfxml" | "endnotexml" }?,
+      xsd:anyURI
+    }*
+  }?,
+  # citekeys or citekey sets in each section
+  element bcf:section {
+    attribute number { xsd:integer },
+    element bcf:citekey {
+      ( attribute type { "set" },
+        attribute members { xsd:string {minLength="1"}},
+        xsd:string {minLength="1"}) |
+      xsd:string {minLength="1"}
+    }*
+  }
+
+orfilter = element bcf:orfilter {
+             filter+
+           }
+
+filter = element bcf:filter {
+           attribute type { "type" | "nottype" | "subtype" | "notsubtype"
+                         | "keyword" | "notkeyword" | "field" | "notfield" },
+           xsd:string {minLength="1"}
+         }
+
+# option definitions
+useprefix =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "useprefix" },
+    element bcf:value { "0" | "1" }
+  }
+useauthor =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "useauthor" },
+    element bcf:value { "0" | "1" }
+  }
+useeditor =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "useeditor" },
+    element bcf:value { "0" | "1" }
+  }
+usetranslator =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "usetranslator" },
+    element bcf:value { "0" | "1" }
+  }
+labelalpha =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "labelalpha" },
+    element bcf:value { "0" | "1" }
+  }
+labelyear =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "labelyear" },
+    element bcf:value { "0" | "1" }
+  }
+labelyearspec =
+  element bcf:option {
+    attribute type { "multivalued" },
+    element bcf:key { "labelyearspec" },
+    element bcf:value {
+      attribute order { xsd:integer },
+      xsd:NCName
+    }+
+  }
+singletitle =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "singletitle" },
+    element bcf:value { "0" | "1" }
+  }
+skipbib =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "skipbib" },
+    element bcf:value { "0" | "1" }
+  }
+skiplab =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "skiplab" },
+    element bcf:value { "0" | "1" }
+  }
+skiplos =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "skiplos" },
+    element bcf:value { "0" | "1" }
+  }
+# 0 = do not provide uniquelist information
+# 1 = disambiguate lists regardless of year
+# 2 = disambiguate lists only when year is the same
+uniquelist =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "uniquelist" },
+    element bcf:value { "0" | "1" | "2" }
+  }
+# 0 = do not provide uniquename information
+# 1 = disambiguate with initials, only up to maxcitenames/uniquelist
+# 2 = disambiguate with full name or initials, only up to maxcitenames/uniquelist
+# 3 = disambiguate with initials, ignore maxcitenames/uniquelist
+# 4 = disambiguate with full name or initials, ignore maxcitenames/uniquelist
+# 5 = disambiguate with initials, only between identical lists in different entries
+# 6 = disambiguate with full name or initials, only between identical lists in different entries
+uniquename =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "uniquename" },
+    element bcf:value { "0" | "1" | "2" | "3" | "4" | "5" | "6" }
+  }
+maxitems =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "maxitems" },
+    element bcf:value { xsd:integer }
+  }
+maxbibnames =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "maxbibnames" },
+    element bcf:value { xsd:integer }
+  }
+maxalphanames =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "maxalphanames" },
+    element bcf:value { xsd:integer }
+  }
+maxcitenames =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "maxcitenames" },
+    element bcf:value { xsd:integer }
+  }
+minitems =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "minitems" },
+    element bcf:value { xsd:integer }
+  }
+minbibnames =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "minbibnames" },
+    element bcf:value { xsd:integer }
+  }
+minalphanames =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "minalphanames" },
+    element bcf:value { xsd:integer }
+  }
+mincitenames =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "mincitenames" },
+    element bcf:value { xsd:integer }
+  }
+sortscheme =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "sortscheme" },
+    element bcf:value { xsd:NCName }
+  }
+labelnamespec =
+  element bcf:option {
+    attribute type { "multivalued" },
+    element bcf:key { "labelnamespec" },
+    element bcf:value {
+      attribute order { xsd:integer },
+      xsd:NCName
+    }+
+  }
+mincrossrefs =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "mincrossrefs" },
+    element bcf:value { xsd:integer }
+  }
+debug =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "debug" },
+    element bcf:value { "0" | "1" }
+  }
+wrapline =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "wrapline" },
+    element bcf:value { xsd:integer }
+  }  
+bblencoding =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "bblencoding" },
+    element bcf:value { xsd:NCName }
+  }
+bibencoding =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "bibencoding" },
+    element bcf:value { xsd:NCName }
+  }
+sortcase =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "sortcase" },
+    element bcf:value { "0" | "1" }
+  }
+alphaothers =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "alphaothers" },
+    element bcf:value {
+      xsd:normalizedString { pattern = "\S+" }
+    }
+  }
+# This is xsd:language but also allows underscore separators
+sortlocale = 
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "sortlocale" },
+    element bcf:value {
+      xsd:normalizedString { pattern = "([a-zA-Z]{2}|[iI][\-_][a-zA-Z]+|[xX][\-_][a-zA-Z]{1,10})([\-_][a-zA-Z]{1,10})*"
+      }
+    }
+  }
+sortupper = 
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "sortupper" },
+    element bcf:value { "0" | "1" }
+  }
+sortalphaothers =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "sortalphaothers" },
+    element bcf:value {
+      xsd:normalizedString { pattern = "\S+" }
+    }
+  }
+
+map =
+  element bcf:map {
+    attribute map_overwrite { "0" | "1" }?,
+    element bcf:per_datasource { xsd:string {minLength="1"} }*,
+    element bcf:per_type { xsd:string {minLength="1"} }*,
+    element bcf:map_step {
+      (
+        (
+          attribute map_type_source { xsd:string {minLength="1"} },
+          attribute map_type_target { xsd:string {minLength="1"} }?,
+          attribute map_final { "1" }?
+        ) |
+        (
+          attribute map_field_source { xsd:string {minLength="1"} },
+          attribute map_field_target { xsd:string {minLength="1"} }?,
+          attribute map_final { "1" }?,
+          attribute map_match { xsd:string {minLength="1"} }?,
+          attribute map_replace { xsd:string {minLength="1"} }?
+        ) |
+        (
+          attribute map_field_set { xsd:string {minLength="1"} },
+          ( attribute map_null { "1" } |
+            attribute map_origfield { "1" } |
+            attribute map_origfieldval { "1" } |
+            attribute map_origentrytype { "1" } |
+            attribute map_field_value { xsd:string {minLength="1"} } )
+        )
+      ),
+      empty
+    }+
+  }

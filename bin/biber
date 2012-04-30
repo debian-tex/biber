@@ -1,0 +1,503 @@
+#!/usr/bin/perl
+
+use 5.014000;
+use strict;
+use warnings;
+
+use constant {
+  EXIT_OK => 0,
+  EXIT_ERROR => 2
+};
+
+use Carp;
+use IPC::Cmd qw( can_run run );
+use Log::Log4perl qw(:no_extra_logdie_message);
+use Log::Log4perl::Level;
+use POSIX qw(strftime);
+use Biber;
+use Biber::Utils;
+use File::Spec;
+use Pod::Usage;
+use List::AllUtils qw( first );
+
+use Getopt::Long qw/:config no_ignore_case/;
+my $opts = {};
+GetOptions(
+           $opts,
+           'bibencoding|e=s',
+           'bblencoding|E=s',
+           'bblsafechars',
+           'bblsafecharsset=s',
+           'cache',
+           'collate|C',
+           'collate_options|c=s',
+           'configfile|g=s',
+           'convert_control',
+           'dot_include:s@',
+           'decodecharsset=s',
+           'debug|D',
+           'fastsort|f',
+           'fixinits',
+           'help|h|?',
+           'mincrossrefs|m=s',
+           'logfile=s',
+           'noconf',
+           'nodieonerror',
+           'nolog',
+           'nostdmacros',
+           'onlylog',
+           'outfile|O=s',
+           'outformat=s',
+           'output_directory=s',
+           'quiet|q+',
+           'sortcase=s',
+           'sortfirstinits=s',
+           'sortlocale|l=s',
+           'sortupper=s',
+           'ssl-noverify-host',
+           'trace|T',
+           'u',                   # alias for bibencoding=UTF-8
+           'U',                   # alias for bblencoding=UTF-8
+           'validate_config',
+           'validate_control',
+           'validate_structure|V',
+           'version|v',
+           'wraplines|w'
+          ) or pod2usage(-verbose => 0,
+                         -exitval => EXIT_ERROR);
+
+# verbose > 1 uses external perldoc, this doesn't work with PAR::Packer binaries
+# so use "-noperldoc" to use built-in POD::Text
+if (exists $opts->{'help'}) {
+  pod2usage(-verbose => 2, -noperldoc => 1, -exitval => EXIT_OK);
+}
+
+if (exists $opts->{'version'}) {
+  my $v = "biber version: $Biber::Config::VERSION";
+  $v .= ' (beta)' if $Biber::Config::BETA_VERSION;
+  say "$v";
+  exit EXIT_OK;
+}
+
+if (exists $opts->{'cache'}) {
+  if (my $cache = $ENV{PAR_TEMP}) {
+    $cache =~ s|//|/|og; # Sanitise path in case it worries people
+    say $cache;
+  }
+  else {
+    say "No cache - you are not running the PAR::Packer executable version of biber";
+  }
+  exit EXIT_OK;
+}
+
+# Catch this situation early
+unless (@ARGV) {
+  pod2usage(-verbose => 0,
+            -exitval => EXIT_ERROR);
+}
+
+# Sanitise and check the outformat option
+if (my $of = $opts->{outformat}) {
+  unless ($opts->{outformat} =~ /\A(?:bbl|dot|bltxml)\z/xms) {
+    say STDERR "Biber: Unknown output format '$of', must be one of 'bbl', 'dot' or 'bltxml'";
+    exit EXIT_ERROR;
+  }
+}
+else {
+  $opts->{outformat} = 'bbl';
+}
+
+# Sanitise and check the dot_include option
+if (exists($opts->{dot_include})) {
+  unless ($opts->{outformat} eq 'dot') {
+    say STDERR "Biber: DOT output format specified but output format is not DOT!";
+    exit EXIT_ERROR;
+  }
+  $opts->{dot_include} = {map {lc($_) => 1} split(/,/,join(',',@{$opts->{dot_include}}))};
+  unless (keys %{$opts->{dot_include}}) {
+    $opts->{dot_include} = {section => 1, xdata => 1, crossref => 1, xref => 1};
+  }
+  my @suboptions = ( 'section', 'field', 'crossref', 'xref', 'xdata', 'related' );
+  foreach my $g (keys %{$opts->{dot_include}}) {
+    unless (first {$_ eq lc($g)} @suboptions) {
+      say STDERR "Biber: '$g' is an invalid output type for DOT output";
+      exit EXIT_ERROR;
+    }
+  }
+}
+
+# Sanitise collate option if fastsort is specified
+if ($opts->{fastsort}) {
+  delete $opts->{collate};
+}
+
+# Resolve shortcut aliases for UTF-8ness
+if ($opts->{u}) {
+  $opts->{bibencoding} = 'UTF-8';
+  delete $opts->{u};
+}
+if ($opts->{U}) {
+  $opts->{bblencoding} = 'UTF-8';
+  delete $opts->{U};
+}
+
+# Create Biber object, passing command-line options
+my $biber = Biber->new(%$opts);
+
+# get the logger object
+my $logger  = Log::Log4perl::get_logger('main');
+my $screen  = Log::Log4perl::get_logger('screen');
+my $logfile = Log::Log4perl::get_logger('logfile');
+
+my $outfile;
+
+my $time_string = strftime "%a %b %e, %Y, %H:%M:%S", localtime;
+$logfile->info("=== $time_string");
+
+my $bcf = Biber::Config->getoption('bcf');
+
+if (Biber::Config->getoption('outfile')) {
+  $outfile = Biber::Config->getoption('outfile')
+}
+else {
+  if (Biber::Config->getoption('outformat') eq 'dot') { # .dot output
+    $outfile = $bcf =~ s/bcf$/dot/r;
+  }
+  elsif (Biber::Config->getoption('outformat') eq 'bltxml') { # .bltxml output
+    $outfile = $bcf =~ s/bcf$/bltxml/r;
+  }
+  else { # .bbl output
+    $outfile = $bcf =~ s/bcf$/bbl/r;
+  }
+}
+
+# Set the .bbl path to the output dir, if specified
+if (my $outdir = Biber::Config->getoption('output_directory')) {
+  my (undef, undef, $file) = File::Spec->splitpath($outfile);
+  $outfile = File::Spec->catfile($outdir, $file)
+}
+
+# parse the .bcf control file
+$biber->parse_ctrlfile($bcf);
+
+# Postprocess biber options now that they are all read from the various places
+Biber::Config->postprocess_biber_opts;
+
+# Check to see if the .bcf set debug=1. If so, increase logging level
+# We couldn't set this on logger init as the .bcf hadn't been read then
+if (Biber::Config->getoption('debug')) {
+  $logger->level($DEBUG);
+}
+
+if (Biber::Config->getoption('trace')) {
+  $logger->trace("\n###########################################################\n",
+    "############# Dump of initial config object: ##############\n",
+    Data::Dump::pp($Biber::Config::CONFIG), "\n",
+    "############# Dump of initial biber object: ###############\n",
+    $biber->_stringdump,
+    "\n###########################################################")
+}
+
+# Set the output class. Should be a subclass of Biber::Output::Base
+if (Biber::Config->getoption('outformat') eq 'dot') { # .dot output
+  require Biber::Output::dot;
+  $biber->set_output_obj(Biber::Output::dot->new());
+}
+elsif (Biber::Config->getoption('outformat') eq 'bltxml') { # biblatexml output
+  require Biber::Output::biblatexml;
+  $biber->set_output_obj(Biber::Output::biblatexml->new());
+}
+else { # .bbl output
+  require Biber::Output::bbl;
+  $biber->set_output_obj(Biber::Output::bbl->new());
+}
+
+# Do all the real work
+$biber->prepare;
+
+if (Biber::Config->getoption('trace')) {
+  $logger->trace("\n###########################################################\n",
+    "############# Dump of final config object: ################\n",
+    Data::Dump::pp($Biber::Config::CONFIG), "\n",
+    "############# Dump of final biber object: #################\n",
+    $biber->_stringdump,
+    "\n###########################################################")
+}
+
+# Get reference to output object
+my $biberoutput = $biber->get_output_obj;
+
+# Set the output target
+$biberoutput->set_output_target_file($outfile);
+
+# Write the output to the target
+$biberoutput->output;
+
+$biber->display_problems;
+
+exit EXIT_OK;
+
+__END__
+
+=pod
+
+=encoding utf8
+
+=head1 NAME
+
+C<biber> - A bibtex replacement for users of biblatex
+
+=head1 SYNOPSIS
+
+biber [options] file[.bcf]
+
+  Creates "file.bbl" using control file "file.bcf" (".bcf" extension is
+  optional). Normaly use with biblatex requires no options as they are
+  all set in biblatex and passed via the ".bcf" file
+
+  Please run "biber --help" for option details
+
+=head1 DESCRIPTION
+
+C<biber> provides a replacement of the bibtex processor for users of biblatex.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--bblencoding|-E [encoding]>
+
+Specify the encoding of the output C<.bbl> file. Default is "UTF-8".
+Normally it's not necessary to set this as it's passed via biblatex
+from the inputenc package setting.
+See C<perldoc Encode::Supported> for a list of supported encodings.
+
+=item B<--bblsafechars>
+
+Try to convert UTF-8 chars into LaTeX macros when writing the .bbl
+This can prevent unknown char errors when using PDFLaTeX and inputenc
+as this doesn't understand all of UTF-8. Note, it is better to switch
+to XeTeX or LuaTeX to avoid this situation. By default uses the
+--bblsafecharsset "base" set of characters.
+
+=item B<--bblsafecharsset=base|full>
+
+The set of characters included in the conversion routine for
+--bblsafechars. Set to "full" to try harder with a much
+larger set or "base" to use a basic set. Default is "base" which is
+fine for most use cases. You may need to load more macro packages to
+deal with the results of "full" (Dings, Greek characters, special
+symbols etc.).
+
+=item B<--bibencoding|-e [encoding]>
+
+Specify the encoding of the data source file(s). Default is "UTF-8"
+Normally it's not necessary to set this as it's passed via the
+.bcf file from biblatex's setting of the same name.
+See "perldoc Encode::Supported" for a list of supported encodings.
+
+=item B<--cache>
+
+If running as a PAR::Packer binary, show the cache location and exit.
+
+=item B<--collate|-C>
+
+Sort with C<Unicode::Collate> instead of the built-in sort function.
+This is the default.
+
+=item B<--collate_options|-c [options]>
+
+Options to pass to the C<Unicode::Collate> object used for sorting
+(default is 'level => "2", table => "latinkeys.txt"').
+See C<perldoc Unicode::Collate> for details.
+
+=item B<--configfile|-g [file]>
+
+Use F<file> as configuration file for C<biber>.
+The default is the first file found among
+F<biber.conf> in the current directory, C<$HOME/.biber.conf>,
+or else the output of C<kpsewhich biber.conf>.
+
+=item B<--convert_control>
+
+Converts the F<.bcf> control file into html using an XSLT transform. Can
+be useful for debugging. File is named by appending C<.html>
+to F<.bcf> file.
+
+=item B<--decodecharsset=base|full>
+
+The set of characters included in the conversion routine when decoding
+LaTeX macros into UTF-8 (which happens when B<--bblencoding|-E> is set to
+UTF-8). Set to "full" to try harder with a much larger set or "base" to
+use a smaller basic set. Default is "base". You may want to try "full"
+if you have less common UTF-8 characters in your data source.
+
+=item B<--debug|-D>
+
+Turn on debugging for C<biber>.
+
+=item B<--dot_include=section,field,xdata,crossref,xref,related>
+
+Specifies the element to include in GraphViz DOT output format if the output format is 'dot'.
+You can also choose to display crossref, xref, xdata and/or related entry connections.
+The default if not specified is C<--dot_include=section,xdata,crossref,xref>.
+
+=item B<--fastsort|-f>
+
+Use Perl's sort instead of C<Unicode::Collate> for sorting. Also uses
+OS locale definitions (which may be broken for some languages ...).
+
+=item B<--fixinits>
+
+Try to fix broken multiple initials with they have no space between them in BibTeX
+data sources. That is, "A.B. Clarke" becomes "A. B. Clarke" before name parsing.
+This can slightly mess up things like "{U.K. Government}" and other esoteric cases.
+
+=item B<--help|-h>
+
+Show this help message.
+
+=item B<--logfile [file]>
+
+Use F<file.blg> as the name of the logfile.
+
+=item B<--mincrossrefs|-m [number]>
+
+Set threshold for crossrefs.
+
+=item B<--noconf>
+
+Don't look for a configfile.
+
+=item B<--nodieonerror>
+
+Don't exit on errors, just log and continue as far as possible.
+This can be useful if the error is something from, for example, the underlying
+BibTeX parsing C library which can complain about parsing errors which can be ignored.
+
+=item B<--nolog>
+
+Do not write any logfile.
+
+=item B<--nostdmacros>
+
+Don't automatically define any standard macros like month abbreviations.
+If you also define these yourself, this option can be used to suppress
+macro redefinition warnings.
+
+=item B<--onlylog>
+
+Do not write any message to screen.
+
+=item B<--outfile|-O [file]>
+
+Output to F<file> instead of F<basename.bbl>
+F<file> is relative to B<--output_directory>, if set (absolute
+paths in this case are stripped to filename only). F<file> can
+be absolute if B<--output_directory> is not set.
+
+=item B<--outformat=bbl|dot|bltxml>
+
+Biber output format. Default if not specified is of course, F<bbl>. Use F<dot>
+to output a GraphViz DOT file instead of F<.bbl>. This is a directed graph of
+the bibliography data showing entries and, as requested, sections and fields.
+You must process this file with C<dot>, e.g. C<dot -Tsvg test.dot -o test.svg> to
+render the graph. See the B<--dot_include> option to select what is included in
+the DOT output. Use F<bltxml> to output a BibLaTeXML file of the internal data
+model instead of a F<.bbl>. This helps in moving to BibLaTeXML by translating
+other datasource formats.
+
+=item B<--output_directory [directory]>
+
+Files (F<.bbl> and F<.blg>) are output to directory F<directory> instead
+of the current directory. Input files are also looked for in F<directory>
+before current directory.
+
+=item B<--quiet|-q>
+
+Log only errors. If this option is used more than once, don't even log errors.
+
+=item B<--sortcase=true|false>
+
+Case-sensitive sorting (default is true).
+
+=item B<--sortfirstinits=true|false>
+
+When sorting names, use only the first name initials, not full first name. Some people expect
+the biblatex B<firstinits> option to do this but it needs to be a separate option in case
+users, for example, need to show only initials but sort with full first names (default is false).
+
+=item B<--sortlocale|-l [locale]>
+
+Set the locale to be used for sorting.  With default sorting
+(B<--collate|-C>), the locale is used to add CLDR
+tailoring to the sort (if available for the locale). With
+B<--fastsort|-f> this sets the OS locale for sorting.
+
+=item B<--sortupper=true|false>
+
+Whether to sort uppercase before lowercase when using
+default sorting (B<--collate|-C>). When
+using B<--fastsort|-f>, your OS collation locale determines
+this and this option is ignored (default is true).
+
+=item B<--ssl-noverify-host>
+
+Turn off host verification when using HTTPS to fetch remote data sources.
+You may need this if the SSL certificate is self-signed for example.
+
+=item B<-u>
+
+Alias for B<--bibencoding=UTF-8>
+
+=item B<-U>
+
+Alias for B<--bblencoding=UTF-8>
+
+=item B<--validate_config>
+
+Schema validate the biber config file.
+
+=item B<--validate_control>
+
+Schema validate the F<.bcf> biblatex control file.
+
+=item B<--validate_structure|-V>
+
+Validate the data against a data model.
+
+=item B<--version|-v>
+
+Display version number.
+
+=item B<--wraplines|-w>
+
+Wrap lines in the F<.bbl> file.
+
+=back
+
+=head1 AUTHOR
+
+François Charette, C<firmicus at ankabut.net>E<10>
+Philip Kime, C<Philip at kime.org.uk>
+
+=head1 BUGS & DOCUMENTATION
+
+To see the full documentation, run B<texdoc biber> or get the F<biber.pdf>
+manual from SourceForge.
+
+Please report any bugs or feature requests on our sourceforge tracker at
+L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+
+=head1 COPYRIGHT & LICENSE
+
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+
+This module is free software.  You can redistribute it and/or
+modify it under the terms of the Artistic License 2.0.
+
+This program is distributed in the hope that it will be useful,
+but without any warranty; without even the implied warranty of
+merchantability or fitness for a particular purpose.
+
+=cut

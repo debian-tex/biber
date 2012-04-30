@@ -1,0 +1,8 @@
+!*.bib
+!*.aux
+!*.bcf
+!*.bbl
+auto
+MYMETA.yml
+MYMETA.json
+

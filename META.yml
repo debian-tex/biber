@@ -1,0 +1,115 @@
+---
+abstract: 'Biber is a much-augmented bibtex replacement for biblatex users'
+author:
+  - 'Philip Kime <Philip@kime.org.uk>'
+build_requires:
+  Config::AutoConf: 0.15
+  ExtUtils::LibBuilder: 0.02
+configure_requires:
+  Module::Build: 0.38
+dynamic_config: 1
+generated_by: 'Module::Build version 0.38, CPAN::Meta::Converter version 2.112150'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: biblatex-biber
+provides:
+  Biber:
+    file: lib/Biber.pm
+    version: 0
+  Biber::Config:
+    file: lib/Biber/Config.pm
+    version: 1.0
+  Biber::Constants:
+    file: lib/Biber/Constants.pm
+    version: 0
+  Biber::Entries:
+    file: lib/Biber/Entries.pm
+    version: 0
+  Biber::Entry:
+    file: lib/Biber/Entry.pm
+    version: 0
+  Biber::Entry::Name:
+    file: lib/Biber/Entry/Name.pm
+    version: 0
+  Biber::Entry::Names:
+    file: lib/Biber/Entry/Names.pm
+    version: 0
+  Biber::Input::file::biblatexml:
+    file: lib/Biber/Input/file/biblatexml.pm
+    version: 0
+  Biber::Input::file::bibtex:
+    file: lib/Biber/Input/file/bibtex.pm
+    version: 0
+  Biber::Input::file::endnotexml:
+    file: lib/Biber/Input/file/endnotexml.pm
+    version: 0
+  Biber::Input::file::ris:
+    file: lib/Biber/Input/file/ris.pm
+    version: 0
+  Biber::Input::file::zoterordfxml:
+    file: lib/Biber/Input/file/zoterordfxml.pm
+    version: 0
+  Biber::Internals:
+    file: lib/Biber/Internals.pm
+    version: 0
+  Biber::LaTeX::Recode:
+    file: lib/Biber/LaTeX/Recode.pm
+    version: 0
+  Biber::Output::base:
+    file: lib/Biber/Output/base.pm
+    version: 0
+  Biber::Output::bbl:
+    file: lib/Biber/Output/bbl.pm
+    version: 0
+  Biber::Output::dot:
+    file: lib/Biber/Output/dot.pm
+    version: 0
+  Biber::Output::test:
+    file: lib/Biber/Output/test.pm
+    version: 0
+  Biber::Section:
+    file: lib/Biber/Section.pm
+    version: 0
+  Biber::Sections:
+    file: lib/Biber/Sections.pm
+    version: 0
+  Biber::SortList:
+    file: lib/Biber/SortList.pm
+    version: 0
+  Biber::SortLists:
+    file: lib/Biber/SortLists.pm
+    version: 0
+  Biber::Structure:
+    file: lib/Biber/Structure.pm
+    version: 0
+  Biber::Utils:
+    file: lib/Biber/Utils.pm
+    version: 0
+recommends:
+  Readonly::XS: 0
+requires:
+  Data::Compare: 0
+  Data::Dump: 0
+  Date::Simple: 0
+  File::Slurp::Unicode: 0
+  IPC::Cmd: 0
+  IPC::Run3: 0
+  LWP::Protocol::https: 0
+  LWP::Simple: 0
+  List::AllUtils: 0
+  List::MoreUtils: 0
+  Log::Log4perl: 0
+  Readonly: 0
+  Readonly::XS: 0
+  Regexp::Common: 0
+  Text::BibTeX: 0.62
+  Unicode::Collate: 0.89
+  XML::LibXML::Simple: 0
+  XML::LibXSLT: 0
+  XML::Writer::String: 0
+  perl: v5.14.0
+resources:
+  license: http://dev.perl.org/licenses/
+version: 1.0

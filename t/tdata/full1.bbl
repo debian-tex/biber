@@ -1,0 +1,46 @@
+% $ biblatex auxiliary file $
+% $ biblatex version 2.0 $
+% $ biber version 1.0 (beta) $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber or bibtex as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \sortlist{entry}{MAIN}
+    \entry{F1}{book}{}
+      \name{labelname}{1}{}{%
+        {{uniquename=0,hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
+      }
+      \name{author}{1}{}{%
+        {{uniquename=0,hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
+      }
+      \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \field{labelalpha}{\emph{A}}
+      \field{sortinit}{A}
+      \true{singletitle}
+      \field{shorthand}{\emph{A}}
+      \field{title}{The Fullness of Times}
+      \field{year}{1995}
+    \endentry
+  \endsortlist
+  \sortlist{shorthand}{SHORTHANDS}
+    \key{F1}
+  \endsortlist
+  \missing{C1}
+\endrefsection
+\endinput
+
