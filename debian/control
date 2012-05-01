@@ -18,7 +18,8 @@ Vcs-Browser: http://anonscm.debian.org/git/pkg-perl/packages/biber.git
 
 Package: biber
 Architecture: all
-Recommends: libreadonly-xs-perl
+Recommends: libreadonly-xs-perl,
+ biblatex
 Depends: ${misc:Depends},
  ${perl:Depends},
  libdata-compare-perl,
