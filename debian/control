@@ -7,10 +7,9 @@ Build-Depends: debhelper (>= 9),
  perl,
  libtest-pod-perl (>= 1.22),
  libtest-pod-coverage-perl (>= 1.08),
- libmozilla-ca-perl (>= 20120309),
  libconfig-autoconf-perl (>= 0.15),
  libextutils-libbuilder-perl (>= 0.02),
- libmozilla-ca-perl (>= 20120309)
+ ca-certificates
 Standards-Version: 3.9.3
 Homepage: http://biblatex-biber.sourceforge.net/
 Vcs-Git: git://anonscm.debian.org/pkg-perl/packages/biber.git
@@ -19,7 +18,8 @@ Vcs-Browser: http://anonscm.debian.org/git/pkg-perl/packages/biber.git
 Package: biber
 Architecture: all
 Recommends: libreadonly-xs-perl,
- biblatex
+ biblatex,
+ ca-certificates
 Depends: ${misc:Depends},
  ${perl:Depends},
  libdata-compare-perl,
@@ -38,8 +38,7 @@ Depends: ${misc:Depends},
  libunicode-collate-perl (>= 0.89),
  libxml-libxml-simple-perl,
  libxml-libxslt-perl,
- libxml-writer-string-perl,
- libmozilla-ca-perl (>= 20120309)
+ libxml-writer-string-perl
 Description: Much-augmented BibTeX replacement for BibLaTeX users
  The biblatex package by Philipp Lehman is becoming the definitive
  citation management tool for LaTeX users. Biblatex has relied on the
