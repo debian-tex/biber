@@ -1,4 +1,11 @@
-biber (0.9.9+git2012426-1) unstable; urgency=low
+biber (0.9.9+git2012426-2) unstable; urgency=low
+
+  * [copyright] Add the full Artistic-2 license and add Francois Charette
+     as copyright holder.  Thanks to Ansgar Burchardt.
+
+ -- Danai SAE-HAN (韓達耐) <danai@debian.org>  Sun, 03 Jun 2012 12:04:30 +0800
+
+Biber (0.9.9+git2012426-1) unstable; urgency=low
 
   * Initial Release.
   * Closing ITP bug report (Closes: #570018).
