@@ -3,13 +3,30 @@ Section: perl
 Priority: optional
 Maintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>
 Uploaders: Danai SAE-HAN (韓達耐) <danai@debian.org>
-Build-Depends: debhelper (>= 9),
- perl,
- libtest-pod-perl (>= 1.22),
- libtest-pod-coverage-perl (>= 1.08),
+Build-Depends: debhelper (>= 9), perl,
  libconfig-autoconf-perl (>= 0.15),
+ libdata-compare-perl,
+ libdata-dump-perl,
+ libdate-simple-perl,
  libextutils-libbuilder-perl (>= 0.02),
- ca-certificates
+ libfile-slurp-unicode-perl,
+ libfile-which-perl,
+ libipc-run3-perl,
+ liblist-allutils-perl,
+ liblist-moreutils-perl,
+ liblog-log4perl-perl,
+ liblwp-protocol-https-perl,
+ libreadonly-perl,
+ libreadonly-xs-perl,
+ libregexp-common-perl,
+ libtest-pod-coverage-perl (>= 1.08),
+ libtest-pod-perl (>= 1.22),
+ libtext-bibtex-perl (>= 0.62),
+ libunicode-collate-perl (>= 0.89),
+ libwww-perl,
+ libxml-libxml-simple-perl,
+ libxml-libxslt-perl,
+ libxml-writer-string-perl
 Standards-Version: 3.9.3
 Homepage: http://biblatex-biber.sourceforge.net/
 Vcs-Git: git://anonscm.debian.org/pkg-perl/packages/biber.git
@@ -17,11 +34,9 @@ Vcs-Browser: http://anonscm.debian.org/git/pkg-perl/packages/biber.git
 
 Package: biber
 Architecture: all
-Recommends: libreadonly-xs-perl,
- biblatex,
- ca-certificates
-Depends: ${misc:Depends},
- ${perl:Depends},
+Recommends: biblatex,
+ libreadonly-xs-perl
+Depends: ${misc:Depends}, ${perl:Depends},
  libdata-compare-perl,
  libdata-dump-perl,
  libdate-simple-perl,
