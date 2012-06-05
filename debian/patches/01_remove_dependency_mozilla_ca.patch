@@ -1,3 +1,10 @@
+Description: remove requirement for Mozilla::CA, Debian has ca-certificates
+Origin: vendor
+Forwarded: not-needed
+Author: Danai SAE-HAN (韓達耐)
+Reviewed-by: gregor herrmann <gregoa@debian.org>
+Last-Update: 2012-06-05
+
 --- a/lib/Biber/Input/file/biblatexml.pm
 +++ b/lib/Biber/Input/file/biblatexml.pm
 @@ -75,11 +75,7 @@
