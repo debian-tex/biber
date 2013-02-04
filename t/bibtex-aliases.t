@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 22;
+use Test::More tests => 24;
 
 use Biber;
 use Biber::Utils;
@@ -37,7 +37,7 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 # Biber options
 Biber::Config->setoption('fastsort', 1);
 Biber::Config->setoption('sortlocale', 'C');
-Biber::Config->setoption('validate_structure', 1);
+Biber::Config->setoption('validate_datamodel', 1);
 
 # THERE IS A MAPPING SECTION IN THE .bcf BEING USED TO TEST USER MAPS TOO!
 
@@ -47,14 +47,12 @@ $biber->prepare;
 my $section = $biber->sections->get_section(0);
 my $bibentries = $section->bibentries;
 
-my $w1 = [
-          "Field 'school' is aliased to field 'institution' but both are defined in entry with key 'alias2' - skipping alias",
+my $w1 = ["Field 'school' invalid in data model for entry 'alias2' - ignoring",
           "Entry 'alias2' - invalid entry type 'thing' - defaulting to 'misc'",
           "Entry 'alias2' - invalid field 'institution' for entrytype 'misc'",
 ];
 
-my $w2 = ["Overwriting existing field 'VERBC' while processing entry 'alias4'",
-          "Entry 'alias4' - invalid field 'author' for entrytype 'customa'",
+my $w2 = ["Entry 'alias4' - invalid field 'author' for entrytype 'customa'",
           "Entry 'alias4' - invalid field 'eprint' for entrytype 'customa'",
           "Entry 'alias4' - invalid field 'eprinttype' for entrytype 'customa'",
           "Entry 'alias4' - invalid field 'namea' for entrytype 'customa'",
@@ -81,11 +79,15 @@ is_deeply($bibentries->entry('alias4')->get_field('warnings'), $w2, 'Alias - 17'
 
 # Testing of .bcf field map match/replace
 ok(is_undef($bibentries->entry('alias5')->get_field('abstract')), 'Alias - 18' );
-is($biber->_liststring('alias5', 'listb'), 'REPlaCEDte_early', 'Alias - 19');
-is($biber->_liststring('alias5', 'institution'), 'REPlaCEDte_early', 'Alias - 20');
+is($biber->_liststring('alias5', 'listb'), 'REPlaCEDte!early', 'Alias - 19');
+is($biber->_liststring('alias5', 'institution'), 'REPlaCEDte!early', 'Alias - 20');
 
 # Testing of no target but just field additions
 is($bibentries->entry('alias6')->get_field('keywords'), 'keyw1, keyw2', 'Alias - 21' );
 
 # Testing of no regexp match for field value
 is_deeply($bibentries->entry('alias7')->get_field('lista'), ['listaval'], 'Alias - 22' );
+
+# Testing append overwrites
+is($bibentries->entry('alias7')->get_field('verbb'), 'val2val1', 'Alias - 23' );
+is($bibentries->entry('alias7')->get_field('verbc'), 'val3val2val1', 'Alias - 24' );

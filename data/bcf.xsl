@@ -17,15 +17,15 @@
   <xsl:template name="generate-string">
     <xsl:param name="text"/>
     <xsl:param name="count"/>
-
     <xsl:choose>
+      <xsl:when test="string(number($count))='NaN'"/>
       <xsl:when test="string-length($text) = 0 or $count &lt;= 0"/>
       <xsl:otherwise>
-	<xsl:value-of select="$text"/>
-	<xsl:call-template name="generate-string">
-	  <xsl:with-param name="text" select="$text"/>
-	  <xsl:with-param name="count" select="$count - 1"/>
-	</xsl:call-template>
+	      <xsl:value-of select="$text"/>
+	      <xsl:call-template name="generate-string">
+	        <xsl:with-param name="text" select="$text"/>
+	        <xsl:with-param name="count" select="$count - 1"/>
+	      </xsl:call-template>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
@@ -52,7 +52,7 @@
               <tt>
                 <!-- sortupper -->
                 <xsl:choose>
-                  <xsl:when test ="./@sortupper">
+                  <xsl:when test="./@sortupper">
                     <!-- Field setting -->
                     <xsl:choose>
                       <xsl:when test="./@sortupper='1'">Aa/</xsl:when>
@@ -331,7 +331,14 @@
           <hr/>
           <h3>Datasource Mappings</h3>
           <xsl:for-each select="/bcf:controlfile/bcf:sourcemap/bcf:maps">
-            <h4>Mappings for datatype <xsl:value-of select="./@datatype"/> (default overwrite = <xsl:value-of select="./@map_overwrite"/>)</h4>
+            <h4><xsl:choose>
+              <xsl:when test="./@driver_defaults">Driver default</xsl:when>
+              <xsl:otherwise>User</xsl:otherwise>
+              </xsl:choose> Mappings for datatype <xsl:value-of select="./@datatype"/> (default overwrite = 
+            <xsl:choose>
+              <xsl:when test="./@map_overwrite">1</xsl:when>
+              <xsl:otherwise>0</xsl:otherwise>
+            </xsl:choose>)</h4>
             <xsl:for-each select="./bcf:map">
               <table>
                 <thead>
@@ -714,16 +721,16 @@
 	      <xsl:call-template name="sorting-spec">
 	        <xsl:with-param name="spec" select="/bcf:controlfile/bcf:sorting"/>
 	      </xsl:call-template>
-        <xsl:if test="/bcf:controlfile/bcf:structure">
+        <xsl:if test="/bcf:controlfile/bcf:datamodel">
           <hr/>
-          <h3>Data Structure</h3>
+          <h3>Data Model</h3>
           <h4>Legal datetypes</h4>
           <table>
             <thead>
               <tr><td>Datetypes</td></tr>
             </thead>
             <tbody>
-              <xsl:for-each select="/bcf:controlfile/bcf:structure/bcf:datetypes/bcf:datetype">
+              <xsl:for-each select="/bcf:controlfile/bcf:datamodel/bcf:datetypes/bcf:datetype">
               <tr><td><xsl:value-of select="./text()"/></td></tr>
               </xsl:for-each>
             </tbody>
@@ -738,7 +745,7 @@
                 <td>GLOBAL</td>
                 <td>
                   <div class="global_entrytype_fields">
-                    <xsl:for-each select="/bcf:controlfile/bcf:structure/bcf:entryfields/bcf:entrytype[text()='ALL']/../bcf:field">
+                    <xsl:for-each select="/bcf:controlfile/bcf:datamodel/bcf:entryfields/bcf:entrytype[text()='ALL']/../bcf:field">
                       <xsl:sort select="./text()"/>
                       <xsl:value-of select="./text()"/>
                       <xsl:if test="not(position()=last())">, </xsl:if>
@@ -746,7 +753,7 @@
                   </div>
                 </td>
               </tr>
-              <xsl:for-each select="/bcf:controlfile/bcf:structure/bcf:entrytypes/bcf:entrytype">
+              <xsl:for-each select="/bcf:controlfile/bcf:datamodel/bcf:entrytypes/bcf:entrytype">
                 <tr>
                   <td><xsl:value-of select="./text()"/></td>
                   <!-- Save a varible pointing to the entrytype node -->
@@ -754,17 +761,17 @@
                   <!-- Fields which are valid for this entrytype --> 
                   <td>
                     <!-- If no fields explicitly listed for entrytype, just global fields -->
-                    <xsl:if test="not(/bcf:controlfile/bcf:structure/bcf:entryfields/bcf:entrytype[text()=$entrynode/text()])">
+                    <xsl:if test="not(/bcf:controlfile/bcf:datamodel/bcf:entryfields/bcf:entrytype[text()=$entrynode/text()])">
                       <div class="global_entrytype_fields">GLOBAL fields</div>
                     </xsl:if>
-                    <xsl:for-each select="/bcf:controlfile/bcf:structure/bcf:entryfields">
+                    <xsl:for-each select="/bcf:controlfile/bcf:datamodel/bcf:entryfields">
                       <!-- fields valid just for this entrytype -->
                       <xsl:if test="./bcf:entrytype[text()=$entrynode/text()]">
                         <xsl:choose>
                           <!-- Value "ALL" lists every valid field which is a superset
                                of the global fields -->
                           <xsl:when test="./bcf:field[text()='ALL']">
-                            <xsl:for-each select="/bcf:controlfile/bcf:structure/bcf:fields/bcf:field">
+                            <xsl:for-each select="/bcf:controlfile/bcf:datamodel/bcf:fields/bcf:field">
                               <xsl:sort select="./text()"/>
                               <xsl:value-of select="./text()"/>
                               <xsl:if test="not(position()=last())">, </xsl:if>
@@ -788,13 +795,13 @@
               </xsl:for-each>
             </tbody>
           </table>
-          <h4>Legal Fields</h4>
+          <h4>Field Types</h4>
           <table>
             <thead>
-              <tr><td>Field</td><td>Data type</td></tr>
+              <tr><td>Field</td><td>Data type</td><td>Entrytypes</td></tr>
             </thead>
             <tbody>
-              <xsl:for-each select="/bcf:controlfile/bcf:structure/bcf:fields/bcf:field">
+              <xsl:for-each select="/bcf:controlfile/bcf:datamodel/bcf:fields/bcf:field">
                 <tr>
                   <td>
                     <xsl:value-of select="./text()"/>
@@ -803,6 +810,12 @@
                   </td>
                   <td>
                     <xsl:value-of select="./@datatype"/><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text><xsl:value-of select="./@fieldtype"/>
+                  </td>
+                  <td>
+                    <xsl:choose>
+                      <xsl:when test="./@entrytypes"><xsl:value-of select="./@entrytypes"/></xsl:when>
+                      <xsl:otherwise>ALL</xsl:otherwise>
+                    </xsl:choose>
                   </td>
                 </tr>
               </xsl:for-each>
@@ -813,7 +826,7 @@
               <li><xsl:text disable-output-escaping="yes">&amp;empty;</xsl:text> = field can null in <tt>.bbl</tt>, <xsl:text disable-output-escaping="yes">&amp;loz;</xsl:text> = field is not output to <tt>.bbl</tt></li>
             </ul>
           </div>
-          <xsl:if test="/bcf:controlfile/bcf:structure/bcf:constraints">
+          <xsl:if test="/bcf:controlfile/bcf:datamodel/bcf:constraints">
             <hr/>
             <h3>Constraints</h3>
             <table>
@@ -821,7 +834,7 @@
                 <tr><td>Entrytypes</td><td>Constraint</td></tr>
               </thead>
               <tbody>
-                <xsl:for-each select="/bcf:controlfile/bcf:structure/bcf:constraints">
+                <xsl:for-each select="/bcf:controlfile/bcf:datamodel/bcf:constraints">
                   <tr>
                     <td>
                       <ul>

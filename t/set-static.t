@@ -38,7 +38,7 @@ Biber::Config->setoption('fastsort', 1);
 # Now generate the information
 $biber->prepare;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'entry', 'MAIN');
+my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
 my $out = $biber->get_output_obj;
 
 my $string1 = q|    \entry{Static1}{set}{}
@@ -53,6 +53,7 @@ my $string1 = q|    \entry{Static1}{set}{}
       \strng{fullhash}{43874d80d7ce68027102819f16c47df1}
       \field{sortinit}{0}
       \field{labelyear}{2001}
+      \field{labeltitle}{Blessed Brains}
       \field{annotation}{Some notes}
       \field{title}{Blessed Brains}
       \field{year}{2001}
@@ -70,6 +71,7 @@ my $string2 = q|    \entry{Static2}{book}{}
       \strng{namehash}{43874d80d7ce68027102819f16c47df1}
       \strng{fullhash}{43874d80d7ce68027102819f16c47df1}
       \field{sortinit}{0}
+      \field{labeltitle}{Blessed Brains}
       \field{annotation}{Some Blessed Note}
       \field{title}{Blessed Brains}
       \field{year}{2001}
@@ -87,6 +89,7 @@ my $string3 = q|    \entry{Static3}{book}{}
       \strng{namehash}{da80091c8cd89e5269bd55af1bd5d2fa}
       \strng{fullhash}{da80091c8cd89e5269bd55af1bd5d2fa}
       \field{sortinit}{0}
+      \field{labeltitle}{Castles and Crime}
       \field{title}{Castles and Crime}
       \field{year}{2002}
     \endentry
@@ -103,6 +106,7 @@ my $string4 = q|    \entry{Static4}{book}{}
       \strng{namehash}{22dafa5cd57bb5dd7f3e3bab98fd539c}
       \strng{fullhash}{22dafa5cd57bb5dd7f3e3bab98fd539c}
       \field{sortinit}{0}
+      \field{labeltitle}{Dungeons, Dark and Dangerous}
       \field{title}{Dungeons, Dark and Dangerous}
       \field{year}{2005}
     \endentry
@@ -121,6 +125,7 @@ my $string5 = q|    \entry{Static2}{book}{}
       \strng{fullhash}{43874d80d7ce68027102819f16c47df1}
       \field{sortinit}{0}
       \field{labelyear}{2001}
+      \field{labeltitle}{Blessed Brains}
       \field{annotation}{Some Blessed Note}
       \field{title}{Blessed Brains}
       \field{year}{2001}
@@ -128,9 +133,9 @@ my $string5 = q|    \entry{Static2}{book}{}
 |;
 
 
-is($out->get_output_entry($main,'Static1'), $string1, 'Static set test 1');
-is($out->get_output_entry($main,'Static2'), $string2, 'Static set test 2');
-is($out->get_output_entry($main,'Static3'), $string3, 'Static set test 3');
-is($out->get_output_entry($main,'Static4'), $string4, 'Static set test 4');
-is($out->get_output_entry($main,'Static2', 1), $string5, 'Static set test 5');
+is($out->get_output_entry('Static1', $main), $string1, 'Static set test 1');
+is($out->get_output_entry('Static2', $main), $string2, 'Static set test 2');
+is($out->get_output_entry('Static3', $main), $string3, 'Static set test 3');
+is($out->get_output_entry('Static4', $main), $string4, 'Static set test 4');
+is($out->get_output_entry('Static2', $main, 1), $string5, 'Static set test 5');
 

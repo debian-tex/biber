@@ -1,11 +1,10 @@
 % $ biblatex auxiliary file $
-% $ biblatex version 2.0 $
-% $ biber version 1.0 (beta) $
+% $ biblatex bbl format version 2.1 $
 % Do not modify the above lines!
 %
 % This is an auxiliary file used by the 'biblatex' package.
 % This file may safely be deleted. It will be recreated by
-% biber or bibtex as required.
+% biber as required.
 %
 \begingroup
 \makeatletter
@@ -19,7 +18,10 @@
 
 
 \refsection{0}
-  \sortlist{entry}{MAIN}
+  \sortlist{shorthand}{shorthand}
+    \key{F1}
+  \endsortlist
+  \sortlist{entry}{nty}
     \entry{F1}{book}{}
       \name{labelname}{1}{}{%
         {{uniquename=0,hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
@@ -31,14 +33,12 @@
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{\emph{A}}
       \field{sortinit}{A}
+      \field{labeltitle}{The Fullness of Times}
       \true{singletitle}
       \field{shorthand}{\emph{A}}
       \field{title}{The Fullness of Times}
       \field{year}{1995}
     \endentry
-  \endsortlist
-  \sortlist{shorthand}{SHORTHANDS}
-    \key{F1}
   \endsortlist
   \missing{C1}
 \endrefsection

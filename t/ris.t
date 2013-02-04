@@ -41,7 +41,7 @@ Biber::Config->setoption('sortlocale', 'C');
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'entry', 'MAIN');
+my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
 my $bibentries = $section->bibentries;
 
 my $l1 = q|    \entry{test1}{report}{}
@@ -62,9 +62,12 @@ my $l1 = q|    \entry{test1}{report}{}
       \strng{namehash}{deae9fead6c78a99d3f38159b0710b1f}
       \strng{fullhash}{bde87bef9bb3834837786f78acfebc54}
       \field{sortinit}{B}
+      \field{labelyear}{1996}
+      \field{labeltitle}{Blood-brain barrier breach following cortical contusion in the rat}
       \field{journaltitle}{J.Neurosurgery}
       \field{title}{Blood-brain barrier breach following cortical contusion in the rat}
       \field{volume}{85}
+      \field{year}{1996}
       \field{pages}{476\bibrangedash 481}
       \keyw{cortical contusion,blood-brain barrier,horseradish peroxidase,head trauma,hippocampus,rat}
     \endentry
@@ -83,13 +86,17 @@ my $l2 = q|    \entry{test2}{inbook}{}
       \strng{namehash}{f2574dc91f1242eb0e7507a71730631b}
       \strng{fullhash}{f2574dc91f1242eb0e7507a71730631b}
       \field{sortinit}{S}
+      \field{labelyear}{1996}
+      \field{labeltitle}{Sometitle}
+      \field{day}{12}
+      \field{month}{03}
       \field{title}{Sometitle}
+      \field{year}{1996}
       \field{pages}{1\bibrangedash 20}
       \keyw{somevalue}
-      \warn{\item Overwriting existing field 'KW' while processing entry 'test2'}
     \endentry
 |;
 
-is( $out->get_output_entry($main,'test1'), $l1, 'Basic RIS test - 1') ;
-is( $out->get_output_entry($main,'test2'), $l2, 'Basic RIS test - 2') ;
+is( $out->get_output_entry('test1', $main), $l1, 'Basic RIS test - 1') ;
+is( $out->get_output_entry('test2', $main), $l2, 'Basic RIS test - 2') ;
 

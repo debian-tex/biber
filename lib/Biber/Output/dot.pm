@@ -152,7 +152,7 @@ sub output {
       $c = '#a1edec' if $section->get_citekey_alias($citekey);
 
       # make a set subgraph if a set member
-      # This will make identically names subgraph sections for
+      # This will make identically named subgraph sections for
       # every element in a set but dot is clever enough to merge them by
       # ID.
       if (my $sets = Biber::Config->get_graph('set')) {
@@ -367,7 +367,7 @@ L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

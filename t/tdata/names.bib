@@ -78,6 +78,10 @@
   AUTHOR = {Mustermann, Klaus-Peter},
 }
 
+@BOOK{L19a,
+  AUTHOR = {Lam, Ho-Pun},
+}
+
 @BOOK{L20,
   AUTHOR = {{John Henry} Ford},
 }
@@ -107,7 +111,7 @@
 
 % Should skip the first name as it has too many commas
 @BOOK{L27,
-  AUTHOR = {Smith, Jr., Bill, Lee and James Smith}
+  AUTHOR = {Smith, Jr., Bill, Lee und James Smith}
 }
 
 % This causes Text::BibTeX <=0.4 to segfault
@@ -133,12 +137,12 @@
   TRANSLATOR = {{\~{Z}}elly, Arthur}
 }
 
-% Checking visibility of "and others"
+% Checking visibility of "and others" (with custom "and" and "others")
 @BOOK{V1,
-  AUTHOR = {Alan Author and Steven Secondauthor and others},
+  AUTHOR = {Alan Author und Steven Secondauthor und andere},
 }
 
 @BOOK{V2,
-  AUTHOR = {Alan Author and others},
+  AUTHOR = {Alan Author und andere},
 }
 

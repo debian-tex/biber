@@ -38,7 +38,7 @@ Biber::Config->setoption('fastsort', 1);
 # Now generate the information
 $biber->prepare;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'entry', 'MAIN');
+my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
 my $out = $biber->get_output_obj;
 
 my $string1 = q|    \entry{Elias1955}{set}{}
@@ -53,6 +53,7 @@ my $string1 = q|    \entry{Elias1955}{set}{}
       \strng{fullhash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \field{sortinit}{0}
       \field{labelyear}{1955}
+      \field{labeltitle}{Predictive coding--I}
       \field{issn}{0096-1000}
       \field{journaltitle}{IRE Transactions on Information Theory}
       \field{month}{03}
@@ -79,6 +80,7 @@ my $string2 = q|    \entry{Elias1955a}{article}{}
       \strng{namehash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \strng{fullhash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \field{sortinit}{0}
+      \field{labeltitle}{Predictive coding--I}
       \field{issn}{0096-1000}
       \field{journaltitle}{IRE Transactions on Information Theory}
       \field{month}{03}
@@ -105,6 +107,7 @@ my $string3 = q|    \entry{Elias1955b}{article}{}
       \strng{namehash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \strng{fullhash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \field{sortinit}{0}
+      \field{labeltitle}{Predictive coding--II}
       \field{issn}{0096-1000}
       \field{journaltitle}{IRE Transactions on Information Theory}
       \field{month}{03}
@@ -120,7 +123,7 @@ my $string3 = q|    \entry{Elias1955b}{article}{}
     \endentry
 |;
 
-is($out->get_output_entry($main,'Elias1955'), $string1, 'Legacy set test 1');
-is($out->get_output_entry($main,'Elias1955a'), $string2, 'Legacy set test 2');
-is($out->get_output_entry($main,'Elias1955b'), $string3, 'Legacy set test 3');
+is($out->get_output_entry('Elias1955', $main), $string1, 'Legacy set test 1');
+is($out->get_output_entry('Elias1955a', $main), $string2, 'Legacy set test 2');
+is($out->get_output_entry('Elias1955b', $main), $string3, 'Legacy set test 3');
 

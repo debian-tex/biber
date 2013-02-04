@@ -39,8 +39,8 @@ Biber::Config->setoption('sortlocale', 'C');
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $shs = $biber->sortlists->get_list(0, 'shorthand', 'SHORTHANDS');
-my $main = $biber->sortlists->get_list(0, 'entry', 'MAIN');
+my $shs = $biber->sortlists->get_list(0, 'shorthand', 'shorthand');
+my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
 my $bibentries = $section->bibentries;
 
 my $k1 = q|    \entry{key1}{article}{}
@@ -54,6 +54,7 @@ my $k1 = q|    \entry{key1}{article}{}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
       \field{sortinit}{0}
       \field{labelyear}{1998}
+      \field{labeltitle}{Original Title}
       \field{journaltitle}{Journal Title}
       \field{number}{5}
       \field{related}{78f825aaa0103319aaa1a30bf4fe3ada,3631578538a2d6ba5879b31a9a42f290,caf8e34be07426ae7127c1b4829983c1}
@@ -83,6 +84,7 @@ my $k2 = q|    \entry{key2}{inbook}{}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
       \field{sortinit}{0}
       \field{labelyear}{2009}
+      \field{labeltitle}{Reprint Title}
       \field{booktitle}{Booktitle}
       \field{related}{c2add694bf942dc77b376592d9c862cd}
       \field{relatedstring}{First}
@@ -111,6 +113,7 @@ my $k3 = q|    \entry{key3}{inbook}{}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
       \field{sortinit}{0}
       \field{labelyear}{2010}
+      \field{labeltitle}{Reprint Title}
       \field{booktitle}{Booktitle}
       \field{related}{c2add694bf942dc77b376592d9c862cd}
       \field{relatedstring}{Second}
@@ -132,6 +135,7 @@ my $kck1 = q|    \entry{c2add694bf942dc77b376592d9c862cd}{article}{dataonly}
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
       \field{sortinit}{0}
+      \field{labeltitle}{Original Title}
       \field{journaltitle}{Journal Title}
       \field{number}{5}
       \field{shorthand}{RK1}
@@ -158,6 +162,7 @@ my $kck2 = q|    \entry{78f825aaa0103319aaa1a30bf4fe3ada}{inbook}{dataonly}
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
       \field{sortinit}{0}
+      \field{labeltitle}{Reprint Title}
       \field{booktitle}{Booktitle}
       \field{shorthand}{RK2}
       \field{title}{Reprint Title}
@@ -182,6 +187,7 @@ my $kck3 = q|    \entry{3631578538a2d6ba5879b31a9a42f290}{inbook}{dataonly}
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
       \field{sortinit}{0}
+      \field{labeltitle}{Reprint Title}
       \field{booktitle}{Booktitle}
       \field{shorthand}{RK3}
       \field{title}{Reprint Title}
@@ -206,6 +212,7 @@ my $kck4 = q|    \entry{caf8e34be07426ae7127c1b4829983c1}{inbook}{dataonly}
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
       \field{sortinit}{0}
+      \field{labeltitle}{Reprint Title}
       \field{booktitle}{Booktitle}
       \field{shorthand}{RK4}
       \field{title}{Reprint Title}
@@ -214,15 +221,15 @@ my $kck4 = q|    \entry{caf8e34be07426ae7127c1b4829983c1}{inbook}{dataonly}
     \endentry
 |;
 
-is( $out->get_output_entry($main,'key1'), $k1, 'Related entry test 1' ) ;
-is( $out->get_output_entry($main,'key2'), $k2, 'Related entry test 2' ) ;
-is( $out->get_output_entry($main,'key3'), $k3, 'Related entry test 3' ) ;
-is( $out->get_output_entry($main,'c2add694bf942dc77b376592d9c862cd'), $kck1, 'Related entry test 4' ) ;
-is( $out->get_output_entry($main,'78f825aaa0103319aaa1a30bf4fe3ada'), $kck2, 'Related entry test 5' ) ;
-is( $out->get_output_entry($main,'3631578538a2d6ba5879b31a9a42f290'), $kck3, 'Related entry test 6' ) ;
-is( $out->get_output_entry($main,'caf8e34be07426ae7127c1b4829983c1'), $kck4, 'Related entry test 7' ) ;
+is( $out->get_output_entry('key1', $main), $k1, 'Related entry test 1' ) ;
+is( $out->get_output_entry('key2', $main), $k2, 'Related entry test 2' ) ;
+is( $out->get_output_entry('key3', $main), $k3, 'Related entry test 3' ) ;
+is( $out->get_output_entry('c2add694bf942dc77b376592d9c862cd', $main), $kck1, 'Related entry test 4' ) ;
+is( $out->get_output_entry('78f825aaa0103319aaa1a30bf4fe3ada', $main), $kck2, 'Related entry test 5' ) ;
+is( $out->get_output_entry('3631578538a2d6ba5879b31a9a42f290', $main), $kck3, 'Related entry test 6' ) ;
+is( $out->get_output_entry('caf8e34be07426ae7127c1b4829983c1', $main), $kck4, 'Related entry test 7' ) ;
 # Key k4 is used only to create a related entry clone but since it isn't cited itself
 # it shouldn't be in the .bbl
-is( $out->get_output_entry($main,'key4'), undef, 'Related entry test 8' ) ;
+is( $out->get_output_entry('key4', $main), undef, 'Related entry test 8' ) ;
 is_deeply([$shs->get_keys], ['key1', 'key2', 'key3'], 'Related entry test 9');
 

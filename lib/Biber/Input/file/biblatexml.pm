@@ -6,24 +6,25 @@ use base 'Exporter';
 
 use Carp;
 use Biber::Constants;
+use Biber::DataModel;
 use Biber::Entries;
 use Biber::Entry;
 use Biber::Entry::Names;
 use Biber::Entry::Name;
 use Biber::Sections;
 use Biber::Section;
-use Biber::Structure;
 use Biber::Utils;
 use Biber::Config;
 use Encode;
 use File::Spec;
 use File::Temp;
 use Log::Log4perl qw(:no_extra_logdie_message);
-use List::AllUtils qw( :all );
+use List::AllUtils qw( uniq );
 use XML::LibXML;
 use XML::LibXML::Simple;
 use Readonly;
 use Data::Dump qw(dump);
+use URI;
 
 my $logger = Log::Log4perl::get_logger('main');
 my $orig_key_order = {};
@@ -31,21 +32,29 @@ my $orig_key_order = {};
 Readonly::Scalar our $BIBLATEXML_NAMESPACE_URI => 'http://biblatex-biber.sourceforge.net/biblatexml';
 Readonly::Scalar our $NS => 'bib';
 
-# Handlers for field types
-# The names of these have nothing to do whatever with the biblatex field types
-# They just started out copying them - they are categories of this specific
-# data source date types
-my %handlers = (
-                'date'     => \&_date,
-                'list'     => \&_list,
-                'name'     => \&_name,
-                'range'    => \&_range,
-                'related'  => \&_related,
-                'verbatim' => \&_verbatim
-);
-
-# Read driver config file
-my $dcfxml = driver_config('biblatexml');
+# Determine handlers from data model
+my $dm = Biber::Config->get_dm;
+my $handlers = {
+                'CUSTOM' => {'related' => \&_related},
+                'field' => {
+                            'csv'      => \&_literal,
+                            'code'     => \&_literal,
+                            'date'     => \&_date,
+                            'entrykey' => \&_literal,
+                            'integer'  => \&_literal,
+                            'key'      => \&_literal,
+                            'literal'  => \&_literal,
+                            'range'    => \&_range,
+                            'verbatim' => \&_literal,
+                            'uri'      => \&_uri,
+                           },
+                'list' => {
+                           'entrykey' => \&_literal,
+                           'key'      => \&_list,
+                           'literal'  => \&_list,
+                           'name'     => \&_name,
+                          }
+};
 
 =head2 extract_entries
 
@@ -74,7 +83,8 @@ sub extract_entries {
       # use IO::Socket::SSL qw(debug4); # useful for debugging SSL issues
       # We have to explicitly set the cert path because otherwise the https module
       # can't find the .pem when PAR::Packer'ed
-      if (not exists($ENV{PERL_LWP_SSL_CA_FILE})) {
+      if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
+          not defined(Biber::Config->getoption('ssl-nointernalca'))) {
         require Mozilla::CA; # Have to explicitly require this here to get it into %INC below
         # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
         (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
@@ -254,7 +264,7 @@ sub create_entry {
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
 
-  my $struc = Biber::Config->get_structure;
+  my $dm = Biber::Config->get_dm;
   my $bibentries = $section->bibentries;
   my $bibentry = new Biber::Entry;
 
@@ -264,19 +274,15 @@ sub create_entry {
   if (my $hp = $entry->getAttribute('howpublished')) {
     $bibentry->set_datafield('howpublished', $hp);
   }
-  # displaymode is set as an option so we benefit from option scope handling
-  if (my $mode = $entry->getAttribute('mode')) {
-    Biber::Config->setblxoption('displaymode', {'*' => [ $mode ] }, 'PER_ENTRY', $key);
-  }
 
   # We put all the fields we find modulo field aliases into the object.
   # Validation happens later and is not datasource dependent
-FLOOP:  foreach my $f (uniq map {$_->nodeName()} $entry->findnodes('*')) {
+  foreach my $f (uniq map {$_->nodeName()} $entry->findnodes('*')) {
 
     # We have to process local options as early as possible in order
     # to make them available for things that need them like name parsing
     if (_norm($entry->nodeName) eq 'options') {
-      if (my $node = _resolve_display_mode($entry, 'options')) {
+      if (my $node = $entry->findnodes("./$NS:options")->get_node(1)) {
         $Biber::MASTER->process_entry_options($key, $node->textContent());
         # Save the raw options in case we are to output another input format like
         # biblatexml
@@ -284,16 +290,10 @@ FLOOP:  foreach my $f (uniq map {$_->nodeName()} $entry->findnodes('*')) {
       }
     }
 
-    if (my $fm = $dcfxml->{fields}{field}{_norm($f)}) {
-      # No aliases processed here as this data source is supposed to be a 1:1 mapping
-      # of the biblatex data model
-      &{$handlers{$fm->{handler}}}($bibentry, $entry, $f, $f, $key);
-    }
-    # Default if no explicit way to set the field
-    else {
-      my $node = _resolve_display_mode($entry, $f);
-      my $value = $node->textContent();
-      $bibentry->set_datafield($f, $value);
+    # Now run any defined handler
+    if ($dm->is_field(_norm($f))) {
+      my $handler = _get_handler($f);
+      &$handler($bibentry, $entry, $f, $key);
     }
   }
 
@@ -306,9 +306,8 @@ FLOOP:  foreach my $f (uniq map {$_->nodeName()} $entry->findnodes('*')) {
 
 # Related entries
 sub _related {
-  my ($bibentry, $entry, $f, $to, $key) = @_;
-  # Pick out the node with the right mode
-  my $node = _resolve_display_mode($entry, $f, $key);
+  my ($bibentry, $entry, $f, $key) = @_;
+  my $node = $entry->findnodes("./$f")->get_node(1);
   # TODO
   # Current biblatex data model doesn't allow for multiple items here
   foreach my $item ($node->findnodes("./$NS:item")) {
@@ -321,78 +320,106 @@ sub _related {
   return;
 }
 
-# Verbatim fields
-sub _verbatim {
-  my ($bibentry, $entry, $f, $to, $key) = @_;
-  # Pick out the node with the right mode
-  my $node = _resolve_display_mode($entry, $f, $key);
-
-  # eprint is special case
-  if ($f eq "$NS:eprint") {
-    $bibentry->set_datafield('eprinttype', $node->getAttribute('type'));
-    if (my $ec = $node->getAttribute('class')) {
-      $bibentry->set_datafield('eprintclass', $ec);
+# literal fields
+sub _literal {
+  my ($bibentry, $entry, $f, $key) = @_;
+  # can be multiple nodes with different script forms
+  foreach my $node ($entry->findnodes("./$f")) {
+    my $form = $node->getAttribute('form') || 'original';
+    my $lang = $node->getAttribute('xml.lang');
+    # eprint is special case
+    if ($f eq "$NS:eprint") {
+      $bibentry->set_datafield('eprinttype', $node->getAttribute('type'), $form, $lang);
+      if (my $ec = $node->getAttribute('class')) {
+        $bibentry->set_datafield('eprintclass', $ec, $form, $lang);
+      }
     }
-  }
-  else {
-    $bibentry->set_datafield(_norm($to), $node->textContent());
+    else {
+      $bibentry->set_datafield(_norm($f), $node->textContent(), $form, $lang);
+    }
   }
   return;
 }
 
+# uri fields
+# No script form or language - makes no sense in a URI
+sub _uri {
+  my ($bibentry, $entry, $f, $key) = @_;
+  my $node = $entry->findnodes("./$f")->get_node(1);
+  my $value = $node->textContent();
+
+  # URL escape if it doesn't look like it already is
+  # This is useful if we are generating URLs automatically with maps which may
+  # contain UTF-8 from other fields
+  unless ($value =~ /\%/) {
+   $value = URI->new($value)->as_string;
+  }
+  $bibentry->set_datafield(_norm($f), $value);
+  return;
+}
+
+
 # List fields
 sub _list {
-  my ($bibentry, $entry, $f, $to, $key) = @_;
-  # Pick out the node with the right mode
-  my $node = _resolve_display_mode($entry, $f, $key);
-  $bibentry->set_datafield(_norm($to), _split_list($node));
+  my ($bibentry, $entry, $f, $key) = @_;
+  # can be multiple nodes with different script forms
+  foreach my $node ($entry->findnodes("./$f")) {
+    my $form = $node->getAttribute('form') || 'original';
+    my $lang = $node->getAttribute('xml.lang');
+    $bibentry->set_datafield(_norm($f), _split_list($node), $form, $lang);
+  }
   return;
 }
 
 # Range fields
 sub _range {
-  my ($bibentry, $entry, $f, $to, $key) = @_;
-  # Pick out the node with the right mode
-  my $node = _resolve_display_mode($entry, $f, $key);
-  # List of ranges/values
-  if (my @rangelist = $node->findnodes("./$NS:list/$NS:item")) {
-    my $rl;
-    foreach my $range (@rangelist) {
-      push @$rl, _parse_range_list($range);
-    }
-    $bibentry->set_datafield(_norm($to), $rl);
-  }
-  # Simple range
-  elsif (my $range = $node->findnodes("./$NS:range")->get_node(1)) {
-    $bibentry->set_datafield(_norm($to), [ _parse_range_list($range) ]);
-  }
-  # simple list
-  else {
-    my $values_ref;
-    my @values = split(/\s*,\s*/, $node->textContent());
-    # Here the "-–" contains two different chars even though they might
-    # look the same in some fonts ...
-    # If there is a range sep, then we set the end of the range even if it's null
-    # If no  range sep, then the end of the range is undef
-    foreach my $value (@values) {
-      $value =~ m/\A\s*([^-–]+)([-–]*)([^-–]*)\s*\z/xms;
-      my $end;
-      if ($2) {
-        $end = $3;
+  my ($bibentry, $entry, $f, $key) = @_;
+  # can be multiple nodes with different script forms
+  foreach my $node ($entry->findnodes("./$f")) {
+    my $form = $node->getAttribute('form') || 'original';
+    my $lang = $node->getAttribute('xml.lang');
+
+    # List of ranges/values
+    if (my @rangelist = $node->findnodes("./$NS:list/$NS:item")) {
+      my $rl;
+      foreach my $range (@rangelist) {
+        push @$rl, _parse_range_list($range);
       }
-      else {
-        $end = undef;
-      }
-      push @$values_ref, [$1 || '', $end];
+      $bibentry->set_datafield(_norm($f), $rl, $form, $lang);
     }
-    $bibentry->set_datafield(_norm($to), $values_ref);
+    # Simple range
+    elsif (my $range = $node->findnodes("./$NS:range")->get_node(1)) {
+      $bibentry->set_datafield(_norm($f), [ _parse_range_list($range) ], $form, $lang);
+    }
+    # simple list
+    else {
+      my $values_ref;
+      my @values = split(/\s*,\s*/, $node->textContent());
+      # Here the "-–" contains two different chars even though they might
+      # look the same in some fonts ...
+      # If there is a range sep, then we set the end of the range even if it's null
+      # If no  range sep, then the end of the range is undef
+      foreach my $value (@values) {
+        $value =~ m/\A\s*([^-–]+)([-–]*)([^-–]*)\s*\z/xms;
+        my $end;
+        if ($2) {
+          $end = $3;
+        }
+        else {
+          $end = undef;
+        }
+        push @$values_ref, [$1 || '', $end];
+      }
+      $bibentry->set_datafield(_norm($f), $values_ref, $form, $lang);
+    }
   }
   return;
 }
 
 # Date fields
+# Can't have form/lang - they are a(n ISO) standard format
 sub _date {
-  my ($bibentry, $entry, $f, $to, $key) = @_;
+  my ($bibentry, $entry, $f, $key) = @_;
   foreach my $node ($entry->findnodes("./$f")) {
     my $datetype = $node->getAttribute('datetype') // '';
     # We are not validating dates here, just syntax parsing
@@ -451,21 +478,25 @@ sub _date {
 
 # Name fields
 sub _name {
-  my ($bibentry, $entry, $f, $to, $key) = @_;
-  # Pick out the node with the right mode
-  my $node = _resolve_display_mode($entry, $f, $key);
-  my $useprefix = Biber::Config->getblxoption('useprefix', $bibentry->get_field('entrytype'), $key);
-  my $names = new Biber::Entry::Names;
-  foreach my $name ($node->findnodes("./$NS:person")) {
-    $names->add_name(parsename($name, $f, {useprefix => $useprefix}));
-  }
+  my ($bibentry, $entry, $f, $key) = @_;
+  # can be multiple nodes with different script forms
+  foreach my $node ($entry->findnodes("./$f")) {
+    my $form = $node->getAttribute('form') || 'original';
+    my $lang = $node->getAttribute('xml.lang');
 
-  # Deal with explicit "moreenames" in data source
-  if ($node->getAttribute('morenames')) {
-    $names->set_morenames;
-  }
+    my $useprefix = Biber::Config->getblxoption('useprefix', $bibentry->get_field('entrytype'), $key);
+    my $names = new Biber::Entry::Names;
+    foreach my $name ($node->findnodes("./$NS:person")) {
+      $names->add_name(parsename($name, $f, {useprefix => $useprefix}));
+    }
 
-  $bibentry->set_datafield(_norm($to), $names);
+    # Deal with explicit "moreenames" in data source
+    if ($node->getAttribute('morenames')) {
+      $names->set_morenames;
+    }
+
+    $bibentry->set_datafield(_norm($f), $names, $form, $lang);
+  }
   return;
 }
 
@@ -670,45 +701,21 @@ sub _split_list {
   }
 }
 
-
-# Given an entry and a fieldname, returns the field node with the right language mode
-sub _resolve_display_mode {
-  my ($entry, $fieldname, $key) = @_;
-  my @nodelist;
-  my $dm = Biber::Config->getblxoption('displaymode', $entry->getAttribute('entrytype'), $key);
-  $logger->debug("Resolving display mode for '$fieldname' in node " . $entry->nodePath );
-  # Either a fieldname specific mode or the default or a last-ditch fallback
-  my $modelist = $dm->{_norm($fieldname)} || $dm->{'*'} || ['original'];
-  # Make sure there is an 'original' fallback in the list
-  push @$modelist, 'original' unless first {$_ eq 'original'} @$modelist;
-  foreach my $mode (@$modelist) {
-    my $modeattr;
-    # mode is omissable if it is "original"
-    if ($mode eq 'original') {
-      $mode = 'original';
-      $modeattr = "\@mode='$mode' or not(\@mode)"
-    }
-    else {
-      $modeattr = "\@mode='$mode'"
-    }
-    $logger->debug("Found display mode '$mode' for field '$fieldname'");
-    if (@nodelist = $entry->findnodes("./${fieldname}[$modeattr]")) {
-      # Check to see if there is more than one entry with a mode and warn
-      if ($#nodelist > 0) {
-        biber_warn("Found more than one mode '$mode' '$fieldname' field in entry '" .
-                   $entry->getAttribute('id') . "' - skipping duplicates ...");
-      }
-      return $nodelist[0];
-    }
-  }
-  return undef; # Shouldn't get here
-}
-
 # normalise a node name as they have a namsespace and might not be lowercase
 sub _norm {
   my $name = lc(shift);
   $name =~ s/\A$NS://xms;
   return $name;
+}
+
+sub _get_handler {
+  my $field = shift;
+  if (my $h = $handlers->{CUSTOM}{_norm($field)}) {
+    return $h;
+  }
+  else {
+    return $handlers->{$dm->get_fieldtype(_norm($field))}{$dm->get_datatype(_norm($field))};
+  }
 }
 
 
@@ -741,7 +748,7 @@ L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

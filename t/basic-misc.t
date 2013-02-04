@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 40;
+use Test::More tests => 54;
 
 use Biber;
 use Biber::Utils;
@@ -49,10 +49,11 @@ Biber::Config->setblxoption('minbibnames', 7);
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'entry', 'MAIN');
+my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
 my @keys = sort $section->get_citekeys;
-my @citedkeys = sort qw{ alias1 alias2 alias5 anon1 anon2 murray t1 kant:ku kant:kpv t2 shore u1 u2 };
+my @citedkeys = sort qw{ alias1 alias2 alias5 anon1 anon2 murray t1 kant:ku kant:kpv t2 shore u1 u2 us1 };
 
+# entry "loh" is missing as the biber.conf map removes it with map_entry_null
 my @allkeys = sort map {lc()} qw{ anon1 anon2 stdmodel aristotle:poetics vazques-de-parga t1
 gonzalez averroes/bland laufenberg westfahl:frontier knuth:ct:a kastenholz
 averroes/hannes iliad luzzatto malinowski sorace knuth:ct:d britannica
@@ -62,9 +63,9 @@ aristotle:physics massa aristotle:anima gillies set kowalik gaonkar springer
 geer hammond wormanx westfahl:space worman set:herrmann augustine gerhardt
 piccato hasan hyman stdmodel:glashow stdmodel:ps_sc kant:kpv companion almendro
 sigfridsson ctan baez/online aristotle:rhetoric pimentel00 pines knuth:ct:c moraux cms
-angenendt angenendtsk loh markey cotton vangennepx kant:ku nussbaum nietzsche:ksa1
+angenendt angenendtsk markey cotton vangennepx kant:ku nussbaum nietzsche:ksa1
 vangennep knuth:ct angenendtsa spiegelberg bertram brandt set:aksin chiu nietzsche:ksa
-set:yoon maron coleridge tvonb t2 u1 u2 i1 i2 tmn1 tmn2 tmn3 tmn4 lne1 alias1 alias2 alias5 } ;
+set:yoon maron coleridge tvonb t2 u1 u2 i1 i2 tmn1 tmn2 tmn3 tmn4 lne1 alias1 alias2 alias5 url1 url2 ol1 pages1 pages2 pages3 pages4 pages5 pages6 pages7 us1 } ;
 
 my $u1 = q|    \entry{u1}{misc}{}
       \name{labelname}{4}{uniquelist=4}{%
@@ -83,23 +84,24 @@ my $u1 = q|    \entry{u1}{misc}{}
       \strng{fullhash}{b78abdc838d79b6576f2ed0021642766}
       \field{labelalpha}{AAA\textbf{+}00}
       \field{sortinit}{A}
+      \field{labeltitle}{A title}
       \true{singletitle}
       \field{title}{A title}
       \field{year}{2000}
     \endentry
 |;
 
-is( $out->get_output_entry($main, 'u1'), $u1, 'uniquelist 1' ) ;
+is( $out->get_output_entry('u1', $main), $u1, 'uniquelist 1' ) ;
 
 is_deeply( \@keys, \@citedkeys, 'citekeys 1') ;
-is_deeply( [ $biber->sortlists->get_list(0, 'shorthand', 'SHORTHANDS')->get_keys ], [ 'kant:kpv', 'kant:ku' ], 'shorthands' ) ;
+is_deeply( [ $biber->sortlists->get_list(0, 'shorthand', 'shorthand')->get_keys ], [ 'kant:kpv', 'kant:ku' ], 'shorthands' ) ;
 
 # reset some options and re-generate information
 
 # Have to do a citekey deletion as we are not re-reading the .bcf which would do it for us
 # Otherwise, we have citekeys and allkeys which confuses fetch_data()
 $section->del_citekeys;
-$section->allkeys;
+$section->set_allkeys(1);
 $section->bibentries->del_entries;
 $section->del_everykeys;
 Biber::Input::file::bibtex->init_cache;
@@ -151,6 +153,7 @@ my $murray1 = q|    \entry{murray}{article}{}
       \strng{fullhash}{61836f4684b2615842b68c26479f6ec2}
       \field{labelalpha}{Hos\textbf{+}98}
       \field{sortinit}{H}
+      \field{labeltitle}{Alkanethiolate gold cluster molecules}
       \true{singletitle}
       \field{annotation}{An \texttt{article} entry with \arabic{author} authors. By default, long author and editor lists are automatically truncated. This is configurable}
       \field{hyphenation}{american}
@@ -164,7 +167,6 @@ my $murray1 = q|    \entry{murray}{article}{}
       \field{year}{1998}
       \field{pages}{17\bibrangedash 30}
       \keyw{keyw1, keyw2}
-      \warn{\item Not overwriting existing field 'TITLE' while processing entry 'murray'}
     \endentry
 |;
 
@@ -205,6 +207,7 @@ my $murray2 = q|    \entry{murray}{article}{}
       \strng{fullhash}{61836f4684b2615842b68c26479f6ec2}
       \field{labelalpha}{Hos98}
       \field{sortinit}{H}
+      \field{labeltitle}{Alkanethiolate gold cluster molecules}
       \true{singletitle}
       \field{annotation}{An \texttt{article} entry with \arabic{author} authors. By default, long author and editor lists are automatically truncated. This is configurable}
       \field{hyphenation}{american}
@@ -218,7 +221,6 @@ my $murray2 = q|    \entry{murray}{article}{}
       \field{year}{1998}
       \field{pages}{17\bibrangedash 30}
       \keyw{keyw1, keyw2}
-      \warn{\item Not overwriting existing field 'TITLE' while processing entry 'murray'}
     \endentry
 |;
 
@@ -234,6 +236,7 @@ my $t1 = q+    \entry{t1}{misc}{}
       \strng{fullhash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \field{labelalpha}{Bro92}
       \field{sortinit}{B}
+      \field{labeltitle}{10\% of [100] and 90% of $Normal_2$ | \& # things {$^{3}$}}
       \field{title}{10\% of [100] and 90% of $Normal_2$ | \& # things {$^{3}$}}
       \field{year}{1992}
       \field{pages}{100\bibrangedash}
@@ -252,6 +255,7 @@ my $t2 = q|    \entry{t2}{misc}{}
       \strng{fullhash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \field{labelalpha}{Bro94}
       \field{sortinit}{B}
+      \field{labeltitle}{Signs of W$\frac{o}{a}$nder}
       \field{title}{Signs of W$\frac{o}{a}$nder}
       \field{year}{1994}
       \field{pages}{100\bibrangedash 108}
@@ -272,15 +276,15 @@ my $anon1 = q|    \entry{anon1}{unpublished}{}
       \strng{fullhash}{a66f357fe2fd356fe49959173522a651}
       \field{labelalpha}{XAn35}
       \field{sortinit}{A}
+      \field{labeltitle}{Shorttitle}
       \true{singletitle}
       \field{hyphenation}{USenglish}
+      \field{note}{anon1}
       \field{shorttitle}{Shorttitle}
       \field{title}{Title1}
       \field{year}{1835}
       \field{pages}{111\bibrangedash 118}
       \keyw{arc}
-      \warn{\item Not overwriting existing field 'KEYWORDS' while processing entry 'anon1'}
-      \warn{\item Not overwriting existing field 'TITLE' while processing entry 'anon1'}
     \endentry
 |;
 
@@ -298,32 +302,52 @@ my $anon2 = q|    \entry{anon2}{unpublished}{}
       \strng{fullhash}{a0bccee4041bc840e14c06e5ba7f083c}
       \field{labelalpha}{YAn39}
       \field{sortinit}{A}
+      \field{labeltitle}{Shorttitle}
       \true{singletitle}
       \field{hyphenation}{USenglish}
+      \field{note}{anon2}
       \field{shorttitle}{Shorttitle}
       \field{title}{Title2}
       \field{year}{1839}
       \field{pages}{1176\bibrangedash 1276}
       \keyw{arc}
-      \warn{\item Not overwriting existing field 'KEYWORDS' while processing entry 'anon2'}
-      \warn{\item Not overwriting existing field 'TITLE' while processing entry 'anon2'}
     \endentry
 |;
+
+my $url1 = q|    \entry{url1}{misc}{}
+      \name{labelname}{1}{}{%
+        {{uniquename=0,hash=b2106a3dda6c5a4879a0cab37e9cca55}{Alias}{A\bibinitperiod}{Alan}{A\bibinitperiod}{}{}{}{}}%
+      }
+      \name{author}{1}{}{%
+        {{uniquename=0,hash=b2106a3dda6c5a4879a0cab37e9cca55}{Alias}{A\bibinitperiod}{Alan}{A\bibinitperiod}{}{}{}{}}%
+      }
+      \strng{namehash}{b2106a3dda6c5a4879a0cab37e9cca55}
+      \strng{fullhash}{b2106a3dda6c5a4879a0cab37e9cca55}
+      \field{labelalpha}{Ali05}
+      \field{sortinit}{A}
+      \field{extraalpha}{4}
+      \field{year}{2005}
+      \verb{url}
+      \verb http://www.something.com/q=%C3%A1%C3%A9%C3%A1%C5%A0
+      \endverb
+    \endentry
+|;
+
 
 my $Worman_N = [ 'Worman_N' ] ;
 my $Gennep = [ 'v_Gennep_A', 'v_Gennep_J' ] ;
 
-is( $out->get_output_entry($main,'t1'), $t1, 'bbl entry with maths in title 1' ) ;
+is( $out->get_output_entry('t1', $main), $t1, 'bbl entry with maths in title 1' ) ;
 is( $bibentries->entry('shore')->get_field('month'), '03', 'default bib month macros' ) ;
 ok( $bibentries->entry('t1')->has_keyword('primary'), 'Keywords test - 1' ) ;
 ok( $bibentries->entry('t1')->has_keyword('something'), 'Keywords test - 2' ) ;
 ok( $bibentries->entry('t1')->has_keyword('somethingelse'), 'Keywords test - 3' ) ;
-is( $out->get_output_entry($main,'t2'), $t2, 'bbl entry with maths in title 2' ) ;
+is( $out->get_output_entry('t2', $main), $t2, 'bbl entry with maths in title 2' ) ;
 is_deeply( Biber::Config->_get_uniquename('Worman_N', 'global'), $Worman_N, 'uniquename count 1') ;
 is_deeply( Biber::Config->_get_uniquename('Gennep', 'global'), $Gennep, 'uniquename count 2') ;
-is( $out->get_output_entry($main,'murray'), $murray1, 'bbl with > maxcitenames' ) ;
-is( $out->get_output_entry($main,'missing1'), "  \\missing{missing1}\n", 'missing citekey 1' ) ;
-is( $out->get_output_entry($main,'missing2'), "  \\missing{missing2}\n", 'missing citekey 2' ) ;
+is( $out->get_output_entry('murray', $main), $murray1, 'bbl with > maxcitenames' ) ;
+is( $out->get_output_entry('missing1', $main), "  \\missing{missing1}\n", 'missing citekey 1' ) ;
+is( $out->get_output_entry('missing2', $main), "  \\missing{missing2}\n", 'missing citekey 2' ) ;
 
 
 Biber::Config->setblxoption('alphaothers', '');
@@ -337,14 +361,14 @@ $section->del_everykeys;
 Biber::Input::file::bibtex->init_cache;
 $biber->prepare ;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'entry', 'MAIN');
+$main = $biber->sortlists->get_list(0, 'entry', 'nty');
 $out = $biber->get_output_obj;
 
-is( $out->get_output_entry($main,'murray'), $murray2, 'bbl with > maxcitenames, empty alphaothers' ) ;
+is( $out->get_output_entry('murray', $main), $murray2, 'bbl with > maxcitenames, empty alphaothers' ) ;
 
 # Make sure namehash and fullhash are seperately generated
-is( $out->get_output_entry($main,'anon1'), $anon1, 'namehash/fullhash 1' ) ;
-is( $out->get_output_entry($main,'anon2'), $anon2, 'namehash/fullhash 2' ) ;
+is( $out->get_output_entry('anon1', $main), $anon1, 'namehash/fullhash 1' ) ;
+is( $out->get_output_entry('anon2', $main), $anon2, 'namehash/fullhash 2' ) ;
 
 # Testing of user field map ignores
 ok(is_undef($bibentries->entry('i1')->get_field('abstract')), 'map 1' );
@@ -352,15 +376,17 @@ is($bibentries->entry('i1')->get_field('userd'), 'test', 'map 2' );
 ok(is_undef($bibentries->entry('i2')->get_field('userb')), 'map 3' );
 is($bibentries->entry('i2')->get_field('usere'), 'a Štring', 'map 4' );
 # Testing of user field map match/replace
-is($biber->_liststring('i1', 'listb'), 'REPlacedte_early', 'map 5');
-is($biber->_liststring('i1', 'institution'), 'REPlaCEDte_early', 'map 6');
+is($biber->_liststring('i1', 'listb'), 'REPlacedte!early', 'map 5');
+is($biber->_liststring('i1', 'institution'), 'REPlaCEDte!early', 'map 6');
+# Testing of pseudo-field "entrykey" handling
+is($bibentries->entry('i1')->get_field('note'), 'i1', 'map 3' );
 # Checking deletion of alsosets with value BMAP_NULL
 ok(is_undef($bibentries->entry('i2')->get_field('userf')), 'map 7' );
 # Checking that the "misc" type-specific mapping to null takes precedence over global userb->userc
 ok(is_undef($bibentries->entry('i2')->get_field('userc')), 'map 8' );
 
 # Make sure visibility doesn't exceed number of names.
-is($bibentries->entry('i2')->get_field($bibentries->entry('i2')->get_field('labelnamename'))->get_visible_bib, '3', 'bib visibility - 1');
+is($bibentries->entry('i2')->get_field($bibentries->entry('i2')->get_labelname_info->{field})->get_visible_bib, '3', 'bib visibility - 1');
 
 # Testing per_type and per_entry max/min* so reset globals to defaults
 Biber::Config->setblxoption('uniquelist', 0);
@@ -388,16 +414,16 @@ $section->del_everykeys;
 Biber::Input::file::bibtex->init_cache;
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'entry', 'MAIN');
+$main = $biber->sortlists->get_list(0, 'entry', 'nty');
 
-is($bibentries->entry('tmn1')->get_field($bibentries->entry('tmn1')->get_field('labelnamename'))->get_visible_cite, '1', 'per_type maxcitenames - 1');
-is($bibentries->entry('tmn2')->get_field($bibentries->entry('tmn2')->get_field('labelnamename'))->get_visible_cite, '3', 'per_type maxcitenames - 2');
-is($bibentries->entry('tmn3')->get_field($bibentries->entry('tmn3')->get_field('labelnamename'))->get_visible_bib, '2', 'per_type bibnames - 3');
-is($bibentries->entry('tmn4')->get_field($bibentries->entry('tmn4')->get_field('labelnamename'))->get_visible_bib, '3', 'per_type bibnames - 4');
-is($bibentries->entry('tmn1')->get_field($bibentries->entry('tmn1')->get_field('labelnamename'))->get_visible_alpha, '3', 'per_type/entry alphanames - 1');
-is($bibentries->entry('tmn2')->get_field($bibentries->entry('tmn2')->get_field('labelnamename'))->get_visible_alpha, '2', 'per_type/entry alphanames - 2');
-is($biber->_liststring('tmn1', 'institution'), 'A_B_C', 'per_type/entry items - 1');
-is($biber->_liststring('tmn3', 'institution'), "A_B\x{10FFFD}", 'per_type/entry items - 2');
+is($bibentries->entry('tmn1')->get_field($bibentries->entry('tmn1')->get_labelname_info->{field})->get_visible_cite, '1', 'per_type maxcitenames - 1');
+is($bibentries->entry('tmn2')->get_field($bibentries->entry('tmn2')->get_labelname_info->{field})->get_visible_cite, '3', 'per_type maxcitenames - 2');
+is($bibentries->entry('tmn3')->get_field($bibentries->entry('tmn3')->get_labelname_info->{field})->get_visible_bib, '2', 'per_type bibnames - 3');
+is($bibentries->entry('tmn4')->get_field($bibentries->entry('tmn4')->get_labelname_info->{field})->get_visible_bib, '3', 'per_type bibnames - 4');
+is($bibentries->entry('tmn1')->get_field($bibentries->entry('tmn1')->get_labelname_info->{field})->get_visible_alpha, '3', 'per_type/entry alphanames - 1');
+is($bibentries->entry('tmn2')->get_field($bibentries->entry('tmn2')->get_labelname_info->{field})->get_visible_alpha, '2', 'per_type/entry alphanames - 2');
+is($biber->_liststring('tmn1', 'institution'), 'A!B!C', 'per_type/entry items - 1');
+is($biber->_liststring('tmn3', 'institution'), "A!B\x{10FFFD}", 'per_type/entry items - 2');
 
 # Citekey alias testing
 is($section->get_citekey_alias('alias3'), 'alias1', 'Citekey aliases - 1');
@@ -407,8 +433,23 @@ is($section->get_citekey_alias('alias4'), 'alias2', 'Citekey aliases - 3');
 is($section->get_citekey_alias('alias6'), 'alias5', 'Citekey aliases - 4');
 ok($bibentries->entry('alias5'), 'Citekey aliases - 5');
 
-# This would be how to test JSON output if necessary
-# require JSON::XS;
-# my $json = JSON::XS->new->indent->utf8->canonical->convert_blessed->allow_blessed->allow_nonref;
-# is( $json->encode($bibentries->entry('murray')), $j1, 'JSON representation' ) ;
+# URL encoding testing
+is($bibentries->entry('url1')->get_field('url'), 'http://www.something.com/q=%C3%A1%C3%A9%C3%A1%C5%A0', 'URL encoding - 1');
+is($bibentries->entry('url2')->get_field('url'), 'http://www.something.com/q=one%20two', 'URL encoding - 2');
+is($out->get_output_entry('url1', $main), $url1, 'URL encoding - 3' ) ;
 
+# map_final testing with map_field_set
+is($bibentries->entry('ol1')->get_field('note'), 'A note', 'map_final - 1');
+is($bibentries->entry('ol1')->get_field('title'), 'Online1', 'map_final - 2');
+
+# Test for tricky pages field
+is_deeply($bibentries->entry('pages1')->get_field('pages'),[[23, 24]], 'pages - 1');
+is_deeply($bibentries->entry('pages2')->get_field('pages'),[[23, undef]], 'pages - 2');
+is_deeply($bibentries->entry('pages3')->get_field('pages'), [['I-II', 'III-IV']], 'pages - 3');
+is_deeply($bibentries->entry('pages4')->get_field('pages'), [[3,5]], 'pages - 4');
+is_deeply($bibentries->entry('pages5')->get_field('pages'), [[42, '']], 'pages - 5');
+is_deeply($bibentries->entry('pages6')->get_field('pages'), [['\bibstring{number} 42', undef]], 'pages - 6');
+is_deeply($bibentries->entry('pages7')->get_field('pages'), [['\bibstring{number} 42', undef], [3,6], ['I-II',5 ]], 'pages - 7');
+
+# Test for map levels, the user map makes this CUSTOMC and then style map makes it CUSTOMA
+is($bibentries->entry('us1')->get_field('entrytype'), 'customa', 'Map levels - 1');
