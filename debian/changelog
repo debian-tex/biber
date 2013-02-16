@@ -23,6 +23,7 @@ biber (1.5-1) UNRELEASED; urgency=low
       + Sorting per list enabled for biblatex v2.0.
   * [debian/gbp.conf] Use "upstream" as the upstream branch instead
      of "upstream/dev".
+  * [debian/control] Update the dependencies.
 
  -- Danai SAE-HAN (韓達耐) <danai@danai.kalimero>  Mon, 04 Feb 2013 09:26:17 +0800
 
