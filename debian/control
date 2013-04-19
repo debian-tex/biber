@@ -4,14 +4,15 @@ Uploaders: Danai SAE-HAN (韓達耐) <danai@debian.org>
 Section: perl
 Priority: optional
 Build-Depends: debhelper (>= 9),
-               perl,
-               libconfig-autoconf-perl,
+               perl (>= 5.14.0),
+               libconfig-autoconf-perl (>= 0.15-1),
                libdata-compare-perl,
+               libdata-diver-perl,
                libdata-dump-perl,
                libdate-simple-perl,
-               libextutils-libbuilder-perl,
+               libextutils-libbuilder-perl (>= 0.02-1,
                libfile-slurp-unicode-perl,
-               libfile-which-perl,
+#               libfile-which-perl,
                libipc-run3-perl,
                liblist-allutils-perl,
                liblist-moreutils-perl,
@@ -20,14 +21,18 @@ Build-Depends: debhelper (>= 9),
                libreadonly-perl,
                libreadonly-xs-perl,
                libregexp-common-perl,
-               libtest-pod-coverage-perl,
-               libtest-pod-perl,
-               libtext-bibtex-perl (>= 0.62),
-               libunicode-collate-perl | perl (>= 5.15.9),
+#               libtest-pod-coverage-perl,
+#               libtest-pod-perl,
+               libtext-bibtex-perl (>= 0.66),
+               libunicode-collate-perl (>= 0.90-1) | perl (>= 5.15.9),
                libwww-perl,
                libxml-libxml-simple-perl,
                libxml-libxslt-perl,
-               libxml-writer-string-perl
+#               libxml-writer-string-perl,
+                libbusiness-isbn-perl,
+                libbusiness-ismn-perl,
+                libbusiness-issn-perl,
+                liburi-perl
 Standards-Version: 3.9.3
 Vcs-Browser: http://anonscm.debian.org/git/pkg-perl/packages/biber.git
 Vcs-Git: git://anonscm.debian.org/pkg-perl/packages/biber.git
@@ -38,6 +43,7 @@ Architecture: all
 Depends: ${misc:Depends},
          ${perl:Depends},
          libdata-compare-perl,
+         libdata-diver-perl,
          libdata-dump-perl,
          libdate-simple-perl,
          libfile-slurp-unicode-perl,
@@ -48,12 +54,16 @@ Depends: ${misc:Depends},
          liblog-log4perl-perl,
          libreadonly-perl,
          libregexp-common-perl,
-         libtext-bibtex-perl (>= 0.62),
-         libunicode-collate-perl | perl (>= 5.15.9),
+         libtext-bibtex-perl (>= 0.66),
+         libunicode-collate-perl (>= 0.90-1) | perl (>= 5.15.9),
          libwww-perl,
          libxml-libxml-simple-perl,
          libxml-libxslt-perl,
-         libxml-writer-string-perl
+#         libxml-writer-string-perl
+         libbusiness-isbn-perl,
+         libbusiness-ismn-perl,
+         libbusiness-issn-perl,
+         liburi-perl
 Recommends: biblatex,
             libreadonly-xs-perl
 Description: Much-augmented BibTeX replacement for BibLaTeX users
