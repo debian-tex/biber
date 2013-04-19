@@ -31,5 +31,21 @@ tree.
 Example:
  gbp-pull
 
+The upstream branch will only be updated with every public
+release; it is not connected to the development branch that
+is updated very frequently.
+
+
+
+4. Update tags
+
+To update tags, use:
+ git tag -a -s -m "Tagging release ABC" ABC <commit>
+
+Then upload it:
+ git push --tags
+
 
  -- Danai SAE-HAN (韓達耐) <danai@debian.org>, Tue,  1 May 2012 11:09:54 +0200
+
+
