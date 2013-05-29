@@ -25,6 +25,9 @@ biber (1.5-1) UNRELEASED; urgency=low
      of "upstream/dev".
   * [debian/control] Update the dependencies.
 
+  [ Axel Beckert ]
+  * Fix Vcs-Browser header (Closes: #710246)
+
  -- Danai SAE-HAN (韓達耐) <danai@danai.kalimero>  Mon, 04 Feb 2013 09:26:17 +0800
 
 biber (0.9.9+git2012426-3) unstable; urgency=low
