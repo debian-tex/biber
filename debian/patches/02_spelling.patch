@@ -4,29 +4,18 @@ Forwarded: no
 Author: gregor herrmann <gregoa@debian.org>
 Last-Update: 2012-06-05
 
---- a/lib/Biber.pm
-+++ b/lib/Biber.pm
-@@ -2160,7 +2160,7 @@
- 
-           Biber::Config->add_uniquelistcount($namelist);
-         }
--        # We need to know the list uniqueness counts for the whole list seperately otherwise
-+        # We need to know the list uniqueness counts for the whole list separately otherwise
-         # we will falsely "disambiguate" identical name lists from each other by setting
-         # uniquelist to the full list because every part of each list will have more than
-         # one count. We therefore need to distinguish counts which are of the final, complete
 --- a/lib/Biber/Config.pm
 +++ b/lib/Biber/Config.pm
-@@ -969,7 +969,7 @@
+@@ -2907,7 +2907,7 @@ sub get_seen_nameyear {
  
-     Biber::Config->incr_seen_nameyear($ns, $ys);
+     Increment the count of an labelname/labelyear combination for extrayear
  
 -    We pass in the name and year strings seperately as we have to
 +    We pass in the name and year strings separately as we have to
      be careful and only increment this counter beyond 1 if there is
-     both a name and year component. Otherwise, extrayear gets defined for all
+     a name component. Otherwise, extrayear gets defined for all
      entries with no name but the same year etc.
-@@ -1404,7 +1404,7 @@
+@@ -3386,7 +3386,7 @@ sub incr_crossrefkey {
      setdisplaymode(['entrytype'], ['field'], ['citekey'], $value)
  
      This sets the desired displaymode to use for some data in the bib.
@@ -35,14 +24,25 @@ Last-Update: 2012-06-05
      displaymodes *defined* in the bib which just tell you what to return
      for a particular displaymode request for some data.
  
+--- a/lib/Biber.pm
++++ b/lib/Biber.pm
+@@ -2836,7 +2836,7 @@ sub create_uniquelist_info {
+ 
+         Biber::Config->add_uniquelistcount($namelist);
+       }
+-      # We need to know the list uniqueness counts for the whole list seperately otherwise
++      # We need to know the list uniqueness counts for the whole list separately otherwise
+       # we will falsely "disambiguate" identical name lists from each other by setting
+       # uniquelist to the full list because every part of each list will have more than
+       # one count. We therefore need to distinguish counts which are of the final, complete
 --- a/t/basic-misc.t
 +++ b/t/basic-misc.t
-@@ -342,7 +342,7 @@
+@@ -419,7 +419,7 @@ $out = $biber->get_output_obj;
  
- is( $out->get_output_entry($main,'murray'), $murray2, 'bbl with > maxcitenames, empty alphaothers' ) ;
+ is( $out->get_output_entry('murray', $main), $murray2, 'bbl with > maxcitenames, empty alphaothers' ) ;
  
 -# Make sure namehash and fullhash are seperately generated
 +# Make sure namehash and fullhash are separately generated
- is( $out->get_output_entry($main,'anon1'), $anon1, 'namehash/fullhash 1' ) ;
- is( $out->get_output_entry($main,'anon2'), $anon2, 'namehash/fullhash 2' ) ;
+ is( $out->get_output_entry('anon1', $main), $anon1, 'namehash/fullhash 1' ) ;
+ is( $out->get_output_entry('anon2', $main), $anon2, 'namehash/fullhash 2' ) ;
  

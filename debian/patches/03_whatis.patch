@@ -6,7 +6,7 @@ Last-Update: 2012-06-05
 
 --- a/lib/Biber/Entries.pm
 +++ b/lib/Biber/Entries.pm
-@@ -7,7 +7,7 @@
+@@ -7,7 +7,7 @@ use warnings;
  
  =head1 NAME
  
@@ -17,7 +17,7 @@ Last-Update: 2012-06-05
  
 --- a/lib/Biber/Entry.pm
 +++ b/lib/Biber/Entry.pm
-@@ -15,7 +15,7 @@
+@@ -19,7 +19,7 @@ my $logger = Log::Log4perl::get_logger('
  
  =head1 NAME
  
@@ -28,7 +28,7 @@ Last-Update: 2012-06-05
  
 --- a/lib/Biber/Entry/Name.pm
 +++ b/lib/Biber/Entry/Name.pm
-@@ -14,7 +14,7 @@
+@@ -15,7 +15,7 @@ my $logger = Log::Log4perl::get_logger('
  
  =head1 NAME
  
@@ -39,7 +39,7 @@ Last-Update: 2012-06-05
  
 --- a/lib/Biber/Entry/Names.pm
 +++ b/lib/Biber/Entry/Names.pm
-@@ -13,7 +13,7 @@
+@@ -13,7 +13,7 @@ my $logger = Log::Log4perl::get_logger('
  
  =head1 NAME
  
@@ -50,7 +50,7 @@ Last-Update: 2012-06-05
  
 --- a/lib/Biber/Section.pm
 +++ b/lib/Biber/Section.pm
-@@ -11,7 +11,7 @@
+@@ -11,7 +11,7 @@ use List::Util qw( first );
  
  =head1 NAME
  
@@ -61,7 +61,7 @@ Last-Update: 2012-06-05
  
 --- a/lib/Biber/Sections.pm
 +++ b/lib/Biber/Sections.pm
-@@ -7,7 +7,7 @@
+@@ -7,7 +7,7 @@ use warnings;
  
  =head1 NAME
  
@@ -72,7 +72,7 @@ Last-Update: 2012-06-05
  
 --- a/lib/Biber/SortList.pm
 +++ b/lib/Biber/SortList.pm
-@@ -11,7 +11,7 @@
+@@ -11,7 +11,7 @@ use List::Util qw( first );
  
  =head1 NAME
  
@@ -83,7 +83,7 @@ Last-Update: 2012-06-05
  
 --- a/lib/Biber/SortLists.pm
 +++ b/lib/Biber/SortLists.pm
-@@ -7,7 +7,7 @@
+@@ -7,7 +7,7 @@ use warnings;
  
  =head1 NAME
  
@@ -92,14 +92,3 @@ Last-Update: 2012-06-05
  
  =head2 new
  
---- a/lib/Biber/Structure.pm
-+++ b/lib/Biber/Structure.pm
-@@ -13,7 +13,7 @@
- 
- =head1 NAME
- 
--Biber::Structure
-+Biber::Structure - Biber::Structure objects
- 
- 
- =cut
