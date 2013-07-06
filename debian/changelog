@@ -1,4 +1,4 @@
-biber (1.5-1) UNRELEASED; urgency=low
+biber (1.7-1) UNRELEASED; urgency=low
 
   [ gregor herrmann ]
   * debian/control: update {versioned,alternative} (build) dependencies.
@@ -7,7 +7,7 @@ biber (1.5-1) UNRELEASED; urgency=low
   * Update debian/watch
 
   [ Danai SAE-HAN (韓達耐) ]
-  * New upstream release 1.5:
+  * New upstream release 1.7:
     - There are a lot of changes and updates since the last Debian
       package (v0.9.9).  I thoroughly recommend to have a look at
       the upstream changelog which you can find under
@@ -23,12 +23,16 @@ biber (1.5-1) UNRELEASED; urgency=low
       + Sorting per list enabled for biblatex v2.0.
   * [debian/gbp.conf] Use "upstream" as the upstream branch instead
      of "upstream/dev".
-  * [debian/control] Update the dependencies.
+  * [debian/control]
+      + Update the dependencies.
+      + Bump dependency to Perl 5.16+;
+  * [debian/patches/01_remove_dependency_mozilla_ca.patch]
+      + Refresh the patch.
 
   [ Axel Beckert ]
   * Fix Vcs-Browser header (Closes: #710246)
 
- -- Danai SAE-HAN (韓達耐) <danai@danai.kalimero>  Mon, 04 Feb 2013 09:26:17 +0800
+ -- Danai SAE-HAN (韓達耐) <danai@debian.org>  Sun, 07 Jul 2013 02:40:01 +0800
 
 biber (0.9.9+git2012426-3) unstable; urgency=low
 
