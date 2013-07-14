@@ -41,14 +41,13 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 Biber::Config->setoption('fastsort', 1);
 Biber::Config->setoption('sortlocale', 'C');
 Biber::Config->setoption('nodieonerror', 1); # because there is a failing cyclic crossref check
-Biber::Config->setoption('crossref_tree', 1);
 
 # Now generate the information
 my (undef, $stderr) = capture { $biber->prepare };
 my $section0 = $biber->sections->get_section(0);
-my $main0 = $biber->sortlists->get_list(0, 'entry', 'MAIN');
+my $main0 = $biber->sortlists->get_list(0, 'entry', 'nty');
 my $section1 = $biber->sections->get_section(1);
-my $main1 = $biber->sortlists->get_list(1, 'entry', 'MAIN');
+my $main1 = $biber->sortlists->get_list(1, 'entry', 'nty');
 my $out = $biber->get_output_obj;
 
 # crossref field is included as the parent is included by being crossrefed >= mincrossrefs times
@@ -68,7 +67,7 @@ my $cr1 = q|    \entry{cr1}{inbook}{}
       \strng{namehash}{121b6dc164b5b619c81c670fbd823f12}
       \strng{fullhash}{121b6dc164b5b619c81c670fbd823f12}
       \field{sortinit}{G}
-      \field{labelyear}{1974}
+      \field{labeltitle}{Great and Good Graphs}
       \field{booktitle}{Graphs of the Continent}
       \strng{crossref}{cr_m}
       \field{eprintclass}{SOMECLASS}
@@ -99,13 +98,12 @@ my $cr2 = q|    \entry{cr2}{inbook}{}
       \strng{namehash}{2d51a96bc0a6804995b3a9ff350c3384}
       \strng{fullhash}{2d51a96bc0a6804995b3a9ff350c3384}
       \field{sortinit}{F}
-      \field{labelyear}{1974}
+      \field{labeltitle}{Fabulous Fourier Forms}
       \field{booktitle}{Graphs of the Continent}
       \strng{crossref}{cr_m}
       \field{origyear}{1943}
       \field{title}{Fabulous Fourier Forms}
       \field{year}{1974}
-      \warn{\item Field 'school' is aliased to field 'institution' but both are defined in entry with key 'cr2' - skipping alias}
     \endentry
 |;
 
@@ -119,7 +117,7 @@ my $cr_m = q|    \entry{cr_m}{book}{}
         {Grimble}%
       }
       \field{sortinit}{G}
-      \field{labelyear}{1974}
+      \field{labeltitle}{Graphs of the Continent}
       \field{title}{Graphs of the Continent}
       \field{year}{1974}
     \endentry
@@ -142,14 +140,13 @@ my $cr3 = q|    \entry{cr3}{inbook}{}
       \strng{namehash}{2baf676a220704f6914223aefccaaa88}
       \strng{fullhash}{2baf676a220704f6914223aefccaaa88}
       \field{sortinit}{A}
-      \field{labelyear}{1996}
+      \field{labeltitle}{Arrangements of All Articles}
       \field{booktitle}{Beasts of the Burbling Burns}
       \strng{crossref}{crt}
       \field{eprinttype}{sometype}
       \field{origyear}{1934}
       \field{title}{Arrangements of All Articles}
       \field{year}{1996}
-      \warn{\item Field 'archiveprefix' is aliased to field 'eprinttype' but both are defined in entry with key 'cr3' - skipping alias}
     \endentry
 |;
 
@@ -162,7 +159,7 @@ my $crt = q|    \entry{crt}{book}{}
         {Rancour}%
       }
       \field{sortinit}{B}
-      \field{labelyear}{1996}
+      \field{labeltitle}{Beasts of the Burbling Burns}
       \field{title}{Beasts of the Burbling Burns}
       \field{year}{1996}
     \endentry
@@ -185,7 +182,7 @@ my $cr6 = q|    \entry{cr6}{inproceedings}{}
       \strng{namehash}{8ab39ee68c55046dc1f05d657fcefed9}
       \strng{fullhash}{8ab39ee68c55046dc1f05d657fcefed9}
       \field{sortinit}{A}
-      \field{labelyear}{2009}
+      \field{labeltitle}{Title of inproceeding}
       \field{booktitle}{Manual booktitle}
       \field{eventday}{21}
       \field{eventendday}{24}
@@ -218,7 +215,7 @@ my $cr7 = q|    \entry{cr7}{inbook}{}
       \strng{namehash}{8ab39ee68c55046dc1f05d657fcefed9}
       \strng{fullhash}{8ab39ee68c55046dc1f05d657fcefed9}
       \field{sortinit}{A}
-      \field{labelyear}{2010}
+      \field{labeltitle}{Title of Book bit}
       \field{booksubtitle}{Book Subtitle}
       \field{booktitle}{Book Title}
       \field{booktitleaddon}{Book Titleaddon}
@@ -242,7 +239,7 @@ my $cr8 = q|    \entry{cr8}{incollection}{}
       \strng{namehash}{3d449e56eb3ca1ae80dc99a18d689795}
       \strng{fullhash}{3d449e56eb3ca1ae80dc99a18d689795}
       \field{sortinit}{S}
-      \field{labelyear}{2010}
+      \field{labeltitle}{Title of Collection bit}
       \field{booktitle}{Book Title}
       \field{title}{Title of Collection bit}
       \field{year}{2010}
@@ -261,6 +258,7 @@ my $xr1 = q|    \entry{xr1}{inbook}{}
       \strng{namehash}{e0ecc4fc668ee499d1afba44e1ac064d}
       \strng{fullhash}{e0ecc4fc668ee499d1afba44e1ac064d}
       \field{sortinit}{Z}
+      \field{labeltitle}{Moods Mildly Modified}
       \field{origyear}{1921}
       \field{title}{Moods Mildly Modified}
       \strng{xref}{xrm}
@@ -278,6 +276,7 @@ my $xr2 = q|    \entry{xr2}{inbook}{}
       \strng{namehash}{6afa09374ecfd6b394ce714d2d9709c7}
       \strng{fullhash}{6afa09374ecfd6b394ce714d2d9709c7}
       \field{sortinit}{I}
+      \field{labeltitle}{Migraines Multiplying Madly}
       \field{origyear}{1926}
       \field{title}{Migraines Multiplying Madly}
       \strng{xref}{xrm}
@@ -294,7 +293,7 @@ my $xrm = q|    \entry{xrm}{book}{}
         {Mainstream}%
       }
       \field{sortinit}{C}
-      \field{labelyear}{1970}
+      \field{labeltitle}{Calligraphy, Calisthenics, Culture}
       \field{title}{Calligraphy, Calisthenics, Culture}
       \field{year}{1970}
     \endentry
@@ -311,8 +310,9 @@ my $xr3 = q|    \entry{xr3}{inbook}{}
       \strng{namehash}{9788055665b9bb4b37c776c3f6b74f16}
       \strng{fullhash}{9788055665b9bb4b37c776c3f6b74f16}
       \field{sortinit}{N}
+      \field{labeltitle}{Russian Regalia Revisited}
       \field{origyear}{1923}
-      \field{title}{Russion Regalia Revisited}
+      \field{title}{Russian Regalia Revisited}
       \strng{xref}{xrt}
     \endentry
 |;
@@ -326,7 +326,7 @@ my $xrt = q|    \entry{xrt}{book}{}
         {Middling}%
       }
       \field{sortinit}{K}
-      \field{labelyear}{1977}
+      \field{labeltitle}{Kings, Cork and Calculation}
       \field{title}{Kings, Cork and Calculation}
       \field{year}{1977}
     \endentry
@@ -349,7 +349,7 @@ my $cr4 = q|    \entry{cr4}{inbook}{}
       \strng{namehash}{50ef7fd3a1be33bccc5de2768b013836}
       \strng{fullhash}{50ef7fd3a1be33bccc5de2768b013836}
       \field{sortinit}{M}
-      \field{labelyear}{1945}
+      \field{labeltitle}{Enterprising Entities}
       \field{booktitle}{Vanquished, Victor, Vandal}
       \field{origyear}{1911}
       \field{title}{Enterprising Entities}
@@ -368,6 +368,7 @@ my $xr4 = q|    \entry{xr4}{inbook}{}
       \strng{namehash}{7804ffef086c0c4686c235807f5cb502}
       \strng{fullhash}{7804ffef086c0c4686c235807f5cb502}
       \field{sortinit}{M}
+      \field{labeltitle}{Lumbering Lunatics}
       \field{origyear}{1933}
       \field{title}{Lumbering Lunatics}
     \endentry
@@ -385,6 +386,7 @@ my $mxr = q|    \entry{mxr}{inbook}{}
       \strng{namehash}{7804ffef086c0c4686c235807f5cb502}
       \strng{fullhash}{7804ffef086c0c4686c235807f5cb502}
       \field{sortinit}{M}
+      \field{labeltitle}{Lumbering Lunatics}
       \field{origyear}{1933}
       \field{title}{Lumbering Lunatics}
     \endentry
@@ -400,6 +402,7 @@ my $mcr = q|    \entry{mcr}{inbook}{}
       \strng{namehash}{7804ffef086c0c4686c235807f5cb502}
       \strng{fullhash}{7804ffef086c0c4686c235807f5cb502}
       \field{sortinit}{M}
+      \field{labeltitle}{Lumbering Lunatics}
       \field{origyear}{1933}
       \field{title}{Lumbering Lunatics}
     \endentry
@@ -418,7 +421,7 @@ my $ccr1 = q|    \entry{ccr2}{book}{}
       \strng{namehash}{6268941b408d3263bddb208a54899ea9}
       \strng{fullhash}{6268941b408d3263bddb208a54899ea9}
       \field{sortinit}{V}
-      \field{labelyear}{1923}
+      \field{labeltitle}{Misc etc.}
       \strng{crossref}{ccr1}
       \field{title}{Misc etc.}
       \field{year}{1923}
@@ -433,7 +436,7 @@ my $ccr2 = q|    \entry{ccr3}{inbook}{}
         {{hash=cfee758a1c82df2e26af1985e061bb0a}{Editor}{E\bibinitperiod}{Edward}{E\bibinitperiod}{}{}{}{}}%
       }
       \field{sortinit}{P}
-      \field{labelyear}{1911}
+      \field{labeltitle}{Perhaps, Perchance, Possibilities?}
       \field{booktitle}{Misc etc.}
       \strng{crossref}{ccr2}
       \field{title}{Perhaps, Perchance, Possibilities?}
@@ -451,7 +454,7 @@ my $ccr3 = q|    \entry{ccr4}{inbook}{}
         {{hash=cfee758a1c82df2e26af1985e061bb0a}{Editor}{E\bibinitperiod}{Edward}{E\bibinitperiod}{}{}{}{}}%
       }
       \field{sortinit}{S}
-      \field{labelyear}{1911}
+      \field{labeltitle}{Stuff Concerning Varia}
       \field{booktitle}{Misc etc.}
       \field{title}{Stuff Concerning Varia}
       \field{year}{1911}
@@ -459,28 +462,28 @@ my $ccr3 = q|    \entry{ccr4}{inbook}{}
 |;
 
 
-is($out->get_output_entry($main0,'cr1'), $cr1, 'crossref test 1');
-is($out->get_output_entry($main0,'cr2'), $cr2, 'crossref test 2');
-is($out->get_output_entry($main0,'cr_m'), $cr_m, 'crossref test 3');
-is($out->get_output_entry($main0,'cr3'), $cr3, 'crossref test 4');
-is($out->get_output_entry($main0,'crt'), $crt, 'crossref test 5');
-is($out->get_output_entry($main0,'cr4'), $cr4, 'crossref test 6');
+is($out->get_output_entry('cr1', $main0), $cr1, 'crossref test 1');
+is($out->get_output_entry('cr2', $main0), $cr2, 'crossref test 2');
+is($out->get_output_entry('cr_m', $main0), $cr_m, 'crossref test 3');
+is($out->get_output_entry('cr3', $main0), $cr3, 'crossref test 4');
+is($out->get_output_entry('crt', $main0), $crt, 'crossref test 5');
+is($out->get_output_entry('cr4', $main0), $cr4, 'crossref test 6');
 is($section0->has_citekey('crn'), 0,'crossref test 7');
-is($out->get_output_entry($main0,'cr6'), $cr6, 'crossref test (inheritance) 8');
-is($out->get_output_entry($main0,'cr7'), $cr7, 'crossref test (inheritance) 9');
-is($out->get_output_entry($main0,'cr8'), $cr8, 'crossref test (inheritance) 10');
-is($out->get_output_entry($main0,'xr1'), $xr1, 'xref test 1');
-is($out->get_output_entry($main0,'xr2'), $xr2, 'xref test 2');
-is($out->get_output_entry($main0,'xrm'), $xrm, 'xref test 3');
-is($out->get_output_entry($main0,'xr3'), $xr3, 'xref test 4');
-is($out->get_output_entry($main0,'xrt'), $xrt, 'xref test 5');
-is($out->get_output_entry($main0,'xr4'), $xr4, 'xref test 6');
+is($out->get_output_entry('cr6', $main0), $cr6, 'crossref test (inheritance) 8');
+is($out->get_output_entry('cr7', $main0), $cr7, 'crossref test (inheritance) 9');
+is($out->get_output_entry('cr8', $main0), $cr8, 'crossref test (inheritance) 10');
+is($out->get_output_entry('xr1', $main0), $xr1, 'xref test 1');
+is($out->get_output_entry('xr2', $main0), $xr2, 'xref test 2');
+is($out->get_output_entry('xrm', $main0), $xrm, 'xref test 3');
+is($out->get_output_entry('xr3', $main0), $xr3, 'xref test 4');
+is($out->get_output_entry('xrt', $main0), $xrt, 'xref test 5');
+is($out->get_output_entry('xr4', $main0), $xr4, 'xref test 6');
 is($section0->has_citekey('xrn'), 0,'xref test 7');
-is($out->get_output_entry($main0,'mxr'), $mxr, 'missing xref test');
-is($out->get_output_entry($main0,'mcr'), $mcr, 'missing crossef test');
+is($out->get_output_entry('mxr', $main0), $mxr, 'missing xref test');
+is($out->get_output_entry('mcr', $main0), $mcr, 'missing crossef test');
 is($section1->has_citekey('crn'), 0,'mincrossrefs reset between sections');
-is($out->get_output_entry($main0,'ccr2'), $ccr1, 'cascading crossref test 1');
-is($out->get_output_entry($main0,'ccr3'), $ccr2, 'cascading crossref test 2');
+is($out->get_output_entry('ccr2', $main0), $ccr1, 'cascading crossref test 1');
+is($out->get_output_entry('ccr3', $main0), $ccr2, 'cascading crossref test 2');
 chomp $stderr;
 is($stderr, "ERROR - Circular inheritance between 'circ1'<->'circ2'", 'Cyclic crossref error check');
 is($section0->has_citekey('r1'), 1,'Recursive crossref test 1');

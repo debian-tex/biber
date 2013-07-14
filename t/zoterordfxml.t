@@ -41,7 +41,7 @@ Biber::Config->setoption('sortlocale', 'C');
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'entry', 'MAIN');
+my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
 my $bibentries = $section->bibentries;
 
 my $l1 = q|    \entry{http://0-muse.jhu.edu.pugwash.lib.warwick.ac.uk:80/journals/theory_and_event/v005/5.3ranciere.html}{article}{}
@@ -59,7 +59,7 @@ my $l1 = q|    \entry{http://0-muse.jhu.edu.pugwash.lib.warwick.ac.uk:80/journal
       \strng{fullhash}{2d6c91380dc6798fd8219e73cf91f468}
       \field{sortinit}{R}
       \field{labelyear}{2001}
-      \field{issn}{1092-311X}
+      \field{labeltitle}{ten theses on politics}
       \field{journaltitle}{Theory \& Event}
       \field{library}{Project MUSE}
       \field{note}{Volume 5, Issue 3, 2001}
@@ -90,6 +90,7 @@ my $l2 = q|    \entry{urn:isbn:0713990023}{book}{}
       \strng{fullhash}{984e5967448051538555a64aac11ed21}
       \field{sortinit}{F}
       \field{labelyear}{1988}
+      \field{labeltitle}{The History of Sexuality volume 3: The Care of the Self}
       \field{isbn}{0713990023}
       \field{library}{webcat.warwick.ac.uk Library Catalog}
       \field{pagetotal}{279}
@@ -122,12 +123,12 @@ my $l3 = q|    \entry{item_54}{inbook}{}
       \strng{fullhash}{984e5967448051538555a64aac11ed21}
       \field{sortinit}{F}
       \field{labelyear}{1996}
+      \field{labeltitle}{The Ethics of the Concern for Self as a Practice of Freedom}
       \field{booktitle}{Foucault Live: Interviews, 1961-1984}
       \field{day}{04}
       \field{endday}{07}
       \field{endmonth}{04}
       \field{endyear}{1996}
-      \field{isbn}{157027018}
       \field{month}{03}
       \field{title}{The Ethics of the Concern for Self as a Practice of Freedom}
       \field{year}{1996}
@@ -135,6 +136,6 @@ my $l3 = q|    \entry{item_54}{inbook}{}
     \endentry
 |;
 
-is( $out->get_output_entry($main, 'http://0-muse.jhu.edu.pugwash.lib.warwick.ac.uk:80/journals/theory_and_event/v005/5.3ranciere.html'), $l1, 'Basic Zotero RDF/XML test - 1') ;
-is( $out->get_output_entry($main, 'urn:isbn:0713990023'), $l2, 'Basic Zotero RDF/XML test - 2') ;
-is( $out->get_output_entry($main, 'item_54'), $l3, 'Basic Zotero RDF/XML test - 3') ;
+is( $out->get_output_entry('http://0-muse.jhu.edu.pugwash.lib.warwick.ac.uk:80/journals/theory_and_event/v005/5.3ranciere.html', $main), $l1, 'Basic Zotero RDF/XML test - 1') ;
+is( $out->get_output_entry('urn:isbn:0713990023', $main), $l2, 'Basic Zotero RDF/XML test - 2') ;
+is( $out->get_output_entry('item_54', $main), $l3, 'Basic Zotero RDF/XML test - 3') ;

@@ -110,15 +110,16 @@ sub has_everykey {
 }
 
 
-=head2 allkeys
+=head2 set_allkeys
 
     Sets flag to say citekey '*' occurred in citekeys
+    We allow setting it to false too because it's useful in tests
 
 =cut
 
-sub allkeys {
-  my $self = shift;
-  $self->{allkeys} = 1;
+sub set_allkeys {
+  my ($self, $val) = @_;
+  $self->{allkeys} = $val;
   return;
 }
 
@@ -137,12 +138,18 @@ sub is_allkeys {
 =head2 bibentry
 
     Returns a Biber::Entry object for the given citation key
+    Understands citekey aliases
 
 =cut
 
 sub bibentry {
   my ($self, $key) = @_;
-  return $self->bibentries->entry($key);
+  if (my $realkey = $self->get_citekey_alias($key)) {
+    return $self->bibentries->entry($realkey);
+  }
+  else {
+    return $self->bibentries->entry($key);
+  }
 }
 
 =head2 bibentries
@@ -267,13 +274,14 @@ sub get_orig_order_citekeys {
 =head2 has_citekey
 
     Returns true when $key is in the Biber::Section object
+    Understands key alaises
 
 =cut
 
 sub has_citekey {
   my $self = shift;
   my $key = shift;
-  return $self->{citekeys_h}{$key} ? 1 : 0;
+  return $self->{citekeys_h}{$self->get_citekey_alias($key) || $key} ? 1 : 0;
 }
 
 
@@ -425,6 +433,18 @@ sub get_labelcache_l {
 
 
 
+=head2 is_dynamic_set
+
+    Test if a key is a dynamic set
+
+=cut
+
+sub is_dynamic_set {
+  my $self = shift;
+  my $dkey = shift;
+  return defined($self->{dkeys}{$dkey}) ? 1 : 0;
+}
+
 =head2 set_dynamic_set
 
     Record a mapping of dynamic key to member keys
@@ -569,7 +589,7 @@ L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

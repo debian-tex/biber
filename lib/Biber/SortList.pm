@@ -186,6 +186,84 @@ sub get_extrayeardata {
   return $self->{extrayeardata}{$key};
 }
 
+=head2 set_extratitledata_for_key
+
+  Saves extratitle field data for a key
+
+=cut
+
+sub set_extratitledata_for_key {
+  my ($self, $key, $ed) = @_;
+  return unless defined($key);
+  $self->{extratitledata}{$key} = $ed;
+  return;
+}
+
+=head2 set_extratitledata
+
+    Saves extratitle field data for all keys
+
+=cut
+
+sub set_extratitledata {
+  my ($self, $ed) = @_;
+  $self->{extratitledata} = $ed;
+  return;
+}
+
+
+=head2 get_extratitledata
+
+    Gets the extratitle field data for a key
+
+=cut
+
+sub get_extratitledata {
+  my ($self, $key) = @_;
+  return unless defined($key);
+  return $self->{extratitledata}{$key};
+}
+
+
+=head2 set_extratitleyeardata_for_key
+
+  Saves extratitleyear field data for a key
+
+=cut
+
+sub set_extratitleyeardata_for_key {
+  my ($self, $key, $ed) = @_;
+  return unless defined($key);
+  $self->{extratitleyeardata}{$key} = $ed;
+  return;
+}
+
+=head2 set_extratitleyeardata
+
+    Saves extratitleyear field data for all keys
+
+=cut
+
+sub set_extratitleyeardata {
+  my ($self, $ed) = @_;
+  $self->{extratitleyeardata} = $ed;
+  return;
+}
+
+
+=head2 get_extratitleyeardata
+
+    Gets the extratitleyear field data for a key
+
+=cut
+
+sub get_extratitleyeardata {
+  my ($self, $key) = @_;
+  return unless defined($key);
+  return $self->{extratitleyeardata}{$key};
+}
+
+
 =head2 set_extraalphadata_for_key
 
     Saves extraalpha field data for a key
@@ -394,6 +472,20 @@ sub instantiate_entry {
     $entry_string =~ s|^\s*<BDS>EXTRAYEAR</BDS>\n|$eys|gxms;
   }
 
+  # extratitle
+  my $ets;
+  if (my $e = $self->get_extratitledata($key)) {
+    $ets = "      \\field{extratitle}{$e}\n";
+    $entry_string =~ s|^\s*<BDS>EXTRATITLE</BDS>\n|$ets|gxms;
+  }
+
+  # extratitle
+  my $etys;
+  if (my $e = $self->get_extratitleyeardata($key)) {
+    $etys = "      \\field{extratitleyear}{$e}\n";
+    $entry_string =~ s|^\s*<BDS>EXTRATITLEYEAR</BDS>\n|$etys|gxms;
+  }
+
   # extraalpha
   my $eas;
   if (my $e = $self->get_extraalphadata($key)) {
@@ -420,7 +512,7 @@ L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

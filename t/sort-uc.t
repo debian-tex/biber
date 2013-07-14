@@ -36,11 +36,11 @@ Biber::Config->setoption('sortlocale', 'sv_SE');
 # U::C Swedish tailoring
 $biber->prepare;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'entry', 'MAIN');
-my $shs = $biber->sortlists->get_list(0, 'shorthand', 'SHORTHANDS');
+my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
+my $shs = $biber->sortlists->get_list(0, 'shorthand', 'shorthand');
 
 # Shorthands are sorted by shorthand (as per bcf)
-is_deeply([$main->get_keys], ['LS2','LS1','LS3','LS4'], 'U::C tailoring - 1');
+is_deeply([$main->get_keys], ['LS6','LS5','LS2','LS1','LS3','LS4'], 'U::C tailoring - 1');
 is_deeply([$shs->get_keys], ['LS3', 'LS4','LS2','LS1'], 'U::C tailoring - 2');
 
 # Set sorting of shorthands to global sorting default
@@ -77,7 +77,7 @@ $main->set_sortscheme($S);
 $biber->prepare;
 $section = $biber->sections->get_section(0);
 
-is_deeply([$main->get_keys], ['LS3','LS4','LS1','LS2'], 'U::C tailoring descending - 1');
+is_deeply([$main->get_keys], ['LS3','LS4','LS1','LS2','LS5','LS6'], 'U::C tailoring descending - 1');
 
 # Local lower before upper setting
 $S = [
@@ -91,7 +91,7 @@ $main->set_sortscheme($S);
 
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-is_deeply([$main->get_keys], ['LS4', 'LS3','LS2','LS1'], 'upper_before_lower locally false');
+is_deeply([$main->get_keys], ['LS5', 'LS6', 'LS4', 'LS3','LS2','LS1'], 'upper_before_lower locally false');
 
 # Local case insensitive negates the sortupper being false as this no longer
 # means anything so it reverts to bib order for LS3 and LS4
@@ -99,7 +99,7 @@ is_deeply([$main->get_keys], ['LS4', 'LS3','LS2','LS1'], 'upper_before_lower loc
 # test is kept for things that are not sort distinguishable
 $biber->parse_ctrlfile('sort-uc.bcf');
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'entry', 'MAIN');
+$main = $biber->sortlists->get_list(0, 'entry', 'nty');
 $biber->set_output_obj(Biber::Output::bbl->new());
 $S = [
                                                     [
@@ -111,5 +111,5 @@ $S = [
 
 $main->set_sortscheme($S);
 $biber->prepare;
-is_deeply([$main->get_keys], ['LS3', 'LS4','LS2','LS1'], 'sortcase locally false, upper_before_lower locally false');
+is_deeply([$main->get_keys], ['LS5', 'LS6','LS3', 'LS4','LS2','LS1'], 'sortcase locally false, upper_before_lower locally false');
 

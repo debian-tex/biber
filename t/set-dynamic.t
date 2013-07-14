@@ -38,11 +38,11 @@ Biber::Config->setoption('sortlocale', 'C');
 # Now generate the information
 $biber->prepare;
 my $section0 = $biber->sections->get_section(0);
-my $main0 = $biber->sortlists->get_list(0, 'entry', 'MAIN');
-my $sh0 = $biber->sortlists->get_list(0, 'shorthand', 'SHORTHANDS');
+my $main0 = $biber->sortlists->get_list(0, 'entry', 'nty');
+my $sh0 = $biber->sortlists->get_list(0, 'shorthand', 'shorthand');
 my $section1 = $biber->sections->get_section(1);
-my $main1 = $biber->sortlists->get_list(1, 'entry', 'MAIN');
-my $sh1 = $biber->sortlists->get_list(1, 'shorthand', 'SHORTHANDS');
+my $main1 = $biber->sortlists->get_list(1, 'entry', 'nty');
+my $sh1 = $biber->sortlists->get_list(1, 'shorthand', 'shorthand');
 my $out = $biber->get_output_obj;
 
 my $string1 = q|    \entry{DynSet}{set}{}
@@ -57,6 +57,7 @@ my $string1 = q|    \entry{DynSet}{set}{}
       \strng{fullhash}{252caa7921a061ca92087a1a52f15b78}
       \field{sortinit}{0}
       \field{labelyear}{2002}
+      \field{labeltitle}{Doing Daring Deeds}
       \field{annotation}{Some Dynamic Note}
       \field{shorthand}{d1}
       \field{title}{Doing Daring Deeds}
@@ -75,6 +76,7 @@ my $string2 = q|    \entry{Dynamic1}{book}{}
       \strng{namehash}{252caa7921a061ca92087a1a52f15b78}
       \strng{fullhash}{252caa7921a061ca92087a1a52f15b78}
       \field{sortinit}{0}
+      \field{labeltitle}{Doing Daring Deeds}
       \field{annotation}{Some Dynamic Note}
       \field{shorthand}{d1}
       \field{title}{Doing Daring Deeds}
@@ -93,6 +95,7 @@ my $string3 = q|    \entry{Dynamic2}{book}{}
       \strng{namehash}{894a5fe6de820f5dcce84a65581667f4}
       \strng{fullhash}{894a5fe6de820f5dcce84a65581667f4}
       \field{sortinit}{0}
+      \field{labeltitle}{Beautiful Birthdays}
       \field{shorthand}{d2}
       \field{title}{Beautiful Birthdays}
       \field{year}{2010}
@@ -110,6 +113,7 @@ my $string4 = q|    \entry{Dynamic3}{book}{}
       \strng{namehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{fullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \field{sortinit}{0}
+      \field{labeltitle}{Reckless Ravishings}
       \field{shorthand}{d3}
       \field{title}{Reckless Ravishings}
       \field{year}{2000}
@@ -129,17 +133,18 @@ my $string5 = q|    \entry{Dynamic3}{book}{}
       \strng{fullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \field{sortinit}{0}
       \field{labelyear}{2000}
+      \field{labeltitle}{Reckless Ravishings}
       \field{shorthand}{d3}
       \field{title}{Reckless Ravishings}
       \field{year}{2000}
     \endentry
 |;
 
-is($out->get_output_entry($main0,'DynSet'), $string1, 'Dynamic set test 1');
-is($out->get_output_entry($main0,'Dynamic1'), $string2, 'Dynamic set test 2');
-is($out->get_output_entry($main0,'Dynamic2'), $string3, 'Dynamic set test 3');
-is($out->get_output_entry($main0,'Dynamic3'), $string4, 'Dynamic set test 4');
-is($out->get_output_entry($main0,'Dynamic3', 1), $string5, 'Dynamic set test 5');
+is($out->get_output_entry('DynSet', $main0), $string1, 'Dynamic set test 1');
+is($out->get_output_entry('Dynamic1', $main0), $string2, 'Dynamic set test 2');
+is($out->get_output_entry('Dynamic2', $main0), $string3, 'Dynamic set test 3');
+is($out->get_output_entry('Dynamic3', $main0), $string4, 'Dynamic set test 4');
+is($out->get_output_entry('Dynamic3', $main0, 1), $string5, 'Dynamic set test 5');
 is_deeply([$sh0->get_keys], ['DynSet'], 'Dynamic set skiplos 1');
 is_deeply([$sh1->get_keys], ['Dynamic3'], 'Dynamic set skiplos 2');
 

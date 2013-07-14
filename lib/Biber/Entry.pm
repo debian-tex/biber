@@ -3,11 +3,13 @@ use 5.014000;
 use strict;
 use warnings;
 
-use List::Util qw( first );
 use Biber::Utils;
 use Biber::Constants;
+use Data::Diver qw( Dive );
 use Data::Dump qw( pp );
 use Log::Log4perl qw( :no_extra_logdie_message );
+use List::Util qw( first );
+use Storable qw( dclone );
 
 my $logger = Log::Log4perl::get_logger('main');
 
@@ -37,24 +39,6 @@ sub new {
 }
 
 
-=head2 TO_JSON
-
-   Serialiser for JSON::XS::encode
-
-=cut
-
-sub TO_JSON {
-  my $self = shift;
-  my $json;
-  while (my ($k, $v) = each(%{$self->{datafields}})) {
-    $json->{$k} = $v;
-  }
-  while (my ($k, $v) = each(%{$self->{derivedfields}})) {
-    $json->{$k} = $v;
-  }
-  return $json;
-}
-
 =head2 clone
 
     Clone a Biber::Entry object and return a copy
@@ -67,17 +51,17 @@ sub clone {
   my $newkey = shift;
   my $new = new Biber::Entry;
   while (my ($k, $v) = each(%{$self->{datafields}})) {
-    $new->{datafields}{$k} = $v;
+    $new->{datafields}{$k} = dclone($v);
   }
   while (my ($k, $v) = each(%{$self->{origfields}})) {
-    $new->{origfields}{$k} = $v;
+    $new->{origfields}{$k} = dclone($v);
   }
   # Need to add entrytype and datatype
-  $new->{derivedfields}{entrytype} = $self->{derivedfields}{entrytype};
-  $new->{derivedfields}{datatype} = $self->{derivedfields}{datatype};
+  $new->{derivedfields}{entrytype}{original}{default} = $self->{derivedfields}{entrytype}{original}{default};
+  $new->{derivedfields}{datatype}{original}{default} = $self->{derivedfields}{datatype}{original}{default};
   # put in key if specified
   if ($newkey) {
-    $new->{derivedfields}{citekey} = $newkey;
+    $new->{derivedfields}{citekey}{original}{default} = $newkey;
   }
   return $new;
 }
@@ -94,6 +78,130 @@ sub notnull {
   return $#arr > -1 ? 1 : 0;
 }
 
+=head2 set_labelname_info
+
+  Record the labelname information. This is special
+  meta-information so we have a seperate method for this
+  Takes a hash ref with the information.
+
+=cut
+
+sub set_labelname_info {
+  my $self = shift;
+  my $data = shift;
+  $data->{form} = $data->{form} || 'original';
+  $data->{lang} = $data->{lang} || 'default';
+  $self->{labelnameinfo} = $data;
+  return;
+}
+
+=head2 get_labelname_info
+
+  Retrieve the labelname information. This is special
+  meta-information so we have a seperate method for this
+  Returns a hash ref with the information.
+
+=cut
+
+sub get_labelname_info {
+  my $self = shift;
+  return $self->{labelnameinfo};
+}
+
+=head2 set_labelnamefh_info
+
+  Record the fullhash labelname information. This is special
+  meta-information so we have a seperate method for this
+  Takes a hash ref with the information.
+
+=cut
+
+sub set_labelnamefh_info {
+  my $self = shift;
+  my $data = shift;
+  $data->{form} = $data->{form} || 'original';
+  $data->{lang} = $data->{lang} || 'default';
+  $self->{labelnamefhinfo} = $data;
+  return;
+}
+
+=head2 get_labelnamefh_info
+
+  Retrieve the fullhash labelname information. This is special
+  meta-information so we have a seperate method for this
+  Returns a hash ref with the information.
+
+=cut
+
+sub get_labelnamefh_info {
+  my $self = shift;
+  return $self->{labelnamefhinfo};
+}
+
+=head2 set_labeltitle_info
+
+  Record the labeltitle information. This is special
+  meta-information so we have a seperate method for this
+  Takes a hash ref with the information.
+
+=cut
+
+sub set_labeltitle_info {
+  my $self = shift;
+  my $data = shift;
+  $data->{form} = $data->{form} || 'original';
+  $data->{lang} = $data->{lang} || 'default';
+  $self->{labeltitleinfo} = $data;
+  return;
+}
+
+=head2 get_labeltitle_info
+
+  Retrieve the labeltitle information. This is special
+  meta-information so we have a seperate method for this
+  Returns a hash ref with the information.
+
+=cut
+
+sub get_labeltitle_info {
+  my $self = shift;
+  return $self->{labeltitleinfo};
+}
+
+
+=head2 set_labelyear_info
+
+  Record the labelyear information. This is special
+  meta-information so we have a seperate method for this
+  Takes a hash ref with the information.
+
+=cut
+
+sub set_labelyear_info {
+  my $self = shift;
+  my $data = shift;
+  $data->{form} = $data->{form} || 'original';
+  $data->{lang} = $data->{lang} || 'default';
+  $self->{labelyearinfo} = $data;
+  return;
+}
+
+=head2 get_labelyear_info
+
+  Retrieve the labelyear information. This is special
+  meta-information so we have a seperate method for this
+  Returns a hash ref with the information.
+
+=cut
+
+sub get_labelyear_info {
+  my $self = shift;
+  return $self->{labelyearinfo};
+}
+
+
+
+
 =head2 set_orig_field
 
     Set a field which came from the datasource which is then split/transformed
@@ -106,8 +214,10 @@ sub notnull {
 
 sub set_orig_field {
   my $self = shift;
-  my ($key, $val) = @_;
-  $self->{origfields}{$key} = $val;
+  my ($key, $val, $form, $lang) = @_;
+  $form = $form || 'original';
+  $lang = $lang || 'default';
+  $self->{origfields}{$key}{$form}{$lang} = $val;
   return;
 }
 
@@ -119,76 +229,141 @@ sub set_orig_field {
 
 sub get_orig_field {
   my $self = shift;
-  my $key = shift;
-  return $self->{origfields}{$key} if exists($self->{origfields}{$key});
-  return undef;
+  my ($key, $form, $lang) = @_;
+  $form = $form || 'original';
+  $lang = $lang || 'default';
+  return Dive($self, 'origfields', $key, $form, $lang);
 }
 
 
 =head2 set_field
 
-  Set/append to a derived field for a Biber::Entry object, that is, a field
+  Set a derived field for a Biber::Entry object, that is, a field
   which was not an actual bibliography field
 
 =cut
 
 sub set_field {
   my $self = shift;
-  my ($key, $val, $append) = @_;
+  my ($key, $val, $form, $lang) = @_;
+  $form = $form || 'original';
+  $lang = $lang || 'default';
   # All derived fields can be null
-  # Only add append with seperator if append mode and there is something to append to
-  if ($append and defined($self->{derivedfields}{$key})) {
-    $self->{derivedfields}{$key} .= "$append$val";
-  }
-  # otherwise just set as normal
-  else {
-    $self->{derivedfields}{$key} = $val;
-  }
+  $self->{derivedfields}{$key}{$form}{$lang} = $val;
   return;
 }
+
+=head2 ref_field
+
+  Make a field a reference to another field
+
+=cut
+
+sub ref_field {
+  my $self = shift;
+  my ($ref, $field) = @_;
+  $self->{datafields}{$ref} = $self->{datafields}{$field};
+  $self->{derivedfields}{$ref} = $self->{derivedfields}{$field};
+  return;
+}
+
 
 =head2 get_field
 
     Get a field for a Biber::Entry object
+    Uses // as fields can be null (end dates etc).
 
 =cut
 
 sub get_field {
   my $self = shift;
+  my ($key, $form, $lang) = @_;
+  return undef unless $key;
+  $form = $form || 'original';
+  $lang = $lang || 'default';
+  # Override for special fields whose form and langs are assumed to be already resolved.
+  if ($key ~~ [ 'labelname', 'labeltitle', 'labelyear' ]) {
+    $form = 'original';
+    $lang = 'default';
+  }
+  return Dive($self, 'datafields', $key, $form, $lang) //
+         Dive($self, 'derivedfields', $key, $form, $lang);
+}
+
+
+=head2 get_field_forms
+
+    Get all field forms for a Biber::Entry object field
+
+=cut
+
+sub get_field_forms {
+  my $self = shift;
   my $key = shift;
-  return $self->{datafields}{$key} if exists($self->{datafields}{$key});
-  return $self->{derivedfields}{$key} if exists($self->{derivedfields}{$key});
-  return undef;
+  return undef unless $key;
+  return Dive($self, 'datafields', $key) ||
+         Dive($self, 'derivedfields', $key);
+}
+
+=head2 get_field_form_names
+
+    Get all field form names for a Biber::Entry object field
+
+=cut
+
+sub get_field_form_names {
+  my $self = shift;
+  my $key = shift;
+  return undef unless $key;
+  return keys %{Dive($self, 'datafields', $key) ||
+                Dive($self, 'derivedfields', $key) ||
+                {}};
+}
+
+=head2 get_field_form_lang_names
+
+    Get all field lang names for a Biber::Entry object field and form
+
+=cut
+
+sub get_field_form_lang_names {
+  my $self = shift;
+  my ($key, $form) = @_;
+  return undef unless $key;
+  return undef unless $form;
+  return keys %{Dive($self, 'datafields', $key, $form) ||
+                Dive($self, 'derivedfields', $key, $form) ||
+                {}};
 }
 
 =head2 set_datafield
 
-    Set/append to a field which is in the bib data file
-    Only set to null if the field is a nullable one
-    otherwise if value is null, remove the field
+    Set a field which is in the bib data file
 
 =cut
 
 sub set_datafield {
   my $self = shift;
-  my ($key, $val, $append) = @_;
-  my $struc = Biber::Config->get_structure;
-  # Only set fields which are either not null or are ok to be null
-  if ( $struc->is_field_type('nullok', $key) or is_notnull($val)) {
-    # Only add append with seperator if append mode and there is something to append to
-    if ($append and defined($self->{datafields}{$key})) {
-      $self->{datafields}{$key} .= "$append$val";
-    }
-    # otherwise just set as normal
-    else {
-      $self->{datafields}{$key} = $val;
-    }
-  }
-  elsif (is_null($val)) {
-    delete($self->{datafields}{$key});
-  }
+  my ($key, $val, $form, $lang) = @_;
+  $form = $form || 'original';
+  $lang = $lang || 'default';
+  $self->{datafields}{$key}{$form}{$lang} = $val;
   return;
 }
+
+=head2 set_datafield_forms
+
+    Set all forms of a field which is in the bib data file
+
+=cut
+
+sub set_datafield_forms {
+  my $self = shift;
+  my ($key, $val) = @_;
+  $self->{datafields}{$key} = $val;
+  return;
+}
+
 
 =head2 get_datafield
 
@@ -198,8 +373,10 @@ sub set_datafield {
 
 sub get_datafield {
   my $self = shift;
-  my $key = shift;
-  return $self->{datafields}{$key};
+  my ($key, $form, $lang) = @_;
+  $form = $form || 'original';
+  $lang = $lang || 'default';
+  return Dive($self, 'datafields', $key, $form, $lang);
 }
 
 
@@ -240,9 +417,24 @@ sub del_datafield {
 sub field_exists {
   my $self = shift;
   my $key = shift;
-  return (exists($self->{datafields}{$key}) or
-          exists($self->{derivedfields}{$key})) ? 1 : 0;
+  return (Dive($self, 'datafields', $key) ||
+          Dive($self, 'derivedfields', $key)) ? 1 : 0;
 }
+
+=head2 field_form_exists
+
+    Check whether a representation form for a field exists (even if null)
+
+=cut
+
+sub field_form_exists {
+  my $self = shift;
+  my ($key, $form) = @_;
+  $form = $form || 'original';
+  return (Dive($self, 'datafields', $key, $form) ||
+          Dive($self, 'derivedfields', $key, $form)) ? 1 : 0;
+}
+
 
 =head2 datafields
 
@@ -305,8 +497,10 @@ sub count_fields {
 
 sub has_keyword {
   my $self = shift;
-  my $keyword = shift;
-  if (my $keywords = $self->{datafields}{keywords}) {
+  my ($keyword, $form, $lang) = @_;
+  $form = $form || 'original';
+  $lang = $lang || 'default';
+  if (my $keywords = Dive($self, 'datafields', 'keywords', $form, $lang)) {
     return (first {$_ eq $keyword} split(/\s*,\s*/, $keywords)) ? 1 : 0;
   }
   else {
@@ -326,7 +520,7 @@ sub has_keyword {
 sub add_warning {
   my $self = shift;
   my $warning = shift;
-  push @{$self->{derivedfields}{warnings}}, $warning;
+  push @{$self->{derivedfields}{warnings}{original}{default}}, $warning;
   return;
 }
 
@@ -350,7 +544,7 @@ sub set_inherit_from {
   # Data source fields
   foreach my $field ($parent->datafields) {
     next if $self->field_exists($field); # Don't overwrite existing fields
-    $self->set_datafield($field, $parent->get_field($field));
+    $self->set_datafield_forms($field, dclone($parent->get_field_forms($field)));
   }
   # Datesplit is a special non datafield and needs to be inherited for any
   # validation checks which may occur later
@@ -395,10 +589,10 @@ sub resolve_xdata {
           $xdatum_entry->resolve_xdata($recurse_xdata);
         }
         foreach my $field ($xdatum_entry->datafields()) { # set fields
-          $self->set_datafield($field, $xdatum_entry->get_field($field));
+          $self->set_datafield_forms($field, $xdatum_entry->get_field_forms($field));
 
           # Record graphing information if required
-          if (Biber::Config->getoption('graph')) {
+          if (Biber::Config->getoption('output_format') eq 'dot') {
             Biber::Config->set_graph('xdata', $xdatum_entry->get_field('citekey'), $entry_key, $field, $field);
           }
 
@@ -487,10 +681,10 @@ sub inherit_from {
                            "' as '" .
                            $field->{target} .
                            "' from entry '$source_key'");
-            $self->set_datafield($field->{target}, $parent->get_field($field->{source}));
+            $self->set_datafield_forms($field->{target}, $parent->get_field_forms($field->{source}));
 
             # Record graphing information if required
-            if (Biber::Config->getoption('graph')) {
+            if (Biber::Config->getoption('output_format') eq 'dot') {
               Biber::Config->set_graph('crossref', $source_key, $target_key, $field->{source}, $field->{target});
             }
           }
@@ -506,10 +700,10 @@ sub inherit_from {
       # Set the field if it doesn't exist or override is requested
       if (not $self->field_exists($field) or $override_target eq 'true') {
             $logger->debug("Entry '$target_key' is inheriting field '$field' from entry '$source_key'");
-            $self->set_datafield($field, $parent->get_field($field));
+            $self->set_datafield_forms($field, $parent->get_field_forms($field));
 
             # Record graphing information if required
-            if (Biber::Config->getoption('graph')) {
+            if (Biber::Config->getoption('output_format') eq 'dot') {
               Biber::Config->set_graph('crossref', $source_key, $target_key, $field, $field);
             }
       }
@@ -551,7 +745,7 @@ L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

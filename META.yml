@@ -8,7 +8,7 @@ build_requires:
 configure_requires:
   Module::Build: 0.38
 dynamic_config: 1
-generated_by: 'Module::Build version 0.38, CPAN::Meta::Converter version 2.112150'
+generated_by: 'Module::Build version 0.4003, CPAN::Meta::Converter version 2.120630'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -20,9 +20,12 @@ provides:
     version: 0
   Biber::Config:
     file: lib/Biber/Config.pm
-    version: 1.0
+    version: 1.5
   Biber::Constants:
     file: lib/Biber/Constants.pm
+    version: 0
+  Biber::DataModel:
+    file: lib/Biber/DataModel.pm
     version: 0
   Biber::Entries:
     file: lib/Biber/Entries.pm
@@ -69,6 +72,9 @@ provides:
   Biber::Output::test:
     file: lib/Biber/Output/test.pm
     version: 0
+  Biber::Output::tool:
+    file: lib/Biber/Output/tool.pm
+    version: 0
   Biber::Section:
     file: lib/Biber/Section.pm
     version: 0
@@ -81,16 +87,17 @@ provides:
   Biber::SortLists:
     file: lib/Biber/SortLists.pm
     version: 0
-  Biber::Structure:
-    file: lib/Biber/Structure.pm
-    version: 0
   Biber::Utils:
     file: lib/Biber/Utils.pm
     version: 0
 recommends:
   Readonly::XS: 0
 requires:
+  Business::ISBN: 0
+  Business::ISMN: 0
+  Business::ISSN: 0
   Data::Compare: 0
+  Data::Diver: 0
   Data::Dump: 0
   Date::Simple: 0
   File::Slurp::Unicode: 0
@@ -101,15 +108,14 @@ requires:
   List::AllUtils: 0
   List::MoreUtils: 0
   Log::Log4perl: 0
-  Readonly: 0
-  Readonly::XS: 0
+  Mozilla::CA: 0
   Regexp::Common: 0
-  Text::BibTeX: 0.62
-  Unicode::Collate: 0.89
+  Text::BibTeX: 0.66
+  URI: 0
+  Unicode::Collate: 0.90
   XML::LibXML::Simple: 0
   XML::LibXSLT: 0
-  XML::Writer::String: 0
   perl: v5.14.0
 resources:
   license: http://dev.perl.org/licenses/
-version: 1.0
+version: 1.5

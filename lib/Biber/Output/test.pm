@@ -74,8 +74,9 @@ sub _printfield {
 sub set_output_entry {
   my $self = shift;
   my $be = shift; # Biber::Entry object
+  my $bee = $be->get_field('entrytype');
   my $section = shift; # Section the entry occurs in
-  my $struc = shift; # Structure object
+  my $dm = shift; # Structure object
   my $acc = '';
   my $opts = '';
   my $secnum = $section->number;
@@ -106,7 +107,7 @@ sub set_output_entry {
   # first output copy in labelname
   # This is essentially doing the same thing twice but in the future,
   # labelname may have different things attached than the raw name
-  my $lnn = $be->get_field('labelnamename'); # save name of labelname field
+  my $lni = $be->get_labelname_info;
   my $name_others_deleted = '';
   my $plo; # per-list options
 
@@ -133,8 +134,8 @@ sub set_output_entry {
   }
 
   # then names themselves
-  foreach my $namefield (@{$struc->get_field_type('name')}) {
-    next if $struc->is_field_type('skipout', $namefield);
+  foreach my $namefield (@{$dm->get_fields_of_type('list', 'name')}) {
+    next if $dm->field_is_skipout($namefield);
     if ( my $nf = $be->get_field($namefield) ) {
 
       # Did we have "and others" in the data?
@@ -144,7 +145,7 @@ sub set_output_entry {
 
       my $total = $nf->count_names;
       # Copy perl-list options to the actual labelname too
-      $plo = '' unless (defined($lnn) and $namefield eq $lnn);
+      $plo = '' unless (defined($lni) and $namefield eq $lni->{field});
       $acc .= "      \\name{$namefield}{$total}{}{%\n";
       foreach my $n (@{$nf->names}) {
         $acc .= $n->name_to_bbl;
@@ -153,9 +154,10 @@ sub set_output_entry {
     }
   }
 
-  foreach my $listfield (@{$struc->get_field_type('list')}) {
+  foreach my $listfield (@{$dm->get_fields_of_fieldtype('list')}) {
+    next if $dm->field_is_datatype('name', $listfield); # name is a special list
     if ( my $lf = $be->get_field($listfield) ) {
-      if ( lc($be->get_field($listfield)->[-1]) eq 'others' ) {
+      if ( lc($be->get_field($listfield)->[-1]) eq Biber::Config->getoption('others_string') ) {
         $acc .= "      \\true{more$listfield}\n";
         pop @$lf; # remove the last element in the array
       };
@@ -199,6 +201,31 @@ sub set_output_entry {
     }
   }
 
+  # The labeltitle option determines whether "extratitle" is output
+  if ( Biber::Config->getblxoption('labeltitle', $bee)) {
+    # Might not have been set due to skiplab/dataonly
+    if (my $nametitle = $be->get_field('nametitle')) {
+      if ( Biber::Config->get_seen_nametitle($nametitle) > 1) {
+        $acc .= "      <BDS>EXTRATITLE</BDS>\n";
+      }
+    }
+  }
+
+  # The labeltitleyear option determines whether "extratitleyear" is output
+  if ( Biber::Config->getblxoption('labeltitleyear', $bee)) {
+    # Might not have been set due to skiplab/dataonly
+    if (my $titleyear = $be->get_field('titleyear')) {
+      if ( Biber::Config->get_seen_titleyear($titleyear) > 1) {
+        $acc .= "      <BDS>EXTRATITLEYEAR</BDS>\n";
+      }
+    }
+  }
+
+  # labeltitle is always output
+  if (my $lt = $be->get_field('labeltitle')) {
+    $acc .= "      \\field{labeltitle}{$lt}\n";
+  }
+
   # The labelalpha option determines whether "extraalpha" is output
   # Skip generating extraalpha for entries with "skiplab" set
   if ( Biber::Config->getblxoption('labelalpha', $be->get_field('entrytype'))) {
@@ -224,13 +251,17 @@ sub set_output_entry {
     $acc .= "      \\true{singletitle}\n";
   }
 
-  foreach my $lfield (sort (@{$struc->get_field_type('literal')}, @{$struc->get_field_type('datepart')})) {
-    next if $struc->is_field_type('skipout', $lfield);
-    if ( ($struc->is_field_type('nullok', $lfield) and
+  foreach my $lfield (sort @{$dm->get_fields_of_type('field', 'entrykey')},
+                           @{$dm->get_fields_of_type('field', 'key')},
+                           @{$dm->get_fields_of_datatype('integer')},
+                           @{$dm->get_fields_of_type('field', 'literal')},
+                           @{$dm->get_fields_of_type('field', 'code')}) {
+    next if $dm->field_is_skipout($lfield);
+    if ( ($dm->field_is_nullok($lfield) and
           $be->field_exists($lfield)) or
          $be->get_field($lfield) ) {
       # we skip outputting the crossref or xref when the parent is not cited
-      # (biblatex manual, section 2.23)
+      # (biblatex manual, section 2.2.3)
       # sets are a special case so always output crossref/xref for them since their
       # children will always be in the .bbl otherwise they make no sense.
       unless ( $be->get_field('entrytype') eq 'set') {
@@ -244,14 +275,15 @@ sub set_output_entry {
     }
   }
 
-  foreach my $rfield (@{$struc->get_field_type('range')}) {
+  foreach my $rfield (@{$dm->get_fields_of_datatype('range')}) {
     if ( my $rf = $be->get_field($rfield)) {
       $rf =~ s/[-–]+/\\bibrangedash /g;
       $acc .= "      \\field{$rfield}{$rf}\n";
     }
   }
 
-  foreach my $vfield (@{$struc->get_field_type('verbatim')}) {
+  foreach my $vfield ((@{$dm->get_fields_of_datatype('verbatim')},
+                       @{$dm->get_fields_of_datatype('uri')})) {
     if ( my $rf = $be->get_field($vfield) ) {
       $acc .= "      \\verb{$vfield}\n";
       $acc .= "      \\verb $rf\n    \\endverb\n";
@@ -289,7 +321,7 @@ sub create_output_misc {
   if (my $pa = $Biber::MASTER->get_preamble) {
     $pa = join("%\n", @$pa);
     # Decode UTF-8 -> LaTeX macros if asked to
-    if (Biber::Config->getoption('bblsafechars')) {
+    if (Biber::Config->getoption('output_safechars')) {
       $pa = Biber::LaTeX::Recode::latex_encode($pa);
     }
     $self->{output_data}{HEAD} .= "\\preamble{%\n$pa%\n}\n\n";
@@ -310,12 +342,13 @@ sub output {
   my $data = $self->{output_data};
   my $target = $self->{output_target};
 
-  $logger->info("Writing output with encoding '" . Biber::Config->getoption('bblencoding') . "'");
-  $logger->info('Converting UTF-8 to TeX macros on output to .bbl') if Biber::Config->getoption('bblsafechars');
+  $logger->info("Writing output with encoding '" . Biber::Config->getoption('output_encoding') . "'");
+  $logger->info('Converting UTF-8 to TeX macros on output to .bbl') if Biber::Config->getoption('output_safechars');
 
   foreach my $secnum (sort keys %{$data->{ENTRIES}}) {
     my $section = $self->get_output_section($secnum);
-    foreach my $list (@{$Biber::MASTER->sortlists->get_lists}) {
+    foreach my $list (sort {$a->get_label cmp $b->get_label} @{$Biber::MASTER->sortlists->get_lists_for_section($secnum)}) {
+      next unless $list->count_keys; # skip empty lists
       my $listlabel = $list->get_label;
       my $listtype = $list->get_type;
       foreach my $k ($list->get_keys) {
@@ -326,7 +359,7 @@ sub output {
           my $entry_string = $list->instantiate_entry($entry, $k);
 
           # If requested to convert UTF-8 to macros ...
-          if (Biber::Config->getoption('bblsafechars')) {
+          if (Biber::Config->getoption('output_safechars')) {
             $entry_string = latex_recode_output($entry_string);
           }
           print $target $entry_string;
@@ -358,7 +391,7 @@ L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

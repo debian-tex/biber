@@ -34,26 +34,26 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 # Biber options
 Biber::Config->setoption('sortlocale', 'C');
 Biber::Config->setoption('fastsort', 1);
-Biber::Config->setoption('bblsafechars', 1);
+Biber::Config->setoption('output_safechars', 1);
 
 # Now generate the information
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section0 = $biber->sections->get_section(0);
-my $main0 = $biber->sortlists->get_list(0, 'entry', 'MAIN');
-my $shs0 = $biber->sortlists->get_list(0, 'shorthand', 'SHORTHANDS');
+my $main0 = $biber->sortlists->get_list(0, 'entry', 'nty');
+my $shs0 = $biber->sortlists->get_list(0, 'shorthand', 'shorthand');
 
 my $section1 = $biber->sections->get_section(1);
-my $main1 = $biber->sortlists->get_list(1, 'entry', 'MAIN');
-my $shs1 = $biber->sortlists->get_list(1, 'shorthand', 'SHORTHANDS');
+my $main1 = $biber->sortlists->get_list(1, 'entry', 'nty');
+my $shs1 = $biber->sortlists->get_list(1, 'shorthand', 'shorthand');
 
 my $section2 = $biber->sections->get_section(2);
-my $main2 = $biber->sortlists->get_list(2, 'entry', 'MAIN');
-my $shs2 = $biber->sortlists->get_list(2, 'shorthand', 'SHORTHANDS');
+my $main2 = $biber->sortlists->get_list(2, 'entry', 'nty');
+my $shs2 = $biber->sortlists->get_list(2, 'shorthand', 'shorthand');
 
 my $section3 = $biber->sections->get_section(3);
-my $main3 = $biber->sortlists->get_list(3, 'entry', 'MAIN');
-my $shs3 = $biber->sortlists->get_list(3, 'shorthand', 'SHORTHANDS');
+my $main3 = $biber->sortlists->get_list(3, 'entry', 'nty');
+my $shs3 = $biber->sortlists->get_list(3, 'shorthand', 'shorthand');
 
 my $preamble = [
                 'Štring for Preamble 1',
@@ -68,13 +68,12 @@ if ($Biber::Config::BETA_VERSION) {
 }
 
 my $head = qq|% \$ biblatex auxiliary file \$
-% \$ biblatex version $BIBLATEX_VERSION \$
-% \$ biber version $v \$
+% \$ biblatex bbl format version $BBL_VERSION \$
 % Do not modify the above lines!
 %
 % This is an auxiliary file used by the 'biblatex' package.
 % This file may safely be deleted. It will be recreated by
-% biber or bibtex as required.
+% biber as required.
 %
 \\begingroup
 \\makeatletter
@@ -111,4 +110,4 @@ is_deeply([$section3->get_orig_order_citekeys], ['sect1', 'sect2', 'sectall1'], 
 is($out->get_output_section(0)->number, '0', 'Checking output sections - 1');
 is($out->get_output_section(1)->number, '1', 'Checking output sections - 2');
 is($out->get_output_section(2)->number, '2', 'Checking output sections - 3');
-is($out->get_output_head, $head, 'Preamble output check with bblsafechars');
+is($out->get_output_head, $head, 'Preamble output check with output_safechars');

@@ -56,6 +56,7 @@ sub get_lists_for_section {
   my $self = shift;
   my $section = shift;
   my $lists = [];
+  my $glist;
   foreach my $list (@{$self->{lists}}) {
     if ($list->get_section == $section) {
       push @$lists, $list;
@@ -115,7 +116,7 @@ L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
