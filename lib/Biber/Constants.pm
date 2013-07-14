@@ -1,5 +1,5 @@
 package Biber::Constants;
-use 5.014000;
+use v5.16;
 use strict;
 use warnings;
 
@@ -24,9 +24,9 @@ our @EXPORT = qw{
 
 # Version of biblatex control file which this release expects. Matched against version
 # passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '2.3';
+our $BCF_VERSION = '2.4';
 # Format version of the .bbl. Used when writing the .bbl
-our $BBL_VERSION = '2.1';
+our $BBL_VERSION = '2.2';
 
 # Global flags needed for sorting
 our $BIBER_SORT_FINAL = 0;
@@ -113,9 +113,10 @@ our $CONFIG_DEFAULT_BIBER = {
   input_encoding      => { content => 'UTF-8' },
   listsep             => { content => 'and' },
   mincrossrefs        => { content => 2 },
+  mssplit             => { content => '_' },
   namesep             => { content => 'and' },
   nodieonerror        => { content => 0 },
-  noinit              => { option => [ {value => q/\b\p{Ll}{2}\p{Pd}/} ,
+  noinit              => { option => [ {value => q/\b\p{Ll}{2}\p{Pd}/},
                                        {value => q/[\x{2bf}\x{2018}]/} ] },
   nolog               => { content => 0 },
   nostdmacros         => { content => 0 },
@@ -133,7 +134,11 @@ our $CONFIG_DEFAULT_BIBER = {
   sortlocale          => { content => $locale },
   sortupper           => { content => 1 },
   tool                => { content => 0 },
+  tool_align          => { content => 1 },
   tool_datatype       => { content => 'bibtex' },
+  tool_fieldcase      => { content => 'upper' },
+  tool_indent         => { content => '2' },
+  tool_resolve        => { content => 0 },
   trace               => { content => 0 },
   validate_config     => { content => 0 },
   validate_control    => { content => 0 },
@@ -186,8 +191,8 @@ our %CONFIG_SCOPE_BIBLATEX = (
   labeltitlelang     => {GLOBAL => 0, PER_TYPE => 0, PER_ENTRY => 1},
   labeltitlespec     => {GLOBAL => 1, PER_TYPE => 1, PER_ENTRY => 0},
   labeltitleyear     => {GLOBAL => 1, PER_TYPE => 1, PER_ENTRY => 0},
-  labelyear          => {GLOBAL => 1, PER_TYPE => 1, PER_ENTRY => 0},
-  labelyearspec      => {GLOBAL => 1, PER_TYPE => 1, PER_ENTRY => 0},
+  labeldate          => {GLOBAL => 1, PER_TYPE => 1, PER_ENTRY => 0},
+  labeldatespec      => {GLOBAL => 1, PER_TYPE => 1, PER_ENTRY => 0},
   maxalphanames      => {GLOBAL => 1, PER_TYPE => 1, PER_ENTRY => 1},
   maxbibnames        => {GLOBAL => 1, PER_TYPE => 1, PER_ENTRY => 1},
   maxcitenames       => {GLOBAL => 1, PER_TYPE => 1, PER_ENTRY => 1},

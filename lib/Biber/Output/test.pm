@@ -1,5 +1,5 @@
 package Biber::Output::test;
-use 5.014000;
+use v5.16;
 use strict;
 use warnings;
 use base 'Biber::Output::base';
@@ -48,10 +48,10 @@ sub _printfield {
 
   if (Biber::Config->getoption('wraplines')) {
     ## 16 is the length of '      \field{}{}'
-    if ( 16 + length($field) + length($str) > 2*$Text::Wrap::columns ) {
+    if ( 16 + Unicode::GCString->new($field)->length + Unicode::GCString->new($str)->length > 2*$Text::Wrap::columns ) {
       return "      \\${field_type}{$field}{%\n" . wrap('      ', '      ', $str) . "%\n      }\n";
     }
-    elsif ( 16 + length($field) + length($str) > $Text::Wrap::columns ) {
+    elsif ( 16 + Unicode::GCString->new($field)->length + Unicode::GCString->new($str)->length > $Text::Wrap::columns ) {
       return wrap('      ', '      ', "\\${field_type}{$field}{$str}" ) . "\n";
     }
     else {
@@ -186,9 +186,9 @@ sub set_output_entry {
   # on output as it can vary between lists
   $acc .= "      <BDS>SORTINIT</BDS>\n";
 
-  # The labelyear option determines whether "extrayear" is output
+  # The labeldate option determines whether "extrayear" is output
   # Skip generating extrayear for entries with "skiplab" set
-  if ( Biber::Config->getblxoption('labelyear', $be->get_field('entrytype'))) {
+  if ( Biber::Config->getblxoption('labeldate', $be->get_field('entrytype'))) {
     # Might not have been set due to skiplab/dataonly
     if (my $ey = $be->get_field('extrayear')) {
       my $nameyear_extra = $be->get_field('nameyear_extra');
@@ -198,6 +198,12 @@ sub set_output_entry {
     }
     if (my $ly = $be->get_field('labelyear')) {
       $acc .= "      \\field{labelyear}{$ly}\n";
+    }
+    if (my $lm = $be->get_field('labelmonth')) {
+      $acc .= "      \\field{labelmonth}{$lm}\n";
+    }
+    if (my $ld = $be->get_field('labelday')) {
+      $acc .= "      \\field{labelday}{$ld}\n";
     }
   }
 
@@ -362,11 +368,11 @@ sub output {
           if (Biber::Config->getoption('output_safechars')) {
             $entry_string = latex_recode_output($entry_string);
           }
-          print $target $entry_string;
+          out($target, $entry_string);
         }
         elsif ($listtype eq 'shorthand') {
           next if Biber::Config->getblxoption('skiplos', $section->bibentry($k), $k);
-          print $target $k;
+          out($target, $k);
         }
       }
     }

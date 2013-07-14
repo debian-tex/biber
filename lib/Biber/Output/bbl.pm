@@ -1,5 +1,5 @@
 package Biber::Output::bbl;
-use 5.014000;
+use v5.16;
 use strict;
 use warnings;
 use base 'Biber::Output::base';
@@ -125,10 +125,10 @@ sub _printfield {
 
   if (Biber::Config->getoption('wraplines')) {
     ## 16 is the length of '      \field{}{}' or '      \strng{}{}'
-    if ( 16 + length($field) + length($str) > 2*$Text::Wrap::columns ) {
+    if ( 16 + Unicode::GCString->new($field)->length + Unicode::GCString->new($str)->length > 2*$Text::Wrap::columns ) {
       return "      \\${field_type}{$field}{%\n" . wrap('      ', '      ', $str) . "%\n      }\n";
     }
-    elsif ( 16 + length($field) + length($str) > $Text::Wrap::columns ) {
+    elsif ( 16 + Unicode::GCString->new($field)->length + Unicode::GCString->new($str)->length > $Text::Wrap::columns ) {
       return wrap('      ', '      ', "\\${field_type}{$field}{$str}" ) . "\n";
     }
     else {
@@ -306,8 +306,8 @@ sub set_output_entry {
   # on output as it can vary between lists
   $acc .= "      <BDS>SORTINIT</BDS>\n";
 
-  # The labelyear option determines whether "extrayear" is output
-  if ( Biber::Config->getblxoption('labelyear', $bee)) {
+  # The labeldate option determines whether "extrayear" is output
+  if ( Biber::Config->getblxoption('labeldate', $bee)) {
     # Might not have been set due to skiplab/dataonly
     if (my $nameyear = $be->get_field('nameyear')) {
       if ( Biber::Config->get_seen_nameyear($nameyear) > 1) {
@@ -316,6 +316,12 @@ sub set_output_entry {
     }
     if (my $ly = $be->get_field('labelyear')) {
       $acc .= "      \\field{labelyear}{$ly}\n";
+    }
+    if (my $lm = $be->get_field('labelmonth')) {
+      $acc .= "      \\field{labelmonth}{$lm}\n";
+    }
+    if (my $ld = $be->get_field('labelday')) {
+      $acc .= "      \\field{labelday}{$ld}\n";
     }
   }
 
@@ -365,6 +371,10 @@ sub set_output_entry {
 
   if (defined($be->get_field('singletitle'))) {
     $acc .= "      \\true{singletitle}\n";
+  }
+
+  if (my $ck = $be->get_field('clonesourcekey')) {
+    $acc .= "      \\field{clonesourcekey}{$ck}\n";
   }
 
   foreach my $lfield (sort @{$dm->get_fields_of_type('field', 'entrykey')},
@@ -462,12 +472,12 @@ sub output {
   $logger->info("Writing '$target_string' with encoding '" . Biber::Config->getoption('output_encoding') . "'");
   $logger->info('Converting UTF-8 to TeX macros on output to .bbl') if Biber::Config->getoption('output_safechars');
 
-  print $target $data->{HEAD};
+  out($target, $data->{HEAD});
 
   foreach my $secnum (sort keys %{$data->{ENTRIES}}) {
     $logger->debug("Writing entries for section $secnum");
 
-    print $target "\n\\refsection{$secnum}\n";
+    out($target, "\n\\refsection{$secnum}\n");
     my $section = $self->get_output_section($secnum);
 
     my @lists; # Need to reshuffle list to put global sort order list at end, see below
@@ -481,7 +491,7 @@ sub output {
     # biblatex requires the last list in the .bbl to be the global sort list
     # due to its sequential reading of the .bbl as the final list overrides the
     # previously read ones and the global list determines the order of labelnumber
-    # and sortcites etc. which not using defernumbers
+    # and sortcites etc. when not using defernumbers
     push @lists, $Biber::MASTER->sortlists->get_list($secnum, 'entry', Biber::Config->getblxoption('sortscheme'));
 
     foreach my $list (@lists) {
@@ -490,7 +500,7 @@ sub output {
       my $listtype = $list->get_type;
       $logger->debug("Writing entries in '$listtype' list '$listlabel'");
 
-      print $target "  \\sortlist{$listtype}{$listlabel}\n";
+      out($target, "  \\sortlist{$listtype}{$listlabel}\n");
 
       # The order of this array is the sorted order
       foreach my $k ($list->get_keys) {
@@ -506,31 +516,31 @@ sub output {
             $entry_string = latex_recode_output($entry_string);
           }
 
-          print $target $entry_string;
+          out($target, $entry_string);
         }
         elsif ($listtype eq 'shorthand') {
-          print $target "    \\key{$k}\n";
+          out($target, "    \\key{$k}\n");
         }
       }
 
-      print $target "  \\endsortlist\n";
+      out($target, "  \\endsortlist\n");
 
     }
 
     # Aliases
     while (my ($k, $ks) = each %{$data->{ALIAS_ENTRIES}{$secnum}{index}}) {
-      print $target $$ks;
+      out($target, $$ks);
     }
 
     # Missing keys
     while (my ($k, $ks) = each %{$data->{MISSING_ENTRIES}{$secnum}{index}}) {
-      print $target $$ks;
+      out($target, $$ks);
     }
 
-    print $target "\\endrefsection\n"
+    out($target, "\\endrefsection\n");
   }
 
-  print $target $data->{TAIL};
+  out($target, $data->{TAIL});
 
   $logger->info("Output to $target_string");
   close $target;

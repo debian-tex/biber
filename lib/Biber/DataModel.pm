@@ -1,6 +1,7 @@
 package Biber::DataModel;
-use 5.014000;
+use v5.16;
 use strict;
+
 use warnings;
 
 use List::Util qw( first );
@@ -31,12 +32,7 @@ sub new {
   my $class = shift;
   my $dm = shift;
   my $self;
-  if (defined($dm) and ref($dm) eq 'HASH') {
-    $self = bless $dm, $class;
-  }
-  else {
-    $self = bless {}, $class;
-  }
+  $self = bless {}, $class;
 
   # Pull out legal entrytypes, fields and constraints and make lookup hash
   # for quick tests later
@@ -171,10 +167,11 @@ sub new {
 sub is_field {
   my $self = shift;
   my $field = shift;
+  my $S = Biber::Config->getoption('mssplit');
   if ($field =~ m/^BIBERCUSTOM/o) {
     return 1;
   }
-  elsif ($field =~ m/^([^_]+)_(?:original|translated|romanised|uniform)_?.*$/) {
+  elsif ($field =~ m/^([^$S]+)$S(?:original|translated|romanised|uniform)$S?.*$/) {
     return $self->{fieldsbyname}{$1} ? 1 : 0;
   }
   else {
@@ -345,8 +342,6 @@ sub field_is_skipout {
   return $self->{fieldsbyname}{$field}{skipout} // 0;
 }
 
-
-
 =head2 check_mandatory_constraints
 
     Checks constraints of type "mandatory" on entry and
@@ -357,9 +352,13 @@ sub field_is_skipout {
 sub check_mandatory_constraints {
   my $self = shift;
   my $be = shift;
+  my $secnum = $Biber::MASTER->get_current_section;
+  my $section = $Biber::MASTER->sections->get_section($secnum);
   my @warnings;
   my $et = $be->get_field('entrytype');
   my $key = $be->get_field('citekey');
+  my $ds = $section->get_keytods($key);
+
   foreach my $c (@{$self->{entrytypesbyname}{$et}{constraints}{mandatory}}) {
     if (ref($c) eq 'ARRAY') {
       # Exactly one of a set is mandatory
@@ -370,7 +369,7 @@ sub check_mandatory_constraints {
         foreach my $of (@fs) {
           if ($be->field_exists($of)) {
             if ($xorflag) {
-              push @warnings, "Mandatory fields - only one of '" . join(', ', @fs) . "' must be defined in entry '$key' ignoring field '$of'";
+              push @warnings, "Datamodel: Entry '$key' ($ds): Mandatory fields - only one of '" . join(', ', @fs) . "' must be defined - ignoring field '$of'";
               $be->del_field($of);
             }
             $flag = 1;
@@ -378,7 +377,7 @@ sub check_mandatory_constraints {
           }
         }
         unless ($flag) {
-          push @warnings, "Missing mandatory field - one of '" . join(', ', @fs) . "' must be defined in entry '$key'";
+          push @warnings, "Datamodel: Entry '$key' ($ds): Missing mandatory field - one of '" . join(', ', @fs) . "' must be defined";
         }
       }
       # One or more of a set is mandatory
@@ -392,14 +391,14 @@ sub check_mandatory_constraints {
           }
         }
         unless ($flag) {
-          push @warnings, "Missing mandatory field - one of '" . join(', ', @fs) . "' must be defined in entry '$key'";
+          push @warnings, "Datamodel: Entry '$key' ($ds): Missing mandatory field - one of '" . join(', ', @fs) . "' must be defined";
         }
       }
     }
     # Simple mandatory field
     else {
       unless ($be->field_exists($c)) {
-        push @warnings, "Missing mandatory field '$c' in entry '$key'";
+        push @warnings, "Datamodel: Entry '$key' ($ds): Missing mandatory field '$c'";
       }
     }
   }
@@ -416,9 +415,12 @@ sub check_mandatory_constraints {
 sub check_conditional_constraints {
   my $self = shift;
   my $be = shift;
+  my $secnum = $Biber::MASTER->get_current_section;
+  my $section = $Biber::MASTER->sections->get_section($secnum);
   my @warnings;
   my $et = $be->get_field('entrytype');
   my $key = $be->get_field('citekey');
+  my $ds = $section->get_keytods($key);
 
   foreach my $c (@{$self->{entrytypesbyname}{$et}{constraints}{conditional}}) {
     my $aq  = $c->[0];          # Antecedent quantifier
@@ -441,14 +443,14 @@ sub check_conditional_constraints {
     my @actual_cfs = (grep {$be->field_exists($_)} @$cfs);
     if ($cq eq 'all') {
       unless ($#$cfs == $#actual_cfs) { # ? -> ALL not satisfied
-        push @warnings, "Constraint violation - $cq of fields (" .
+        push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
           join(', ', @$cfs) .
             ") must exist when $aq of fields (" . join(', ', @$afs). ") exist";
       }
     }
     elsif ($cq eq 'none') {
       if (@actual_cfs) {        # ? -> NONE not satisfied
-        push @warnings, "Constraint violation - $cq of fields (" .
+        push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
           join(', ', @actual_cfs) .
             ") must exist when $aq of fields (" . join(', ', @$afs). ") exist. Ignoring them.";
         # delete the offending fields
@@ -459,7 +461,7 @@ sub check_conditional_constraints {
     }
     elsif ($cq eq 'one') {
       unless (@actual_cfs) {    # ? -> ONE not satisfied
-        push @warnings, "Constraint violation - $cq of fields (" .
+        push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
           join(', ', @$cfs) .
             ") must exist when $aq of fields (" . join(', ', @$afs). ") exist";
       }
@@ -478,22 +480,35 @@ sub check_conditional_constraints {
 sub check_data_constraints {
   my $self = shift;
   my $be = shift;
+  my $secnum = $Biber::MASTER->get_current_section;
+  my $section = $Biber::MASTER->sections->get_section($secnum);
   my @warnings;
   my $et = $be->get_field('entrytype');
   my $key = $be->get_field('citekey');
+  my $ds = $section->get_keytods($key);
+
   foreach my $c (@{$self->{entrytypesbyname}{$et}{constraints}{data}}) {
     # This is the datatype of the constraint, not the field!
     if ($c->{datatype} eq 'isbn') {
       foreach my $f (@{$c->{fields}}) {
         if (my $fv = $be->get_field($f)) {
+          (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Biber.pm"} );
+          $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
+          $ENV{ISBN_RANGE_MESSAGE} = File::Spec->catpath($vol, "$dir/Business/ISBN/", 'RangeMessage.xml');
           require Business::ISBN;
-          my $isbn = Business::ISBN->new($fv);
-          if (not $isbn) {
-            push @warnings, "Invalid ISBN for value of field '$f' in '$key'";
+          # Treat as a list field just in case someone has made it so in a custom datamodel
+          unless ($self->get_fieldtype($f) eq 'list') {
+            $fv = [$fv];
           }
-          # Business::ISBN has an error() method so we might get more information
-          elsif (not $isbn->is_valid) {
-            push @warnings, "Invalid ISBN for value of field '$f' in '$key' (" . $isbn->error. ')';
+          foreach (@$fv) {
+            my $isbn = Business::ISBN->new($_);
+            if (not $isbn) {
+              push @warnings, "Datamodel: Entry '$key' ($ds): Invalid ISBN in value of field '$f'";
+            }
+            # Business::ISBN has an error() method so we might get more information
+            elsif (not $isbn->is_valid) {
+              push @warnings, "Datamodel: Entry '$key' ($ds): Invalid ISBN in value of field '$f' (" . $isbn->error. ')';
+            }
           }
         }
       }
@@ -502,9 +517,15 @@ sub check_data_constraints {
       foreach my $f (@{$c->{fields}}) {
         if (my $fv = $be->get_field($f)) {
           require Business::ISSN;
-          my $issn = Business::ISSN->new($fv);
-          unless ($issn and $issn->is_valid) {
-            push @warnings, "Invalid ISSN for value of field '$f' in '$key'";
+          # Treat as a list field just in case someone has made it so in a custom datamodel
+          unless ($self->get_fieldtype($f) eq 'list') {
+            $fv = [$fv];
+          }
+          foreach (@$fv) {
+            my $issn = Business::ISSN->new($_);
+            unless ($issn and $issn->is_valid) {
+              push @warnings, "Datamodel: Entry '$key' ($ds): Invalid ISSN in value of field '$f'";
+            }
           }
         }
       }
@@ -513,9 +534,15 @@ sub check_data_constraints {
       foreach my $f (@{$c->{fields}}) {
         if (my $fv = $be->get_field($f)) {
           require Business::ISMN;
-          my $ismn = Business::ISMN->new($fv);
-          unless ($ismn and $ismn->is_valid) {
-            push @warnings, "Invalid ISMN for value of field '$f' in '$key'";
+          # Treat as a list field just in case someone has made it so in a custom datamodel
+          unless ($self->get_fieldtype($f) eq 'list') {
+            $fv = [$fv];
+          }
+          foreach (@$fv) {
+            my $ismn = Business::ISMN->new($_);
+            unless ($ismn and $ismn->is_valid) {
+              push @warnings, "Datamodel: Entry '$key' ($ds): Invalid ISMN in value of field '$f'";
+            }
           }
         }
       }
@@ -525,20 +552,20 @@ sub check_data_constraints {
       foreach my $f (@{$c->{fields}}) {
         if (my $fv = $be->get_field($f)) {
           unless ( $fv =~ /$dt/ ) {
-            push @warnings, 'Invalid format (' . $c->{datatype}. ") of field '$f' - ignoring field in entry '$key'";
+            push @warnings, "Datamodel: Entry '$key' ($ds): Invalid format (" . $c->{datatype}. ") of field '$f' - ignoring field";
             $be->del_field($f);
             next;
           }
           if (my $fmin = $c->{rangemin}) {
             unless ($fv >= $fmin) {
-              push @warnings, "Invalid value of field '$f' must be '>=$fmin' - ignoring field in entry '$key'";
+              push @warnings, "Datamodel: Entry '$key' ($ds): Invalid value of field '$f' must be '>=$fmin' - ignoring field";
               $be->del_field($f);
               next;
             }
           }
           if (my $fmax = $c->{rangemax}) {
             unless ($fv <= $fmax) {
-              push @warnings, "Invalid value of field '$f' must be '<=$fmax' - ignoring field in entry '$key'";
+              push @warnings, "Datamodel: Entry '$key' ($ds): Invalid value of field '$f' must be '<=$fmax' - ignoring field";
               $be->del_field($f);
               next;
             }
@@ -550,7 +577,7 @@ sub check_data_constraints {
       # Perform content validation checks on date components by trying to
       # instantiate a Date::Simple object.
       foreach my $f (@{$self->get_fields_of_type('field', 'date')}) {
-        my ($d) = $f =~ m/\A(.*)date\z/xms;
+        my $d = $f =~ s/date\z//xmsr;
         # Don't bother unless this type of date is defined (has a year)
         next unless $be->get_datafield($d . 'year');
 
@@ -575,9 +602,9 @@ sub check_data_constraints {
           my $bdc = $bd  eq 'DD' ? '01' : $bd;
           $logger->debug("Checking '${d}date' date value '$byc/$bmc/$bdc' for key '$key'");
           unless (Date::Simple->new("$byc$bmc$bdc")) {
-            push @warnings, "Invalid date value '" .
+            push @warnings, "Datamodel: Entry '$key' ($ds): Invalid date value '" .
               ($byc_d || $byc) .
-                "/$bm/$bd' - ignoring its components in entry '$key'";
+                "/$bm/$bd' - ignoring its components";
             $be->del_datafield($d . 'year');
             $be->del_datafield($d . 'month');
             $be->del_datafield($d . 'day');
@@ -594,7 +621,7 @@ sub check_data_constraints {
           my $edc = $ed  eq 'DD' ? '01' : $ed;
           $logger->debug("Checking '${d}date' date value '$eyc/$emc/$edc' for key '$key'");
           unless (Date::Simple->new("$eyc$emc$edc")) {
-            push @warnings, "Invalid date value '$eyc/$em/$ed' - ignoring its components in entry '$key'";
+            push @warnings, "Datamodel: Entry '$key' ($ds): Invalid date value '$eyc/$em/$ed' - ignoring its components";
             $be->del_datafield($d . 'endyear');
             $be->del_datafield($d . 'endmonth');
             $be->del_datafield($d . 'endday');
@@ -606,12 +633,12 @@ sub check_data_constraints {
     elsif ($c->{datatype} eq 'pattern') {
       my $patt;
       unless ($patt = $c->{pattern}) {
-        push @warnings, "Pattern constraint has no pattern!";
+        push @warnings, "Datamodel: Pattern constraint has no pattern!";
       }
       foreach my $f (@{$c->{fields}}) {
         if (my $fv = $be->get_field($f)) {
           unless (imatch($fv, $patt)) {
-            push @warnings, "Invalid value (pattern match fails) for field '$f' in entry '$key'";
+            push @warnings, "Datamodel: Entry '$key' ($ds): Invalid value (pattern match fails) for field '$f'";
           }
         }
       }

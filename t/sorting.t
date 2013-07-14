@@ -4,11 +4,12 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 41;
+use Test::More tests => 42;
 
 use Biber;
 use Biber::Output::bbl;
 use Log::Log4perl;
+use Unicode::Normalize;
 chdir("t/tdata");
 
 # Set up Biber object
@@ -74,6 +75,7 @@ my $dates1      = '1979,01,0200000,1980,04,08,1924,06,07,1924,07,09,1924,0002,05
 my $edtypeclass1 = 'redactor,Jaffé!Philipp,Loewenfeld!Samuel#Kaltenbrunner!Ferdinand#Ewald!Paul';
 my $prefix1     = 'mm,,Luzzatto!Moshe Ḥayyim,,,Lashon laRamḥal uvo sheloshah ḥiburim,2000,0000';
 my $diacritic1  = 'mm,,Hasan!Alī,alHasan!ʿAlī,Hasan!Alī,Some title,2000,0000';
+my $labels      = '2005,03,02';
 
 # These have custom presort and also an exclusion on year and title set
 my $useprefix1  = 'ww,,von!Bobble!Terrence,,,0000';
@@ -157,8 +159,8 @@ Biber::Config->setoption('sortcase', '1');
 # regenerate information
 $biber->prepare;
 
-is($main->get_sortdata('luzzatto')->[0], $prefix1, 'Title with nosort' );
-is($main->get_sortdata('hasan')->[0], $diacritic1, 'Name with nosort' );
+is(NFC($main->get_sortdata('luzzatto')->[0]), $prefix1, 'Title with nosort' );
+is(NFC($main->get_sortdata('hasan')->[0]), $diacritic1, 'Name with nosort' );
 
 # Testing editor roles
 $S = [
@@ -181,7 +183,7 @@ Biber::Config->setoption('sortcase', 0);
 # regenerate information
 $biber->prepare;
 
-is($main->get_sortdata('jaffe')->[0], $edtypeclass1, 'Editor type/class' );
+is(NFC($main->get_sortdata('jaffe')->[0]), $edtypeclass1, 'Editor type/class' );
 
 
 # Testing sorting using various date fields
@@ -1372,4 +1374,26 @@ $main->set_sortscheme($S);
 $biber->prepare;
 
 is($main->get_sortdata('stdmodel')->[0], $citeorder, 'citeorder' );
+
+# citeorder sort
+$S = [
+      [
+       {},
+       {'labelyear'    => {}},
+      ],
+      [
+       {},
+       {'labelmonth'    => {}},
+      ],
+      [
+       {},
+       {'labelday'    => {}}
+      ]
+     ];
+$main->set_sortscheme($S);
+
+# regenerate information
+$biber->prepare;
+
+is($main->get_sortdata('labelstest')->[0], $labels, 'date labels' );
 

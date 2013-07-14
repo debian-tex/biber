@@ -1,5 +1,5 @@
 package Biber::Section;
-use 5.014000;
+use v5.16;
 use strict;
 use warnings;
 
@@ -23,6 +23,9 @@ sub new {
   my ($class, %params) = @_;
   my $self = bless {%params}, $class;
   $self->{bibentries} = new Biber::Entries;
+  $self->{keytorelclone} = {};
+  $self->{relclonetokey} = {};
+  $self->{relkeys} = {};
   $self->{allkeys} = 0;
   $self->{citekeys} = [];
   $self->{citekeys_h} = {}; # For faster hash-based lookup of individual keys
@@ -33,6 +36,7 @@ sub new {
   $self->{labelcache_v} = {};
   $self->{sortcache} = [];
   $self->{dkeys} = {};
+  $self->{keytods} = {};
   $self->{orig_order_citekeys} = [];
   $self->{undef_citekeys} = [];
   $self->{citekey_alias} = {};
@@ -54,6 +58,29 @@ sub reset_caches {
   return;
 }
 
+=head2 set_keytods
+
+  Save information about citekey->datasource name mapping. Used for error reporting.
+
+=cut
+
+sub set_keytods {
+  my ($self, $key, $ds) = @_;
+  $self->{keytods}{$key} = $ds;
+  return;
+}
+
+=head2 get_keytods
+
+  Get information about citekey->datasource name mapping. Used for error reporting.
+
+=cut
+
+sub get_keytods {
+  my ($self, $key) = @_;
+  return $self->{keytods}{$key};
+}
+
 =head2 has_badcasekey
 
     Returns a value to say if we've seen a key differing only in case before
@@ -69,6 +96,89 @@ sub has_badcasekey {
   return $ckey ne $key ? $ckey : undef;
 }
 
+
+=head2 add_related
+
+    Record that a key is used as a related entry
+
+=cut
+
+sub add_related {
+  my ($self, $key) = @_;
+  $self->{relkeys}{$key} = 1;
+  return;
+}
+
+=head2 is_related
+
+    Check if a key is used as a related entry key
+
+=cut
+
+sub is_related {
+  my ($self, $key) = @_;
+  return $self->{relkeys}{$key};
+}
+
+
+=head2 keytorelclone
+
+    Record a key<->clone key mapping.
+
+=cut
+
+sub keytorelclone {
+  my ($self, $key, $clonekey) = @_;
+  $self->{keytorelclone}{$key} = $clonekey;
+  $self->{relclonetokey}{$clonekey} = $key;
+  return;
+}
+
+
+=head2 get_keytorelclone
+
+    Fetch a related entry clone key, given a cite key
+
+=cut
+
+sub get_keytorelclone {
+  my ($self, $key) = @_;
+  return $self->{keytorelclone}{$key};
+}
+
+=head2 get_relclonetokey
+
+    Fetch a related entry key, given a clone key
+
+=cut
+
+sub get_relclonetokey {
+  my ($self, $key) = @_;
+  return $self->{relclonetokey}{$key};
+}
+
+
+=head2 has_keytorelclone
+
+    Return boolean saying if a cite key has a related entry clone in the current section
+
+=cut
+
+sub has_keytorelclone {
+  my ($self, $key) = @_;
+  return defined($self->{keytorelclone}{$key}) ? 1 : 0;
+}
+
+=head2 has_relclonetokey
+
+    Return boolean saying if a related clone key has a citekey in the current section
+
+=cut
+
+sub has_relclonetokey {
+  my ($self, $key) = @_;
+  return defined($self->{relclonetokey}{$key}) ? 1 : 0;
+}
 
 =head2 add_everykey
 
@@ -462,7 +572,7 @@ sub set_dynamic_set {
 =head2 get_dynamic_set
 
     Retrieve member keys for a dynamic set key
-    Check on has reference returning anything stop spurious warnings
+    Check that reference returning anything to stop spurious warnings
     about empty dereference in return.
 
 =cut

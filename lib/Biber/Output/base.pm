@@ -1,5 +1,5 @@
 package Biber::Output::base;
-use 5.014000;
+use v5.16;
 use strict;
 use warnings;
 
@@ -8,6 +8,7 @@ use IO::File;
 use Text::Wrap;
 $Text::Wrap::columns = 80;
 use Log::Log4perl qw( :no_extra_logdie_message );
+use Unicode::Normalize;
 my $logger = Log::Log4perl::get_logger('main');
 
 =encoding utf-8
@@ -207,7 +208,8 @@ sub get_output_entries {
 
     Get the output data for a specific entry.
     Used really only in tests as it instantiates list dynamic information so
-    we can see it in tests
+    we can see it in tests. As a result, we have to NFC() the result to mimic
+    real output since UTF-8 output is assumed in most tests.
 
 =cut
 
@@ -223,7 +225,9 @@ sub get_output_entry {
             $self->{output_data}{MISSING_ENTRIES}{$section}{index}{$key} ||
             $self->{output_data}{ALIAS_ENTRIES}{$section}{index}{$key};
   my $out_string = $list ? $list->instantiate_entry($out, $key) : $out;
-  return $out ? $out_string : undef;
+  # Sometimes $out_string might still be a scalar ref (tool mode, for example which doesn't use
+  # sort lists)
+  return $out ? (ref($out_string) eq 'SCALAR' ? NFC($$out_string) : NFC($out_string)) : undef;
 }
 
 =head2 set_los
@@ -360,29 +364,29 @@ sub output {
 
   $logger->info("Writing '$target_string' with encoding '" . Biber::Config->getoption('output_encoding') . "'");
 
-  print $target $data->{HEAD};
+  out($target, $data->{HEAD});
 
   foreach my $secnum (sort keys %{$data->{ENTRIES}}) {
-    print $target "SECTION: $secnum\n\n";
+    out($target, "SECTION: $secnum\n\n");
     my $section = $self->get_output_section($secnum);
     foreach my $list (@{$section->get_lists}) {
       my $listlabel = $list->get_label;
       my $listtype = $list->get_type;
-      print $target "  LIST: $listlabel\n\n";
+      out($target, "  LIST: $listlabel\n\n");
       foreach my $k ($list->get_keys) {
         if ($listtype eq 'entry') {
           my $entry_string = $data->{ENTRIES}{$secnum}{index}{$k};
-          print $target $entry_string;
+          out($target, $entry_string);
         }
         elsif ($listtype eq 'shorthand') {
           next if Biber::Config->getblxoption('skiplos', $section->bibentry($k), $k);
-          print $target $k;
+          out($target, $k);
         }
       }
     }
   }
 
-  print $target $data->{TAIL};
+  out($target, $data->{TAIL});
 
   $logger->info("Output to $target_string");
   close $target;

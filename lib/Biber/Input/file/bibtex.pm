@@ -1,5 +1,5 @@
 package Biber::Input::file::bibtex;
-use 5.014000;
+use v5.16;
 use strict;
 use warnings;
 use sigtrap qw(handler TBSIG SEGV);
@@ -26,6 +26,8 @@ use File::Temp;
 use Log::Log4perl qw(:no_extra_logdie_message);
 use List::AllUtils qw( :all );
 use URI;
+use Unicode::Normalize;
+use Unicode::GCString;
 use XML::LibXML::Simple;
 
 my $logger = Log::Log4perl::get_logger('main');
@@ -186,6 +188,10 @@ sub extract_entries {
     $logger->debug("All cached citekeys will be used for section '$secnum'");
     # Loop over all entries, creating objects
     while (my ($key, $entry) = each %{$cache->{data}{$filename}}) {
+
+      # Record a key->datasource name mapping for error reporting
+      $section->set_keytods($key, $filename);
+
       unless (create_entry($key, $entry, $source, $smaps)) {
         # if create entry returns false, remove the key from the cache
         @{$cache->{orig_key_order}{$filename}} = grep {$key ne $_} @{$cache->{orig_key_order}{$filename}};
@@ -202,7 +208,7 @@ sub extract_entries {
 
     # If allkeys, push all bibdata keys into citekeys (if they are not already there).
     # We are using the special "orig_key_order" array which is used to deal with the
-    # sitiation when sorting=none and allkeys is set. We need an array rather than the
+    # situation when sorting=none and allkeys is set. We need an array rather than the
     # keys from the bibentries hash because we need to preserve the original order of
     # the .bib as in this case the sorting sub "citeorder" means "bib order" as there are
     # no explicitly cited keys
@@ -215,14 +221,20 @@ sub extract_entries {
     $logger->debug('Wanted keys: ' . join(', ', @$keys));
     foreach my $wanted_key (@$keys) {
       $logger->debug("Looking for key '$wanted_key' in Text::BibTeX cache");
+
+      # Record a key->datasource name mapping for error reporting
+      $section->set_keytods($wanted_key, $filename);
+
       if (my $entry = $cache->{data}{$filename}{$wanted_key}) {
         $logger->debug("Found key '$wanted_key' in Text::BibTeX cache");
+
         # Skip creation if it's already been done, for example, via a citekey alias
         unless ($section->bibentries->entry_exists($wanted_key)) {
           create_entry($wanted_key, $entry, $source, $smaps);
         }
         # found a key, remove it from the list of keys we want
         @rkeys = grep {$wanted_key ne $_} @rkeys;
+
       }
       elsif (my $rk = $cache->{data}{citekey_aliases}{$wanted_key}) {
         $logger->debug("Citekey '${wanted_key}' is an alias for citekey '$rk'");
@@ -239,6 +251,7 @@ sub extract_entries {
 
         # found an alias key, remove it from the list of keys we want
         @rkeys = grep {$wanted_key ne $_} @rkeys;
+
       }
       elsif (my $okey = $section->has_badcasekey($wanted_key)) {
         biber_warn("Possible typo (case mismatch) between citation and datasource keys: '$wanted_key' and '$okey' in file '$filename'");
@@ -289,11 +302,12 @@ sub create_entry {
   my $bibentry = new Biber::Entry;
 
   $bibentry->set_field('citekey', $key);
+  my $ds = $section->get_keytods($key);
 
   if ( $entry->metatype == BTE_REGULAR ) {
 
     # Save pre-mapping data. Might be useful somewhere
-    $bibentry->set_field('rawdata', decode_utf8($entry->print_s));
+    $bibentry->set_field('rawdata', biber_decode_utf8($entry->print_s));
 
     # Datasource mapping applied in $smap order (USER->STYLE->DRIVER)
     foreach my $smap (@$smaps) {
@@ -368,7 +382,7 @@ sub create_entry {
             }
 
             $last_field = $source;
-            $last_fieldval = lc($source) eq 'entrykey' ? decode_utf8($entry->key) : decode_utf8($entry->get(lc($source)));
+            $last_fieldval = lc($source) eq 'entrykey' ? biber_decode_utf8($entry->key) : biber_decode_utf8($entry->get(lc($source)));
 
             # map fields to targets
             if (my $m = $step->{map_match}) {
@@ -419,7 +433,7 @@ sub create_entry {
                   next;
                 }
               }
-              $entry->set(lc($target), decode_utf8($entry->get(lc($source))));
+              $entry->set(lc($target), biber_decode_utf8($entry->get(lc($source))));
               $entry->delete(lc($source));
             }
           }
@@ -449,7 +463,7 @@ sub create_entry {
               }
 
               # If append is set, keep the original value and append the new
-              my $orig = $step->{map_append} ? decode_utf8($entry->get(lc($field))) : '';
+              my $orig = $step->{map_append} ? biber_decode_utf8($entry->get(lc($field))) : '';
 
               if ($step->{map_origentrytype}) {
                 next unless $last_type;
@@ -481,26 +495,23 @@ sub create_entry {
       }
     }
 
-    # Save post-mapping data. This will be the output for tool mode
-    $bibentry->set_field('cookeddata', decode_utf8($entry->print_s));
-
-    # Stop here if in tool mode - we don't need any more processing of the entry
-    if (Biber::Config->getoption('tool')) {
-      $bibentry->set_field('entrytype', $entry->type);
-      $bibentry->set_field('datatype', 'bibtex');
-      $bibentries->add_entry($key, $bibentry);
-      return 1;
-    }
+    my $entrytype = biber_decode_utf8($entry->type);
 
     # We put all the fields we find modulo field aliases into the object
     # validation happens later and is not datasource dependent
     foreach my $f ($entry->fieldlist) {
 
+      # In tool mode, just keep the raw data fields
+      if (Biber::Config->getoption('tool')) {
+        $bibentry->set_rawfield($f, biber_decode_utf8($entry->get($f)));
+        next;
+      }
+
       # We have to process local options as early as possible in order
       # to make them available for things that need them like parsename()
       if ($f eq 'options') {
-        my $value = decode_utf8($entry->get($f));
-        $Biber::MASTER->process_entry_options($key, $value);
+        my $value = biber_decode_utf8($entry->get($f));
+        process_entry_options($key, $value);
         # Save the raw options in case we are to output another input format like
         # biblatexml
         $bibentry->set_field('rawoptions', $value);
@@ -512,13 +523,14 @@ sub create_entry {
         &$handler($bibentry, $entry, $f, $key);
       }
       elsif (Biber::Config->getoption('validate_datamodel')) {
-        biber_warn("Field '$f' invalid in data model for entry '$key' - ignoring", $bibentry);
+        biber_warn("Datamodel: Entry '$key' ($ds): Field '$f' invalid in data model - ignoring", $bibentry);
       }
     }
 
-    $bibentry->set_field('entrytype', $entry->type);
+    $bibentry->set_field('entrytype', $entrytype);
     $bibentry->set_field('datatype', 'bibtex');
     $bibentries->add_entry($key, $bibentry);
+
   }
 
   return 1;
@@ -526,13 +538,13 @@ sub create_entry {
 
 # HANDLERS
 # ========
-
-my $fl_re = qr/\A([^_]+)_?(original|translated|romanised|uniform)?_?(.+)?\z/;
+my $S = Biber::Config->getoption('mssplit');
+my $fl_re = qr/\A([^$S]+)$S?(original|translated|romanised|uniform)?$S?(.+)?\z/;
 
 # Literal fields
 sub _literal {
   my ($bibentry, $entry, $f) = @_;
-  my $value = decode_utf8($entry->get($f));
+  my $value = biber_decode_utf8($entry->get($f));
   my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
   # If we have already split some date fields into literal fields
   # like date -> year/month/day, don't overwrite them with explicit
@@ -553,7 +565,7 @@ sub _literal {
 # URI fields
 sub _uri {
   my ($bibentry, $entry, $f) = @_;
-  my $value = decode_utf8($entry->get($f));
+  my $value = NFC(decode_utf8($entry->get($f)));# Unicode NFC boundary (before hex encoding)
   my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
 
   # If there are some escapes in the URI, unescape them
@@ -561,7 +573,7 @@ sub _uri {
     $value =~ s/\\%/%/g; # just in case someone BibTeX escaped the "%"
     # This is what uri_unescape() does but it's faster
     $value =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/eg;
-    $value = decode_utf8($value);
+    $value = NFC(decode_utf8($value));# Unicode NFC boundary (before hex encoding)
   }
 
   $value = URI->new($value)->as_string;
@@ -573,7 +585,7 @@ sub _uri {
 # Verbatim fields
 sub _verbatim {
   my ($bibentry, $entry, $f) = @_;
-  my $value = decode_utf8($entry->get($f));
+  my $value = biber_decode_utf8($entry->get($f));
   my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
 
   $bibentry->set_datafield($field, $value, $form, $lang);
@@ -584,7 +596,7 @@ sub _verbatim {
 sub _range {
   my ($bibentry, $entry, $f) = @_;
   my $values_ref;
-  my $value = decode_utf8($entry->get($f));
+  my $value = biber_decode_utf8($entry->get($f));
   my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
 
   my @values = split(/\s*[;,]\s*/, $value);
@@ -617,7 +629,7 @@ sub _name {
   my ($bibentry, $entry, $f, $key) = @_;
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
-  my $value = decode_utf8($entry->get($f));
+  my $value = biber_decode_utf8($entry->get($f));
   my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
 
   my @tmp = Text::BibTeX::split_list($value, Biber::Config->getoption('namesep'));
@@ -633,12 +645,12 @@ sub _name {
       next;
     }
 
-    $name = decode_utf8($name);
+    $name = biber_decode_utf8($name);
 
     # Check for malformed names in names which aren't completely escaped
 
     # Too many commas
-    unless ($name =~ m/\A{.+}\z/xms) { # Ignore these tests for escaped names
+    unless ($name =~ m/\A{\X+}\z/xms) { # Ignore these tests for escaped names
       my @commas = $name =~ m/,/g;
       if ($#commas > 1) {
         biber_warn("Name \"$name\" has too many commas: skipping name", $bibentry);
@@ -674,13 +686,12 @@ sub _name {
 # Date fields can't have script forms - they are just a(n ISO) standard format
 sub _date {
   my ($bibentry, $entry, $f, $key) = @_;
-  my ($datetype) = $f =~ m/\A(.*)date\z/xms;
-  my $date = decode_utf8($entry->get($f));
+  my $datetype = $f =~ s/date\z//xmsr;
+  my $date = biber_decode_utf8($entry->get($f));
   my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
-
-  # Just in case we need to look at the original field later
-  # an "orig_field" is not counted as current data in the entry
-  $bibentry->set_orig_field($f, $f);
+  my $secnum = $Biber::MASTER->get_current_section;
+  my $section = $Biber::MASTER->sections->get_section($secnum);
+  my $ds = $section->get_keytods($key);
 
   # We are not validating dates here, just syntax parsing
   my $date_re = qr/(\d{4}) # year
@@ -719,7 +730,7 @@ sub _date {
     }
   }
   else {
-    biber_warn("Invalid format '$date' of date field '$f' in entry '$key' - ignoring", $bibentry);
+    biber_warn("Datamodel: Entry '$key' ($ds): Invalid format '$date' of date field '$f' - ignoring", $bibentry);
   }
   return;
 }
@@ -727,11 +738,11 @@ sub _date {
 # List fields
 sub _list {
   my ($bibentry, $entry, $f) = @_;
-  my $value = decode_utf8($entry->get($f));
+  my $value = biber_decode_utf8($entry->get($f));
   my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
 
   my @tmp = Text::BibTeX::split_list($value, Biber::Config->getoption('listsep'));
-  @tmp = map { decode_utf8($_) } @tmp;
+  @tmp = map { biber_decode_utf8($_) } @tmp;
   @tmp = map { remove_outer($_) } @tmp;
   $bibentry->set_datafield($field, [ @tmp ], $form, $lang);
   return;
@@ -765,7 +776,7 @@ sub cache_data {
 
   while ( my $entry = new Text::BibTeX::Entry $bib ) {
     if ( $entry->metatype == BTE_PREAMBLE ) {
-      push @{$cache->{preamble}{$filename}}, decode_utf8($entry->value);
+      push @{$cache->{preamble}{$filename}}, biber_decode_utf8($entry->value);
       next;
     }
 
@@ -781,7 +792,7 @@ sub cache_data {
     }
 
     # Text::BibTeX >= 0.46 passes through all citekey bits, thus allowing utf8 keys
-    my $key = decode_utf8($entry->key);
+    my $key = biber_decode_utf8($entry->key);
 
     # Check if this key has already been registered as a citekey alias, if
     # so, the key takes priority and we delete the alias
@@ -794,7 +805,7 @@ sub cache_data {
     # We can't do this with a driver entry for the IDS field as this needs
     # an entry object creating first and the whole point of aliases is that
     # there is no entry object
-    if (my $ids = decode_utf8($entry->get('ids'))) {
+    if (my $ids = biber_decode_utf8($entry->get('ids'))) {
       foreach my $id (split(/\s*,\s*/, $ids)) {
 
         # Skip aliases which are also real entry keys
@@ -861,8 +872,6 @@ sub cache_data {
 
 sub preprocess_file {
   my $filename = shift;
-  my $secnum = $Biber::MASTER->get_current_section;
-  my $section = $Biber::MASTER->sections->get_section($secnum);
 
   # Put the utf8 encoded file into the global biber tempdir
   # We have to do this in case we can't write to the location of the
@@ -890,7 +899,8 @@ sub preprocess_file {
     $logger->trace("Buffer before decoding -> '$buf'");
     $buf = Biber::LaTeX::Recode::latex_decode($buf, strip_outer_braces => 1);
     $logger->trace("Buffer after decoding -> '$buf'");
-    File::Slurp::Unicode::write_file($ufilename, {encoding => 'UTF-8'}, $buf)
+    # Even though we will just read this file again, let's treat it as a proper Unicode NFC boundary
+    File::Slurp::Unicode::write_file($ufilename, {encoding => 'UTF-8'}, NFC($buf))
         or biber_error("Can't write $ufilename");
   }
 
@@ -924,7 +934,7 @@ sub preprocess_file {
 =cut
 
 sub parsename {
-  my ($namestr, $fieldname, $opts) = @_;
+  my ($namestr, $fieldname, $opts, $testing) = @_;
   $logger->debug("Parsing namestring '$namestr'");
   my $usepre = $opts->{useprefix};
   # First sanitise the namestring due to Text::BibTeX::Name limitations on whitespace
@@ -950,10 +960,10 @@ sub parsename {
   $s_f->set_options(BTN_JR,    0, BTJ_MAYTIE, BTJ_NOTHING);
 
   # Generate name parts
-  my $lastname  = decode_utf8($name->format($l_f));
-  my $firstname = decode_utf8($name->format($f_f));
-  my $prefix    = decode_utf8($name->format($p_f));
-  my $suffix    = decode_utf8($name->format($s_f));
+  my $lastname  = biber_decode_utf8($name->format($l_f));
+  my $firstname = biber_decode_utf8($name->format($f_f));
+  my $prefix    = biber_decode_utf8($name->format($p_f));
+  my $suffix    = biber_decode_utf8($name->format($s_f));
 
   # Skip the name if we can't determine last name - otherwise many other things will
   # fail later
@@ -972,7 +982,13 @@ sub parsename {
   # initials, we do so without certain things. This is easier than trying
   # hack robust initials code into btparse ...
   my $nd_namestr = strip_noinit($namestr);
-  my $nd_name = new Text::BibTeX::Name($nd_namestr, $fieldname);
+
+  # Make initials with ties in between work. btparse doesn't understand this so replace with
+  # spaces - this is fine as we are just generating initials
+  $nd_namestr =~ s/(\w)\.~(\w)/$1. $2/g;
+
+  # We use NFC here as we are "outputting" to an external module
+  my $nd_name = new Text::BibTeX::Name(NFC($nd_namestr), $fieldname);
 
   # Initials formats
   my $li_f = new Text::BibTeX::NameFormat('l', 1);
@@ -990,10 +1006,10 @@ sub parsename {
   $pi_f->set_options(BTN_VON,   1, BTJ_FORCETIE, BTJ_NOTHING);
   $si_f->set_options(BTN_JR,    1, BTJ_FORCETIE, BTJ_NOTHING);
 
-  $gen_lastname_i    = inits(decode_utf8($nd_name->format($li_f)));
-  $gen_firstname_i   = inits(decode_utf8($nd_name->format($fi_f)));
-  $gen_prefix_i      = inits(decode_utf8($nd_name->format($pi_f)));
-  $gen_suffix_i      = inits(decode_utf8($nd_name->format($si_f)));
+  $gen_lastname_i    = inits(biber_decode_utf8($nd_name->format($li_f)));
+  $gen_firstname_i   = inits(biber_decode_utf8($nd_name->format($fi_f)));
+  $gen_prefix_i      = inits(biber_decode_utf8($nd_name->format($pi_f)));
+  $gen_suffix_i      = inits(biber_decode_utf8($nd_name->format($si_f)));
 
   my $namestring = '';
   # prefix
@@ -1051,6 +1067,32 @@ sub parsename {
   $nameinitstr =~ s/\s+/_/g;
   $nameinitstr =~ s/~/_/g;
 
+  # output is always NFC and so when testing the output of this routine, need NFC
+  if ($testing) {
+    if ($firstname) {
+      $firstname_stripped = NFC($firstname_stripped);
+      $firstname_i        = [ map {NFC($_)} @$firstname_i ];
+    }
+    if ($lastname) {
+      $lastname_stripped  = NFC($lastname_stripped);
+      $lastname_i         = [ map {NFC($_)} @$lastname_i ];
+    }
+    if ($prefix) {
+      $prefix_stripped    = NFC($prefix_stripped);
+      $prefix_i           = [ map {NFC($_)} @$prefix_i ];
+    }
+    if ($suffix) {
+      $suffix_stripped    = NFC($suffix_stripped);
+      $suffix_i           = [ map {NFC($_)} @$suffix_i ];
+    }
+    if ($namestring) {
+      $namestring = NFC($namestring);
+    }
+    if ($nameinitstr) {
+      $nameinitstr = NFC($nameinitstr);
+    }
+  }
+
   # The "strip" entry tells us which of the name parts had outer braces
   # stripped during processing so we can add them back when printing the
   # .bbl so as to maintain maximum BibTeX compatibility
@@ -1092,7 +1134,7 @@ my %months = (
 sub _hack_month {
   my $in_month = shift;
   if ($in_month =~ m/\A\s*((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).*)\s*\z/i) {
-    return $months{lc(substr($1,0,3))};
+    return $months{lc(Unicode::GCString->new($1)->substr(0,3)->as_string)};
   }
   else {
     return $in_month;
@@ -1101,7 +1143,8 @@ sub _hack_month {
 
 sub _get_handler {
   my $field = shift;
-  $field =~ s/_(?:original|translated|romanised|uniform)_?.*$//;
+  my $S = Biber::Config->getoption('mssplit');
+  $field =~ s/$S(?:original|translated|romanised|uniform)$S?.*$//;
   if (my $h = $handlers->{CUSTOM}{$field}) {
     return $h;
   }

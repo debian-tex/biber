@@ -1,5 +1,5 @@
 package Biber::Input::file::biblatexml;
-use 5.014000;
+use v5.16;
 use strict;
 use warnings;
 use base 'Exporter';
@@ -17,6 +17,7 @@ use Biber::Utils;
 use Biber::Config;
 use Encode;
 use File::Spec;
+use File::Slurp::Unicode;
 use File::Temp;
 use Log::Log4perl qw(:no_extra_logdie_message);
 use List::AllUtils qw( uniq );
@@ -24,6 +25,8 @@ use XML::LibXML;
 use XML::LibXML::Simple;
 use Readonly;
 use Data::Dump qw(dump);
+use Unicode::Normalize;
+use Unicode::GCString;
 use URI;
 
 my $logger = Log::Log4perl::get_logger('main');
@@ -119,8 +122,8 @@ sub extract_entries {
 
   # Set up XML parser and namespace
   my $parser = XML::LibXML->new();
-  my $bltxml = $parser->parse_file($filename)
-    or biber_error("Can't parse file $filename");
+  my $xml = File::Slurp::Unicode::read_file($filename, encoding => 'UTF-8') or biber_error("Can't parse file $filename");
+  my $bltxml = $parser->parse_string(NFD($xml));# Unicode NFD boundary
   my $xpc = XML::LibXML::XPathContext->new($bltxml);
   $xpc->registerNs($NS, $BIBLATEXML_NAMESPACE_URI);
 
@@ -187,6 +190,9 @@ sub extract_entries {
         $section->add_everykey($key);
       }
 
+      # Record a key->datasource name mapping for error reporting
+      $section->set_keytods($key, $filename);
+
       create_entry($key, $entry);
 
       # We do this as otherwise we have no way of determining the origing .bib entry order
@@ -198,7 +204,7 @@ sub extract_entries {
 
     # if allkeys, push all bibdata keys into citekeys (if they are not already there)
     # We are using the special "orig_key_order" array which is used to deal with the
-    # sitiation when sorting=non and allkeys is set. We need an array rather than the
+    # situation when sorting=non and allkeys is set. We need an array rather than the
     # keys from the bibentries hash because we need to preserver the original order of
     # the .bib as in this case the sorting sub "citeorder" means "bib order" as there are
     # no explicitly cited keys
@@ -224,6 +230,10 @@ sub extract_entries {
         # passed to create_entry()
         # Skip creation if it's already been done, for example, via a citekey alias
         unless ($section->bibentries->entry_exists($wanted_key)) {
+
+          # Record a key->datasource name mapping for error reporting
+          $section->set_keytods($wanted_key, $filename);
+
           create_entry($wanted_key, $entry);
         }
         # found a key, remove it from the list of keys we want
@@ -238,6 +248,10 @@ sub extract_entries {
         # just in case only the alias is cited
         unless ($section->bibentries->entry_exists($key)) {
           my $entry = $xpc->findnodes("//$NS:entry/[\@id='$key']");
+
+          # Record a key->datasource name mapping for error reporting
+          $section->set_keytods($key, $filename);
+
           create_entry($key, $entry);
           $section->add_citekeys($key);
         }
@@ -283,7 +297,7 @@ sub create_entry {
     # to make them available for things that need them like name parsing
     if (_norm($entry->nodeName) eq 'options') {
       if (my $node = $entry->findnodes("./$NS:options")->get_node(1)) {
-        $Biber::MASTER->process_entry_options($key, $node->textContent());
+        process_entry_options($key, $node->textContent());
         # Save the raw options in case we are to output another input format like
         # biblatexml
         $bibentry->set_field('rawoptions', $node->textContent());
@@ -420,6 +434,9 @@ sub _range {
 # Can't have form/lang - they are a(n ISO) standard format
 sub _date {
   my ($bibentry, $entry, $f, $key) = @_;
+  my $secnum = $Biber::MASTER->get_current_section;
+  my $section = $Biber::MASTER->sections->get_section($secnum);
+  my $ds = $section->get_keytods($key);
   foreach my $node ($entry->findnodes("./$f")) {
     my $datetype = $node->getAttribute('datetype') // '';
     # We are not validating dates here, just syntax parsing
@@ -437,7 +454,7 @@ sub _date {
         $bibentry->set_datafield($datetype . 'day', $bday)        if $bday;
       }
       else {
-        biber_warn("Invalid format '" . $start->get_node(1)->textContent() . "' of date field '$f' range start in entry '$key' - ignoring", $bibentry);
+        biber_warn("Datamodel: Entry '$key' ($ds): Invalid format '" . $start->get_node(1)->textContent() . "' of date field '$f' range start - ignoring", $bibentry);
       }
 
       # End of range
@@ -453,7 +470,7 @@ sub _date {
         }
       }
       else {
-        biber_warn("Invalid format '" . $end->get_node(1)->textContent() . "' of date field '$f' range end in entry '$key' - ignoring", $bibentry);
+        biber_warn("Datamodel: Entry '$key' ($ds): Invalid format '" . $end->get_node(1)->textContent() . "' of date field '$f' range end - ignoring", $bibentry);
       }
     }
     else { # Simple date
@@ -469,7 +486,7 @@ sub _date {
         $bibentry->set_datafield($datetype . 'day', $bday)        if $bday;
       }
       else {
-        biber_warn("Invalid format '" . $node->textContent() . "' of date field '$f' in entry '$key' - ignoring", $bibentry);
+        biber_warn("Datamodel: Entry '$key' ($ds): Invalid format '" . $node->textContent() . "' of date field '$f' - ignoring", $bibentry);
       }
     }
   }
@@ -644,7 +661,7 @@ sub _join_name_parts {
     return $parts->[0] . '~' . $parts->[1];
   }
   my $namestring = $parts->[0];
-  $namestring .= length($parts->[0]) < 3 ? '~' : ' ';
+  $namestring .= Unicode::GCString->new($parts->[0])->length < 3 ? '~' : ' ';
   $namestring .= join(' ', @$parts[1 .. ($#{$parts} - 1)]);
   $namestring .= '~' . $parts->[$#{$parts}];
   return $namestring;
@@ -661,10 +678,10 @@ sub _gen_initials {
       push @strings_out, join('-', _gen_initials(split(/\p{Dash}/, $str)));
     }
     else {
-      my $chr = substr($str, 0, 1);
+      my $chr = Unicode::GCString->new($str)->substr(0, 1)->as_string;
       # Keep diacritics with their following characters
       if ($chr =~ m/\p{Dia}/) {
-        push @strings_out, substr($str, 0, 2);
+        push @strings_out, Unicode::GCString->new($str)->substr(0, 2)->as_string;
       }
       else {
         push @strings_out, $chr;
