@@ -4,13 +4,15 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 110;
+use Test::More tests => 113;
 
 use Biber;
 use Biber::Utils;
 use Biber::Output::bbl;
 use Log::Log4perl;
+use Unicode::Normalize;
 chdir("t/tdata");
+
 
 # Set up Biber object
 my $biber = Biber->new(noconf => 1);
@@ -39,7 +41,7 @@ Biber::Config->setoption('sortlocale', 'C');
 # Biblatex options
 Biber::Config->setblxoption('maxalphanames', 1);
 Biber::Config->setblxoption('maxcitenames', 1);
-Biber::Config->setblxoption('labelyear', undef);
+Biber::Config->setblxoption('labeldate', undef);
 
 # Now generate the information
 $biber->prepare;
@@ -180,7 +182,7 @@ Biber::Config->setblxoption('minalphanames', 4);
 Biber::Config->setblxoption('maxcitenames', 4);
 Biber::Config->setblxoption('mincitenames', 4);
 Biber::Config->setblxoption('labelalpha', 1);
-Biber::Config->setblxoption('labelyear', 1);
+Biber::Config->setblxoption('labeldate', 1);
 
 foreach my $k ($section->get_citekeys) {
   $bibentries->entry($k)->del_field('sortlabelalpha');
@@ -284,7 +286,7 @@ is($bibentries->entry('L22')->get_field('sortlabelalpha'), 'BCE', 'labelalpha li
 is($bibentries->entry('L24')->get_field('sortlabelalpha'), 'Z', 'labelalpha list disambiguation 6');
 is($bibentries->entry('L25')->get_field('sortlabelalpha'), 'ZX', 'labelalpha list disambiguation 7');
 is($bibentries->entry('L26')->get_field('sortlabelalpha'), 'ZX', 'labelalpha list disambiguation 8');
-is($bibentries->entry('title1')->get_field('sortlabelalpha'), 'Tït', 'Title in braces with UTF-8 char - 1');
+is(NFC($bibentries->entry('title1')->get_field('sortlabelalpha')), 'Tït', 'Title in braces with UTF-8 char - 1');
 
 # reset options and regenerate information
 Biber::Config->setblxoption('maxalphanames', 3);
@@ -368,6 +370,51 @@ $main = $biber->sortlists->get_list(0, 'entry', 'nty');
 $bibentries = $section->bibentries;
 
 is($bibentries->entry('Schmidt2007')->get_field('sortlabelalpha'), 'SCH', 'entrykey label 1');
+
+Biber::Config->setblxoption('labelalphatemplate', {
+  labelelement => [
+             {
+               labelpart => [
+                 {
+                  content         => "labelyear",
+                 }
+               ],
+              order => 1,
+             },
+             {
+               labelpart => [
+                 {
+                  content         => "labelmonth",
+                 }
+               ],
+              order => 2,
+             },
+             {
+               labelpart => [
+                 {
+                  content         => "labelday",
+                 }
+               ],
+              order => 3,
+             }
+           ],
+  type  => "global",
+});
+
+foreach my $k ($section->get_citekeys) {
+  $bibentries->entry($k)->del_field('sortlabelalpha');
+  $bibentries->entry($k)->del_field('labelalpha');
+  $main->set_extraalphadata_for_key($k, undef);
+}
+
+$biber->prepare;
+$section = $biber->sections->get_section(0);
+$main = $biber->sortlists->get_list(0, 'entry', 'nty');
+$bibentries = $section->bibentries;
+
+is($bibentries->entry('labelstest')->get_field('sortlabelalpha'), '20050302', 'labeldate test - 1');
+is($bibentries->entry('padtest')->get_field('labelalpha'), '\&Al\_\_{\textasciitilde}{\textasciitilde}T07', 'pad test - 1');
+is($bibentries->entry('padtest')->get_field('sortlabelalpha'), '&Al__~~T07', 'pad test - 2');
 
 
 

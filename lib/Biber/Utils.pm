@@ -1,5 +1,5 @@
 package Biber::Utils;
-use 5.014000;
+use v5.16;
 use strict;
 use warnings;
 use re 'eval';
@@ -21,6 +21,7 @@ use Biber::LaTeX::Recode;
 use Biber::Entry::Name;
 use Regexp::Common qw( balanced );
 use Log::Log4perl qw(:no_extra_logdie_message);
+use Unicode::Normalize;
 my $logger = Log::Log4perl::get_logger('main');
 
 =encoding utf-8
@@ -42,7 +43,8 @@ our @EXPORT = qw{ locate_biber_file driver_config makenamesid makenameid stringi
   normalise_string_label reduce_array remove_outer add_outer ucinit strip_nosort strip_noinit
   is_def is_undef is_def_and_notnull is_def_and_null
   is_undef_or_null is_notnull is_null normalise_utf8 inits join_name latex_recode_output
-  filter_entry_options biber_error biber_warn ireplace imatch validate_biber_xml };
+  filter_entry_options biber_error biber_warn ireplace imatch validate_biber_xml
+  process_entry_options escape_label unescape_label biber_decode_utf8 out};
 
 =head1 FUNCTIONS
 
@@ -266,7 +268,7 @@ sub strip_nosort {
   my $restrings;
   foreach my $nsopt (@$nosort) {
     # Specific fieldnames override types
-    if (lc($nsopt->{name}) eq lc($fieldname)) {
+    if (fc($nsopt->{name}) eq fc($fieldname)) {
       push @$restrings, $nsopt->{value};
     }
   }
@@ -305,8 +307,7 @@ sub normalise_string_label {
   # Don't bother if output is UTF-8 as in this case, we've already decoded everthing
   # before we read the file (see Biber.pm)
   unless (Biber::Config->getoption('output_encoding') eq 'UTF-8') {
-    $str = latex_decode($str, strip_outer_braces => 1,
-                              scheme => Biber::Config->getoption('decodecharsset'));
+    $str = latex_decode($str, strip_outer_braces => 1);
   }
   return normalise_string_common($str);
 }
@@ -333,8 +334,7 @@ sub normalise_string_sort {
   # Don't bother if output is UTF-8 as in this case, we've already decoded everthing
   # before we read the file (see Biber.pm)
   unless (Biber::Config->getoption('output_encoding') eq 'UTF-8') {
-    $str = latex_decode($str, strip_outer_braces => 1,
-                              scheme => Biber::Config->getoption('decodecharsset'));
+    $str = latex_decode($str, strip_outer_braces => 1);
   }
   return normalise_string_common($str);
 }
@@ -353,8 +353,7 @@ sub normalise_string {
   # First replace ties with spaces or they will be lost
   $str =~ s/([^\\])~/$1 /g; # Foo~Bar -> Foo Bar
   if (Biber::Config->getoption('output_encoding') eq 'UTF-8') {
-    $str = latex_decode($str, strip_outer_braces => 1,
-                              scheme => Biber::Config->getoption('decodecharsset'));
+    $str = latex_decode($str, strip_outer_braces => 1);
   }
   return normalise_string_common($str);
 }
@@ -401,7 +400,7 @@ sub normalise_string_hash {
 
 =head2 normalise_string_underscore
 
-Like normalise_string, but also substitutes ~ and whitespace with underscore.
+  Like normalise_string, but also substitutes ~ and whitespace with underscore.
 
 =cut
 
@@ -411,6 +410,39 @@ sub normalise_string_underscore {
   $str =~ s/([^\\])~/$1 /g; # Foo~Bar -> Foo Bar
   $str = normalise_string($str);
   $str =~ s/\s+/_/g;
+  return $str;
+}
+
+=head2 escape_label
+
+  Escapes a few special character which might be used in labels
+
+=cut
+
+sub escape_label {
+  my $str = shift;
+  return '' unless $str; # Sanitise missing data
+  $str =~ s/([_\^\$\#\%\&])/\\$1/g;
+  $str =~ s/~/{\\textasciitilde}/g;
+  $str =~ s/>/{\\textgreater}/g;
+  $str =~ s/</{\\textless}/g;
+  return $str;
+}
+
+=head2 unescape_label
+
+  Unscapes a few special character which might be used in label but which need
+  sorting without escapes
+
+=cut
+
+sub unescape_label {
+  my $str = shift;
+  return '' unless $str; # Sanitise missing data
+  $str =~ s/\\([_\^\$\~\#\%\&])/$1/g;
+  $str =~ s/\{\\textasciitilde\}/~/g;
+  $str =~ s/\{\\textgreater\}/>/g;
+  $str =~ s/\{\\textless\}/</g;
   return $str;
 }
 
@@ -442,7 +474,7 @@ sub reduce_array {
 
 sub remove_outer {
   my $str = shift;
-  $str =~ s/^{(.+)}$/$1/;
+  $str =~ s/^{(\X+)}$/$1/;
   return $str;
 }
 
@@ -841,6 +873,88 @@ sub validate_biber_xml {
   }
   undef $xmlparser;
 }
+
+=head2 process_entry_options
+
+    Set per-entry options
+
+=cut
+
+sub process_entry_options {
+  my $citekey = shift;
+  my $options = shift;
+  return unless $options;       # Just in case it's null
+  my @entryoptions = split /\s*,\s*/, $options;
+  foreach (@entryoptions) {
+    s/\s+=\s+/=/g; # get rid of spaces around any "="
+    m/^([^=]+)(=?)(.+)?$/;
+    my $val;
+    if ($2) {
+      given ($3) {
+        when ('true') {
+          $val = 1;
+        }
+        when ('false') {
+          $val = 0;
+        }
+        default {
+          $val = $3;
+        }
+      }
+      _expand_option($1, $val, $citekey);
+    }
+    else {
+      _expand_option($1, 1, $citekey);
+    }
+  }
+  return;
+}
+
+=head2 biber_decode_utf8
+
+    Perform NFD form conversion as well as UTF-8 conversion. Used to normalize
+    bibtex input as the T::B interface doesn't allow a neat whole file slurping.
+
+=cut
+
+sub biber_decode_utf8 {
+  return NFD(decode_utf8(shift));# Unicode NFD boundary
+}
+
+=head2 out
+
+  Output to target. Outputs NFC UTF-8 if output is UTF-8
+
+=cut
+
+sub out {
+  my ($fh, $string) = @_;
+  print $fh NFC($string);# Unicode NFC boundary
+}
+
+sub _expand_option {
+  my ($opt, $val, $citekey) = @_;
+  given ($CONFIG_BIBLATEX_PER_ENTRY_OPTIONS{lc($1)}{INPUT}) {
+    # Standard option
+    when (not defined($_)) {
+      Biber::Config->setblxoption($opt, $val, 'PER_ENTRY', $citekey);
+    }
+    # Set all split options to same value as parent
+    when (ref($_) eq 'ARRAY') {
+      foreach my $k (@$_) {
+        Biber::Config->setblxoption($k, $val, 'PER_ENTRY', $citekey);
+      }
+    }
+    # Specify values per all splits
+    when (ref($_) eq 'HASH') {
+      foreach my $k (keys %$_) {
+        Biber::Config->setblxoption($k, $_->{$k}, 'PER_ENTRY', $citekey);
+      }
+    }
+  }
+  return;
+}
+
 
 1;
 

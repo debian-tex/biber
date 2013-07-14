@@ -1,5 +1,5 @@
 package Biber::Input::file::ris;
-use 5.014000;
+use v5.16;
 use strict;
 use warnings;
 use base 'Exporter';
@@ -23,6 +23,8 @@ use List::AllUtils qw( :all );
 use XML::LibXML::Simple;
 use Readonly;
 use Data::Dump qw(dump);
+use Unicode::Normalize;
+use Unicode::GCString;
 use URI;
 
 my $logger = Log::Log4perl::get_logger('main');
@@ -138,6 +140,9 @@ sub extract_entries {
   my @ris_entries;
   my $last_tag;
   while(<$ris>) {
+    if (Biber::Config->getoption('input_encoding') eq 'UTF-8') {
+      $_ = NFD($_);# Unicode NFD boundary
+    }
     if (m/\A([A-Z][A-Z0-9])\s\s\-\s*(.+)?\n\z/xms) {
       $last_tag = $1;
       given ($1) {
@@ -194,12 +199,15 @@ sub extract_entries {
       # "citeorder" because nothing is explicitly cited and so "citeorder" means .bib order
       push @{$orig_key_order->{$filename}}, $ek;
 
+      # Record a key->datasource name mapping for error reporting
+      $section->set_keytods($ek, $filename);
+
       create_entry($ek, $entry, $source, $smaps);
     }
 
     # if allkeys, push all bibdata keys into citekeys (if they are not already there)
     # We are using the special "orig_key_order" array which is used to deal with the
-    # sitiation when sorting=non and allkeys is set. We need an array rather than the
+    # situation when sorting=non and allkeys is set. We need an array rather than the
     # keys from the bibentries hash because we need to preserver the original order of
     # the .bib as in this case the sorting sub "citeorder" means "bib order" as there are
     # no explicitly cited keys
@@ -220,6 +228,10 @@ sub extract_entries {
 
         $logger->debug("Found key '$wanted_key' in RIS file '$filename'");
         $logger->debug('Parsing RIS entry object ' . $entry->{ID});
+
+        # Record a key->datasource name mapping for error reporting
+        $section->set_keytods($wanted_key, $filename);
+
         # See comment above about the importance of the case of the key
         # passed to create_entry()
         create_entry($wanted_key, $entry, $source, $smaps);
@@ -432,7 +444,7 @@ sub create_entry {
     # Now run any defined handler
     if ($dm->is_field($f)) {
       my $handler = _get_handler($f);
-      &$handler($bibentry, $entry, $f, );
+      &$handler($bibentry, $entry, $f);
     }
   }
 
@@ -488,6 +500,10 @@ sub _range {
 # Date fields
 sub _date {
   my ($bibentry, $entry, $f) = @_;
+  my $secnum = $Biber::MASTER->get_current_section;
+  my $section = $Biber::MASTER->sections->get_section($secnum);
+  my $key = $bibentry->get_field('citekey');
+  my $ds = $section->get_keytods($key);
   my $date = $entry->{$f};
   if ($date =~ m|\A([0-9]{4})/([0-9]{2})/([0-9]{2})\s*\z|xms) {
     $bibentry->set_datafield('year', $1);
@@ -498,7 +514,7 @@ sub _date {
     $bibentry->set_datafield('year', $1);
   }
   else {
-    biber_warn("Invalid RIS date format: '$date' - ignoring");
+    biber_warn("Datamodel: Entry '$key' ($ds): Invalid RIS date format: '$date' - ignoring");
   }
   return;
 }
@@ -508,6 +524,10 @@ sub _name {
   my ($bibentry, $entry, $f) = @_;
   my $names = $entry->{$f};
   my $names_obj = new Biber::Entry::Names;
+  my $secnum = $Biber::MASTER->get_current_section;
+  my $section = $Biber::MASTER->sections->get_section($secnum);
+  my $key = $bibentry->get_field('citekey');
+  my $ds = $section->get_keytods($bibentry->get_field('citekey'));
   foreach my $name (@$names) {
     $logger->debug('Parsing RIS name');
     if ($name =~ m|\A([^,]+)\s*,?\s*([^,]+)?\s*,?\s*([^,]+)?\z|xms) {
@@ -565,7 +585,7 @@ sub _name {
       }
     }
     else {
-      biber_warn("Invalid RIS name format: '$name' - ignoring");
+      biber_warn("Datamodel: Entry '$key' ($ds): Invalid RIS name format: '$name' - ignoring");
     }
   }
   return;
@@ -587,7 +607,7 @@ sub _join_name_parts {
     return $parts[0] . '~' . $parts[1];
   }
   my $namestring = $parts[0];
-  $namestring .= length($parts[0]) < 3 ? '~' : ' ';
+  $namestring .= Unicode::GCString->new($parts[0])->length < 3 ? '~' : ' ';
   $namestring .= join(' ', @parts[1 .. ($#parts - 1)]);
   $namestring .= '~' . $parts[$#parts];
   return $namestring;
@@ -607,10 +627,10 @@ sub _gen_initials {
       push @strings_out, _gen_initials(split(/\s+/, $str));
     }
     else {
-      my $chr = substr($str, 0, 1);
+      my $chr = Unicode::GCString->new($str)->substr(0, 1)->as_string;
       # Keep diacritics with their following characters
       if ($chr =~ m/\p{Dia}/) {
-        push @strings_out, substr($str, 0, 2);
+        push @strings_out, Unicode::GCString->new($str)->substr(0, 2)->as_string;
       }
       else {
         push @strings_out, $chr;

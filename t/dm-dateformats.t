@@ -38,7 +38,7 @@ Biber::Config->setoption('sortlocale', 'C');
 Biber::Config->setoption('validate_datamodel', 1);
 
 # Biblatex options
-Biber::Config->setblxoption('labelyearspec', [ {content => 'year'} ]);
+Biber::Config->setblxoption('labeldatespec', [ {content => 'date', type => 'field'} ]);
 
 # Now generate the information
 $biber->prepare;
@@ -46,17 +46,17 @@ my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
 my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
 my $bibentries = $section->bibentries;
-my $l1 = [ "Invalid format '1985-1030' of date field 'origdate' in entry 'L1' - ignoring",
-           "Invalid format '1.5.1998' of date field 'urldate' in entry 'L1' - ignoring",
-           "Invalid date value 'YYYY/14/DD' - ignoring its components in entry 'L1'" ];
-my $l2 = [ "Invalid format '1995-1230' of date field 'origdate' in entry 'L2' - ignoring" ];
-my $l3 = [ "Invalid format '1.5.1988' of date field 'urldate' in entry 'L3' - ignoring" ];
-my $l4 = [ "Invalid format '1995-1-04' of date field 'date' in entry 'L4' - ignoring",
-           "Missing mandatory field - one of 'date, year' must be defined in entry 'L4'" ];
-my $l5 = [ "Invalid format '1995-10-4' of date field 'date' in entry 'L5' - ignoring",
-           "Missing mandatory field - one of 'date, year' must be defined in entry 'L5'" ];
-my $l6 = [ "Invalid date value '1996/13/03' - ignoring its components in entry 'L6'" ];
-my $l7 = [ "Invalid date value '1996/10/35' - ignoring its components in entry 'L7'" ];
+my $l1 = [ "Datamodel: Entry 'L1' (dm-dateformats.bib): Invalid format '1985-1030' of date field 'origdate' - ignoring",
+           "Datamodel: Entry 'L1' (dm-dateformats.bib): Invalid format '1.5.1998' of date field 'urldate' - ignoring",
+           "Datamodel: Entry 'L1' (dm-dateformats.bib): Invalid date value 'YYYY/14/DD' - ignoring its components" ];
+my $l2 = [ "Datamodel: Entry 'L2' (dm-dateformats.bib): Invalid format '1995-1230' of date field 'origdate' - ignoring" ];
+my $l3 = [ "Datamodel: Entry 'L3' (dm-dateformats.bib): Invalid format '1.5.1988' of date field 'urldate' - ignoring" ];
+my $l4 = [ "Datamodel: Entry 'L4' (dm-dateformats.bib): Invalid format '1995-1-04' of date field 'date' - ignoring",
+           "Datamodel: Entry 'L4' (dm-dateformats.bib): Missing mandatory field - one of 'date, year' must be defined" ];
+my $l5 = [ "Datamodel: Entry 'L5' (dm-dateformats.bib): Invalid format '1995-10-4' of date field 'date' - ignoring",
+           "Datamodel: Entry 'L5' (dm-dateformats.bib): Missing mandatory field - one of 'date, year' must be defined" ];
+my $l6 = [ "Datamodel: Entry 'L6' (dm-dateformats.bib): Invalid date value '1996/13/03' - ignoring its components" ];
+my $l7 = [ "Datamodel: Entry 'L7' (dm-dateformats.bib): Invalid date value '1996/10/35' - ignoring its components" ];
 my $l11 = [ "Overwriting field 'year' with year value from field 'date' for entry 'L11'"];
 my $l12 = [ "Overwriting field 'month' with month value from field 'date' for entry 'L12'" ];
 
@@ -77,6 +77,8 @@ my $l13c = q|    \entry{L13}{book}{}
       \field{sortinit}{D}
       \field{extrayear}{3}
       \field{labelyear}{1996}
+      \field{labelmonth}{01}
+      \field{labelday}{01}
       \field{labeltitle}{Title 2}
       \field{day}{01}
       \field{endyear}{}
@@ -103,6 +105,8 @@ my $l14 = q|    \entry{L14}{book}{}
       \field{sortinit}{D}
       \field{extrayear}{4}
       \field{labelyear}{1996}
+      \field{labelmonth}{12}
+      \field{labelday}{10\bibdatedash 12}
       \field{labeltitle}{Title 2}
       \field{day}{10}
       \field{endday}{12}
@@ -132,7 +136,7 @@ my $l15 = q|    \entry{L15}{book}{}
       \field{extrayear}{4}
       \field{labeltitle}{Title 2}
       \field{title}{Title 2}
-      \warn{\item Missing mandatory field - one of 'date, year' must be defined in entry 'L15'}
+      \warn{\item Datamodel: Entry 'L15' (dm-dateformats.bib): Missing mandatory field - one of 'date, year' must be defined}
     \endentry
 |;
 
@@ -153,12 +157,14 @@ my $l16 = q|    \entry{L16}{proceedings}{}
       \field{sortinit}{D}
       \field{extrayear}{6}
       \field{labelyear}{1996}
+      \field{labelmonth}{01}
+      \field{labelday}{01}
       \field{labeltitle}{Title 2}
       \field{eventday}{01}
       \field{eventmonth}{01}
       \field{eventyear}{1996}
       \field{title}{Title 2}
-      \warn{\item Missing mandatory field - one of 'date, year' must be defined in entry 'L16'}
+      \warn{\item Datamodel: Entry 'L16' (dm-dateformats.bib): Missing mandatory field - one of 'date, year' must be defined}
     \endentry
 |;
 
@@ -179,6 +185,8 @@ my $l17 = q|    \entry{L17}{proceedings}{}
       \field{sortinit}{D}
       \field{extrayear}{5}
       \field{labelyear}{1996}
+      \field{labelmonth}{12}
+      \field{labelday}{10\bibdatedash 12}
       \field{labeltitle}{Title 2}
       \field{day}{10}
       \field{endday}{12}
@@ -218,6 +226,8 @@ my $l17c = q|    \entry{L17}{proceedings}{}
       \strng{fullhash}{8c77336299b25bdada7bf8038f46722f}
       \field{sortinit}{D}
       \field{labelyear}{1998}
+      \field{labelmonth}{12}
+      \field{labelday}{10\bibdatedash 12}
       \field{labeltitle}{Title 2}
       \field{day}{10}
       \field{endday}{12}
@@ -257,6 +267,8 @@ my $l17e = q|    \entry{L17}{proceedings}{}
       \strng{fullhash}{8c77336299b25bdada7bf8038f46722f}
       \field{sortinit}{D}
       \field{labelyear}{1998\bibdatedash 2004}
+      \field{labelmonth}{12}
+      \field{labelday}{10\bibdatedash 12}
       \field{labeltitle}{Title 2}
       \field{day}{10}
       \field{endday}{12}
@@ -306,38 +318,38 @@ is( $out->get_output_entry('L14', $main), $l14, 'Date values test 14 - labelyear
 is( $out->get_output_entry('L15', $main), $l15, 'Date values test 15 - labelyear should be undef, no DATE or YEAR') ;
 
 # reset options and regenerate information
-Biber::Config->setblxoption('labelyearspec', [ {content => 'year'},
-                                               {content => 'eventyear'},
-                                               {content => 'origyear'} ]);
+Biber::Config->setblxoption('labeldatespec', [ {content => 'date', type => 'field'},
+                                               {content => 'eventdate', type => 'field'},
+                                               {content => 'origdate', type => 'field'} ]);
 $bibentries->del_entry('L17');
 $bibentries->del_entry('L16');
 $biber->prepare;
 $out = $biber->get_output_obj;
 
-is($bibentries->entry('L16')->get_labelyear_info->{field}, 'eventyear', 'Date values test 16 - labelyearname = eventyear when YEAR is (mistakenly) missing' ) ;
+is($bibentries->entry('L16')->get_labeldate_info->{field}{year}, 'eventyear', 'Date values test 16 - labelyear = EVENTYEAR when YEAR is (mistakenly) missing' ) ;
 is($out->get_output_entry('L16', $main), $l16, 'Date values test 16a - labelyear = EVENTYEAR value when YEAR is (mistakenly) missing' );
-is($bibentries->entry('L17')->get_labelyear_info->{field}, 'year', 'Date values test 17 - labelyearname = YEAR' ) ;
+is($bibentries->entry('L17')->get_labeldate_info->{field}{year}, 'year', 'Date values test 17 - labelyear = YEAR' ) ;
 is($out->get_output_entry('L17', $main), $l17, 'Date values test 17a - labelyear = YEAR value when ENDYEAR is the same and ORIGYEAR is also present' ) ;
 
 # reset options and regenerate information
-Biber::Config->setblxoption('labelyearspec', [ {content => 'origyear'},
-                                               {content => 'year'},
-                                               {content => 'eventyear'} ]);
+Biber::Config->setblxoption('labeldatespec', [ {content => 'origdate', type => 'field'},
+                                               {content => 'date', type => 'field'},
+                                               {content => 'eventdate', type => 'field'} ]);
 $bibentries->del_entry('L17');
 $biber->prepare;
 $out = $biber->get_output_obj;
 
-is($bibentries->entry('L17')->get_labelyear_info->{field}, 'origyear', 'Date values test 17b - labelyearname = ORIGYEAR' ) ;
+is($bibentries->entry('L17')->get_labeldate_info->{field}{year}, 'origyear', 'Date values test 17b - labelyear = ORIGYEAR' ) ;
 is($out->get_output_entry('L17', $main), $l17c, 'Date values test 17c - labelyear = ORIGYEAR value when ENDORIGYEAR is the same and YEAR is also present' ) ;
 
 # reset options and regenerate information
-Biber::Config->setblxoption('labelyearspec', [ {content => 'eventyear'},
-                                               {content => 'year'},
-                                               {content => 'origyear'} ], 'PER_TYPE', 'proceedings');
+Biber::Config->setblxoption('labeldatespec', [ {content => 'eventdate', type => 'field'},
+                                               {content => 'date', type => 'field'},
+                                               {content => 'origdate', type => 'field'} ], 'PER_TYPE', 'proceedings');
 $bibentries->del_entry('L17');
 $biber->prepare;
 $out = $biber->get_output_obj;
 
-is($bibentries->entry('L17')->get_labelyear_info->{field}, 'eventyear', 'Date values test 17d - labelyearname = EVENTYEAR' ) ;
+is($bibentries->entry('L17')->get_labeldate_info->{field}{year}, 'eventyear', 'Date values test 17d - labelyear = EVENTYEAR' ) ;
 is($out->get_output_entry('L17', $main), $l17e, 'Date values test 17e - labelyear = ORIGYEAR-ORIGENDYEAR' ) ;
 

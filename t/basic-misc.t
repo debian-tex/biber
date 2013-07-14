@@ -10,6 +10,7 @@ use Biber;
 use Biber::Utils;
 use Biber::Output::bbl;
 use Log::Log4perl;
+use Unicode::Normalize;
 chdir("t/tdata");
 
 # Set up Biber object
@@ -65,7 +66,7 @@ piccato hasan hyman stdmodel:glashow stdmodel:ps_sc kant:kpv companion almendro
 sigfridsson ctan baez/online aristotle:rhetoric pimentel00 pines knuth:ct:c moraux cms
 angenendt angenendtsk markey cotton vangennepx kant:ku nussbaum nietzsche:ksa1
 vangennep knuth:ct angenendtsa spiegelberg bertram brandt set:aksin chiu nietzsche:ksa
-set:yoon maron coleridge tvonb t2 u1 u2 i1 i2 tmn1 tmn2 tmn3 tmn4 lne1 alias1 alias2 alias5 url1 url2 ol1 pages1 pages2 pages3 pages4 pages5 pages6 pages7 us1 } ;
+set:yoon maron coleridge tvonb t2 u1 u2 i1 i2 tmn1 tmn2 tmn3 tmn4 lne1 alias1 alias2 alias5 url1 url2 ol1 pages1 pages2 pages3 pages4 pages5 pages6 pages7 us1 labelstest } ;
 
 my $u1 = q|    \entry{u1}{misc}{}
       \name{labelname}{4}{uniquelist=4}{%
@@ -374,7 +375,7 @@ is( $out->get_output_entry('anon2', $main), $anon2, 'namehash/fullhash 2' ) ;
 ok(is_undef($bibentries->entry('i1')->get_field('abstract')), 'map 1' );
 is($bibentries->entry('i1')->get_field('userd'), 'test', 'map 2' );
 ok(is_undef($bibentries->entry('i2')->get_field('userb')), 'map 3' );
-is($bibentries->entry('i2')->get_field('usere'), 'a Štring', 'map 4' );
+is(NFC($bibentries->entry('i2')->get_field('usere')), 'a Štring', 'map 4' );
 # Testing of user field map match/replace
 is($biber->_liststring('i1', 'listb'), 'REPlacedte!early', 'map 5');
 is($biber->_liststring('i1', 'institution'), 'REPlaCEDte!early', 'map 6');
@@ -453,3 +454,4 @@ is_deeply($bibentries->entry('pages7')->get_field('pages'), [['\bibstring{number
 
 # Test for map levels, the user map makes this CUSTOMC and then style map makes it CUSTOMA
 is($bibentries->entry('us1')->get_field('entrytype'), 'customa', 'Map levels - 1');
+

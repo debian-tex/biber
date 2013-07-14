@@ -1,5 +1,5 @@
 package Biber::Internals;
-use 5.014000;
+use v5.16;
 use strict;
 use warnings;
 
@@ -8,10 +8,13 @@ use Biber::Constants;
 use Biber::Utils;
 use Biber::DataModel;
 use Data::Compare;
+use Data::Diver qw( Dive );
 use List::AllUtils qw( :all );
 use Log::Log4perl qw(:no_extra_logdie_message);
 use Digest::MD5 qw( md5_hex );
 use POSIX qw( locale_h ); # for lc()
+use Unicode::GCString;
+use Unicode::Normalize;
 use Encode;
 
 =encoding utf-8
@@ -21,6 +24,7 @@ use Encode;
 Biber::Internals - Internal methods for processing the bibliographic data
 
 =head1 METHODS
+
 
 
 =cut
@@ -72,8 +76,8 @@ sub _getnamehash {
   }
 
   $logger->trace("Creating MD5 namehash using '$hashkey'");
-  # Digest::MD5 can't deal with straight UTF8 so encode it first
-  return md5_hex(encode_utf8($hashkey));
+  # Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output")
+  return md5_hex(encode_utf8(NFC($hashkey)));
 }
 
 # Same as _getnamehash but takes account of uniquename setting for firstname
@@ -129,8 +133,8 @@ sub _getnamehash_u {
   }
 
   $logger->trace("Creating MD5 namehash_u using '$hashkey'");
-  # Digest::MD5 can't deal with straight UTF8 so encode it first
-  return md5_hex(encode_utf8($hashkey));
+  # Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output")
+  return md5_hex(encode_utf8(NFC($hashkey)));
 }
 
 
@@ -173,8 +177,8 @@ sub _getfullhash {
   }
 
   $logger->trace("Creating MD5 fullhash using '$hashkey'");
-  # Digest::MD5 can't deal with straight UTF8 so encode it first
-  return md5_hex(encode_utf8($hashkey));
+  # Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output")
+  return md5_hex(encode_utf8(NFC($hashkey)));
 }
 
 
@@ -211,8 +215,8 @@ sub _genpnhash {
   }
 
   $logger->trace("Creating MD5 pnhash using '$hashkey'");
-  # Digest::MD5 can't deal with straight UTF8 so encode it first
-  return md5_hex(encode_utf8($hashkey));
+  # Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output") 
+  return md5_hex(encode_utf8(NFC($hashkey)));
 }
 
 
@@ -230,6 +234,8 @@ my %internal_dispatch_label = (
                 'citekey'           =>  [\&_label_citekey,          []],
                 'labelname'         =>  [\&_label_name,             ['labelname']],
                 'labeltitle'        =>  [\&_label_basic,            ['labeltitle']],
+                'labelmonth'        =>  [\&_label_basic,            ['labelmonth']],
+                'labelday'          =>  [\&_label_basic,            ['labelday']],
                 'labelyear'         =>  [\&_label_basic,            ['labelyear']]);
 
 sub _dispatch_table_label {
@@ -361,7 +367,7 @@ sub _dispatch_label {
 sub _label_citekey {
   my ($self, $citekey, $args, $labelattrs) = @_;
   my $k = _process_label_attributes($self, $citekey, $citekey, $labelattrs, $args->[0]);
-  return [$k, $k];
+  return [$k, unescape_label($k)];
 }
 
 sub _label_basic {
@@ -380,7 +386,7 @@ sub _label_basic {
   }
   if ($f) {
     my $b = _process_label_attributes($self, $citekey, $f, $labelattrs, $e);
-    return [$b, $b];
+    return [$b, unescape_label($b)];
   }
   else {
     return ['', ''];
@@ -391,7 +397,7 @@ sub _label_basic {
 sub _label_literal {
   my ($self, $citekey, $args, $labelattrs) = @_;
   my $string = $args->[0];
-  return [$string, $string];
+  return [escape_label(unescape_label($string)), unescape_label($string)];
 }
 
 # names
@@ -429,7 +435,7 @@ sub _label_name {
 
   # Account for labelname set to short* when testing use* options
   my $lnameopt;
-  if ( $realname =~ /\Ashort(.+)\z/ ) {
+  if ( $realname =~ /\Ashort(\X+)\z/xms ) {
     $lnameopt = $1;
   }
   else {
@@ -457,7 +463,7 @@ sub _label_name {
     }
 
     for (my $i = 0; $i < $loopnames; $i++) {
-      $acc .= substr($prefices[$i] , 0, 1) if ($useprefix and $prefices[$i]);
+      $acc .= Unicode::GCString->new($prefices[$i])->substr(0,1)->as_string if ($useprefix and $prefices[$i]);
       $acc .= _process_label_attributes($self, $citekey, $lastnames[$i], $labelattrs, $namename, 'lastname', $i);
     }
 
@@ -469,7 +475,7 @@ sub _label_name {
       $sortacc .= $sortalphaothers // ''; # sortalphaothers can be undef
     }
 
-    return [$acc, $sortacc];
+    return [$acc, unescape_label($sortacc)];
   }
   else {
     return ['', ''];
@@ -523,9 +529,9 @@ sub _process_label_attributes {
         # This ends up as a flat list due to array interpolation
         my @strings = uniq keys %indices;
         # Look to the index of the longest string or the explicit max width if set
-        my $maxlen = $labelattrs->{substring_width_max} || max map {length($_)} @strings;
+        my $maxlen = $labelattrs->{substring_width_max} || max map {Unicode::GCString->new($_)->length} @strings;
         for (my $i = 1; $i <= $maxlen; $i++) {
-          foreach my $map (map { my $s = substr($_, 0, $i); $substr_cache{$s}++; [$_, $s] } @strings) {
+          foreach my $map (map { my $s = Unicode::GCString->new($_)->substr(0, $i)->as_string; $substr_cache{$s}++; [$_, $s] } @strings) {
             # We construct a list of all substrings, up to the length of the longest string
             # or substring_width_max. Then we save the index of the list element which is
             # the minimal disambiguation if it's not yet defined
@@ -534,7 +540,7 @@ sub _process_label_attributes {
             if (not exists($lcache->{$map->[0]}{index}) and
                 ($substr_cache{$map->[1]} == 1 or $i == $maxlen)) {
               # -1 to make it into a clean array index
-              $lcache->{$map->[0]}{index} = length($map->[1]) - 1;
+              $lcache->{$map->[0]}{index} = Unicode::GCString->new($map->[1])->length - 1;
             }
           }
         }
@@ -603,20 +609,38 @@ sub _process_label_attributes {
       my $default_substring_side = 'left';
       my $subs_width = ($labelattrs->{substring_width} or $default_substring_width);
       my $subs_side = ($labelattrs->{substring_side} or $default_substring_side);
+      my $padchar = $labelattrs->{pad_char};
       if ($subs_side eq 'right') {
         $subs_offset = 0 - $subs_width;
       }
 
-      # If desired, do the substring on all part of compound strings (strings with internal spaces or hyphens)
+      # If desired, do the substring on all part of compound strings
+      # (strings with internal spaces or hyphens)
       if ($labelattrs->{substring_compound}) {
         my $tmpstring;
         foreach my $part (split(/[ -]+/, $field_string)) {
-          $tmpstring .= substr( $part, $subs_offset, $subs_width );
+          $tmpstring .= Unicode::GCString->new($part)->substr($subs_offset, $subs_width)->as_string;
         }
         $field_string = $tmpstring;
       }
       else {
-        $field_string = substr( $field_string, $subs_offset, $subs_width );
+        $field_string = Unicode::GCString->new($field_string)->substr($subs_offset, $subs_width)->as_string;
+      }
+
+      # Padding
+      if ($padchar) {
+        $padchar = unescape_label($padchar);
+        my $pad_side = ($labelattrs->{pad_side} or 'right');
+        my $paddiff = $subs_width - Unicode::GCString->new($field_string)->length;
+        if ($paddiff) {
+          if ($pad_side eq 'right') {
+            $field_string .= $padchar x $paddiff;
+          }
+          elsif ($pad_side eq 'left') {
+            $field_string = $padchar x $paddiff . $field_string;
+          }
+        }
+        $field_string = escape_label($field_string);
       }
     }
   }
@@ -719,7 +743,7 @@ sub _label_listdisambiguation {
       # Then we can shortcut and take a 1-char substring only
       # if all name lists in the ambiguous list are in fact the same
       if (all {Compare($ambiguous_strings->[0], $_)} @$ambiguous_strings) {
-        $lcache->{data}[$ambiguous_indices->[0]] =  [map {substr($_,0,1)} @{$ambiguous_strings->[0]}];
+        $lcache->{data}[$ambiguous_indices->[0]] =  [map {Unicode::GCString->new($_)->substr(0,1)->as_string} @{$ambiguous_strings->[0]}];
       }
       else {
         # Get disambiguating list position information
@@ -746,7 +770,7 @@ sub _do_substr {
     my $row = $strings->[$i];
     my @s;
     for (my $j = 0; $j <= $#$row; $j++) {
-      push @s, substr($row->[$j], 0 ,$cache->{substr_map}[$i][$j]);
+      push @s, Unicode::GCString->new($row->[$j])->substr(0 ,$cache->{substr_map}[$i][$j])->as_string;
     }
     my $js = join('', @s);
     $cache->{keys}{$js}{index} = $i; # index of the last seen $js key - useless for count >1
@@ -821,7 +845,9 @@ my %internal_dispatch_sorting = (
                                  'labelalpha'      =>  [\&_sort_labelalpha,    []],
                                  'labelname'       =>  [\&_sort_labelname,     []],
                                  'labeltitle'      =>  [\&_sort_labeltitle,    []],
-                                 'labelyear'       =>  [\&_sort_labelyear,     []],
+                                 'labelyear'       =>  [\&_sort_labeldate,     ['year']],
+                                 'labelmonth'      =>  [\&_sort_labeldate,     ['month']],
+                                 'labelday'        =>  [\&_sort_labeldate,     ['day']],
                                  'presort'         =>  [\&_sort_presort,       []],
                                  'sortname'        =>  [\&_sort_sortname,      []],
                                  'entrykey'        =>  [\&_sort_entrykey,      []]);
@@ -924,20 +950,20 @@ sub _generatesortinfo {
 
     # Strip off the prefix
     $ss =~ s/\A$pre$sorting_sep+//;
-    my $init = substr normalise_string($ss), 0, 1;
+    my $init = Unicode::GCString->new(normalise_string($ss))->substr(0, 1)->as_string;
 
     # Now check if this sortinit is valid in the output_encoding. If not, warn
     # and replace with a suitable value
-    my $bblenc = Biber::Config->getoption('output_encoding');
-    if ($bblenc ne 'UTF-8') {
+    my $outenc = Biber::Config->getoption('output_encoding');
+    if ($outenc ne 'UTF-8') {
       # Can this init be represented in the BBL encoding?
-      if (encode($bblenc, $init) eq '?') { # Malformed data encoding char
+      if (encode($outenc, NFC($init)) eq '?') { # Malformed data encoding char
         # So convert to macro
         my $initd = Biber::LaTeX::Recode::latex_encode($init);
         # Don't warn if output is ascii as it's fairly pointless since this warning may be
         # true of a lot of data and drawing attention to just sortinit might be confusing
-        unless ($bblenc =~ /(?:x-)?ascii/xmsi) {
-          biber_warn("The character '$init' cannot be encoded in '$bblenc'. sortinit will be set to macro '$initd' for entry '$citekey'", $be);
+        unless ($outenc =~ /(?:x-)?ascii/xmsi) {
+          biber_warn("The character '$init' cannot be encoded in '$outenc'. sortinit will be set to macro '$initd' for entry '$citekey'", $be);
         }
         $init = $initd;
       }
@@ -983,15 +1009,24 @@ sub _sort_citeorder {
   # Pad the numbers so that they sort with "cmp" properly. Assume here max of
   # a million bib entries. Probably enough ...
   # Allkeys and sorting=none means use bib order which is in orig_order_citekeys
+  # However, someone might do:
+  # \cite{b,a}
+  # \nocite{*}
+  # in the same section which means we need to use the order attribute for those
+  # keys which have one (the \cited keys) and then an orig_order_citekey index based index
+  # for the nocite ones.
+  my $ko = Biber::Config->get_keyorder($secnum, $citekey);# only for \cited keys
   if ($section->is_allkeys) {
-    return sprintf('%.7d', (first_index {$_ eq $citekey} $section->get_orig_order_citekeys) + 1);
+    return sprintf('%.7d', $ko ||
+                   (Biber::Config->get_keyorder_max($secnum) +
+                    (first_index {$_ eq $citekey} $section->get_orig_order_citekeys) + 1));
   }
   # otherwise, we need to take account of citations with simulataneous order like
   # \cite{key1, key2} so this tied sorting order can be further sorted with other fields
   # Note the fallback of "0" - this is for auto-generated entries which are not cited
   # and so never have a keyorder entry
   else {
-    return sprintf('%.7d', Biber::Config->get_keyorder($secnum, $citekey) || 0);
+    return sprintf('%.7d', $ko || 0);
   }
 }
 
@@ -1069,15 +1104,21 @@ sub _sort_labeltitle {
   }
 }
 
-sub _sort_labelyear {
+sub _sort_labeldate {
   my ($self, $citekey, $sortelementattributes, $args) = @_;
+  my $ldc = $args->[0]; # labeldate component
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
-  # re-direct to the right sorting routine for the labelyear
-  if (my $lyi = $be->get_labelyear_info) {
-    # Don't process attributes as they will be processed in the real sub
-    return $self->_dispatch_sorting($lyi->{field}, $citekey, $sortelementattributes);
+  # re-direct to the right sorting routine for the labeldate component
+  if (my $ldi = $be->get_labeldate_info) {
+    if (my $ldf = Dive($ldi, 'field', $ldc)) {
+      # Don't process attributes as they will be processed in the real sub
+      return $self->_dispatch_sorting($ldf, $citekey, $sortelementattributes);
+    }
+    elsif (exists($ldi->{string})) { # labelyear fallback string
+      return '';
+    }
   }
   else {
     return '';
@@ -1195,7 +1236,7 @@ sub _process_sort_attributes {
     if ($subs_side eq 'right') {
       $subs_offset = 0 - $subs_width;
     }
-    $field_string = substr( $field_string, $subs_offset, $subs_width );
+    $field_string = Unicode::GCString->new($field_string)->substr($subs_offset, $subs_width)->as_string;
   }
   # Process padding
   if ($sortelementattributes->{pad_side} or
@@ -1207,7 +1248,7 @@ sub _process_sort_attributes {
     my $pad_width = ($sortelementattributes->{pad_width} or $default_pad_width);
     my $pad_side = ($sortelementattributes->{pad_side} or $default_pad_side);
     my $pad_char = ($sortelementattributes->{pad_char} or $default_pad_char);
-    my $pad_length = $pad_width - length($field_string);
+    my $pad_length = $pad_width - Unicode::GCString->new($field_string)->length;
     if ($pad_side eq 'left') {
       $field_string = ($pad_char x $pad_length) . $field_string;
     }
@@ -1276,7 +1317,7 @@ sub _namestring {
   }
 
   $str =~ s/\s+\Q$nse\E/$nse/gxms;   # Remove any whitespace before external separator
-  $str =~ s/\Q$nse\E\z//xms;         # strip final external separator as we are finished
+  $str =~ s/\Q$nse\E\z//xms;         # strip final external separator as we have finished
 
   $str .= $trunc if $visible < $count; # name list was truncated
   return $str;
@@ -1317,65 +1358,6 @@ sub _liststring {
   return $str;
 }
 
-=head2 process_entry_options
-
-    Set per-entry options
-
-=cut
-
-sub process_entry_options {
-  my $self = shift;
-  my $citekey = shift;
-  my $options = shift;
-  return unless $options;       # Just in case it's null
-  my @entryoptions = split /\s*,\s*/, $options;
-  foreach (@entryoptions) {
-    s/\s+=\s+/=/g; # get rid of spaces around any "="
-    m/^([^=]+)(=?)(.+)?$/;
-    my $val;
-    if ($2) {
-      given ($3) {
-        when ('true') {
-          $val = 1;
-        }
-        when ('false') {
-          $val = 0;
-        }
-        default {
-          $val = $3;
-        }
-      }
-      _expand_option($1, $val, $citekey);
-    }
-    else {
-      _expand_option($1, 1, $citekey);
-    }
-  }
-  return;
-}
-
-sub _expand_option {
-  my ($opt, $val, $citekey) = @_;
-  given ($CONFIG_BIBLATEX_PER_ENTRY_OPTIONS{lc($1)}{INPUT}) {
-    # Standard option
-    when (not defined($_)) {
-      Biber::Config->setblxoption($opt, $val, 'PER_ENTRY', $citekey);
-    }
-    # Set all split options to same value as parent
-    when (ref($_) eq 'ARRAY') {
-      foreach my $k (@$_) {
-        Biber::Config->setblxoption($k, $val, 'PER_ENTRY', $citekey);
-      }
-    }
-    # Specify values per all splits
-    when (ref($_) eq 'HASH') {
-      foreach my $k (keys %$_) {
-        Biber::Config->setblxoption($k, $_->{$k}, 'PER_ENTRY', $citekey);
-      }
-    }
-  }
-  return;
-}
 
 1;
 

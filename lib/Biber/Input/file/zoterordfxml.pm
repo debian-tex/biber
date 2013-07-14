@@ -1,5 +1,5 @@
 package Biber::Input::file::zoterordfxml;
-use 5.014000;
+use v5.16;
 use strict;
 use warnings;
 use base 'Exporter';
@@ -16,12 +16,15 @@ use Biber::Utils;
 use Biber::Config;
 use Digest::MD5 qw( md5_hex );
 use File::Spec;
+use File::Slurp::Unicode;
 use File::Temp;
 use Log::Log4perl qw(:no_extra_logdie_message);
 use List::AllUtils qw( :all );
 use XML::LibXML;
 use XML::LibXML::Simple;
 use Data::Dump qw(dump);
+use Unicode::Normalize;
+use Unicode::GCString;
 use URI;
 
 ##### This is based on Zotero 2.0.9 #####
@@ -149,8 +152,8 @@ sub extract_entries {
 
   # Set up XML parser and namespaces
   my $parser = XML::LibXML->new();
-  my $rdfxml = $parser->parse_file($filename)
-    or biber_error("Can't parse file $filename");
+  my $xml = File::Slurp::Unicode::read_file($filename, encoding => 'UTF-8') or biber_error("Can't parse file $filename");
+  my $rdfxml = $parser->parse_string(NFD($xml));# Unicode NFD boundary
   my $xpc = XML::LibXML::XPathContext->new($rdfxml);
   foreach my $ns (keys %PREFICES) {
     $xpc->registerNs($ns, $PREFICES{$ns});
@@ -192,12 +195,15 @@ sub extract_entries {
       # "citeorder" because nothing is explicitly cited and so "citeorder" means .bib order
       push @{$orig_key_order->{$filename}}, $ek;
 
+      # Record a key->datasource name mapping for error reporting
+      $section->set_keytods($ek, $filename);
+
       create_entry($ek, $entry, $source, $smaps);
     }
 
     # if allkeys, push all bibdata keys into citekeys (if they are not already there)
     # We are using the special "orig_key_order" array which is used to deal with the
-    # sitiation when sorting=non and allkeys is set. We need an array rather than the
+    # situation when sorting=non and allkeys is set. We need an array rather than the
     # keys from the bibentries hash because we need to preserver the original order of
     # the .bib as in this case the sorting sub "citeorder" means "bib order" as there are
     # no explicitly cited keys
@@ -228,6 +234,10 @@ sub extract_entries {
         $logger->debug('Parsing Zotero RDF/XML entry object ' . $entry->nodePath);
         # See comment above about the importance of the case of the key
         # passed to create_entry()
+
+        # Record a key->datasource name mapping for error reporting
+        $section->set_keytods($wanted_key, $filename);
+
         create_entry($wanted_key, $entry, $source, $smaps);
         # found a key, remove it from the list of keys we want
         @rkeys = grep {$wanted_key ne $_} @rkeys;
@@ -597,6 +607,10 @@ sub _range {
 # Date fields
 sub _date {
   my ($bibentry, $entry, $f, $key) = @_;
+  my $secnum = $Biber::MASTER->get_current_section;
+  my $section = $Biber::MASTER->sections->get_section($secnum);
+  my $ds = $section->get_keytods($key);
+
   my $date = $entry->findvalue($f);
   # We are not validating dates here, just syntax parsing
     my $date_re = qr/(\d{4}) # year
@@ -618,7 +632,7 @@ sub _date {
     }
   }
   else {
-    biber_warn("Invalid format '$date' of date field '$f' in entry '$key' - ignoring", $bibentry);
+    biber_warn("Datamodel: Entry '$key' ($ds): Invalid format '$date' of date field '$f' in entry '$key' - ignoring", $bibentry);
   }
   return;
 }
@@ -718,10 +732,10 @@ sub _gen_initials {
       push @strings_out, join('-', _gen_initials(split(/\p{Dash}/, $str)));
     }
     else {
-      my $chr = substr($str, 0, 1);
+      my $chr = Unicode::GCString->new($str)->substr(0, 1)->as_string;
       # Keep diacritics with their following characters
       if ($chr =~ m/\p{Dia}/) {
-        push @strings_out, substr($str, 0, 2);
+        push @strings_out, Unicode::GCString->new($str)->substr(0, 2)->as_string;
       }
       else {
         push @strings_out, $chr;
@@ -734,7 +748,7 @@ sub _gen_initials {
 # Syntactically get the leaf node of a node path
 sub _leaf_node {
   my $node_path = shift;
-  return $node_path =~ s|.+/([^/]+$)|$1|r;
+  return $node_path =~ s|\X+/([^/]+$)|$1|r;
 }
 
 # Strip interim bltx namespace
