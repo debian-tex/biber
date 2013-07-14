@@ -21,7 +21,7 @@ use Biber::Utils;
 use Biber::Config;
 use Encode;
 use File::Spec;
-use File::Slurp::Unicode;
+use File::Slurp;
 use File::Temp;
 use Log::Log4perl qw(:no_extra_logdie_message);
 use List::AllUtils qw( :all );
@@ -52,22 +52,31 @@ sub init_cache {
 my $dm = Biber::Config->get_dm;
 my $handlers = {
                 'field' => {
-                            'csv'      => \&_verbatim,
-                            'code'     => \&_literal,
-                            'date'     => \&_date,
-                            'entrykey' => \&_literal,
-                            'integer'  => \&_literal,
-                            'key'      => \&_literal,
-                            'literal'  => \&_literal,
-                            'range'    => \&_range,
-                            'verbatim' => \&_verbatim,
-                            'uri'      => \&_uri,
+                            'default'  => {
+                                           'csv'      => \&_verbatim,
+                                           'code'     => \&_literal,
+                                           'date'     => \&_date,
+                                           'datepart' => \&_literal,
+                                           'entrykey' => \&_literal,
+                                           'integer'  => \&_literal,
+                                           'key'      => \&_literal,
+                                           'literal'  => \&_literal,
+                                           'range'    => \&_range,
+                                           'verbatim' => \&_verbatim,
+                                           'uri'      => \&_uri
+                                          },
+                            'csv'      => {
+                                           'entrykey' => \&_csv,
+                                           'keyword'  => \&_csv,
+                                           'option'   => \&_csv,
+                                          }
                            },
                 'list' => {
-                           'entrykey' => \&_literal,
-                           'key'      => \&_list,
-                           'literal'  => \&_list,
-                           'name'     => \&_name,
+                           'default'   => {
+                                           'key'      => \&_list,
+                                           'literal'  => \&_list,
+                                           'name'     => \&_name
+                                          }
                           }
 };
 
@@ -384,6 +393,13 @@ sub create_entry {
             $last_field = $source;
             $last_fieldval = lc($source) eq 'entrykey' ? biber_decode_utf8($entry->key) : biber_decode_utf8($entry->get(lc($source)));
 
+            my $negmatch = 0;
+            # Negated matches are a normal match with a special flag
+            if (my $nm = $step->{map_notmatch}) {
+              $step->{map_match} = $nm;
+              $negmatch = 1;
+            }
+
             # map fields to targets
             if (my $m = $step->{map_match}) {
               if (defined($step->{map_replace})) { # replace can be null
@@ -400,7 +416,7 @@ sub create_entry {
                             ireplace($last_fieldval, $m, $r));
               }
               else {
-                unless (@imatches = imatch($last_fieldval, $m)) {
+                unless (@imatches = imatch($last_fieldval, $m, $negmatch)) {
                   # Skip the rest of the map if this step doesn't match and match is final
                   if ($step->{map_final}) {
                     $logger->debug("Source mapping (type=$level, key=$key): Field '" . lc($source) . "' does not match '$m' and step has 'final' set, skipping rest of map ...");
@@ -501,17 +517,16 @@ sub create_entry {
     # validation happens later and is not datasource dependent
     foreach my $f ($entry->fieldlist) {
 
-      # In tool mode, just keep the raw data fields
+      # In tool mode, keep the raw data fields
       if (Biber::Config->getoption('tool')) {
         $bibentry->set_rawfield($f, biber_decode_utf8($entry->get($f)));
-        next;
       }
 
       # We have to process local options as early as possible in order
       # to make them available for things that need them like parsename()
       if ($f eq 'options') {
         my $value = biber_decode_utf8($entry->get($f));
-        process_entry_options($key, $value);
+        process_entry_options($key, [ split(/\s*,\s*/, $value) ]);
         # Save the raw options in case we are to output another input format like
         # biblatexml
         $bibentry->set_field('rawoptions', $value);
@@ -530,7 +545,6 @@ sub create_entry {
     $bibentry->set_field('entrytype', $entrytype);
     $bibentry->set_field('datatype', 'bibtex');
     $bibentries->add_entry($key, $bibentry);
-
   }
 
   return 1;
@@ -582,12 +596,18 @@ sub _uri {
   return;
 }
 
+# CSV field form
+sub _csv {
+  my ($bibentry, $entry, $f) = @_;
+  $bibentry->set_datafield($f, [ split(/\s*,\s*/, biber_decode_utf8($entry->get($f))) ]);
+  return;
+}
+
 # Verbatim fields
 sub _verbatim {
   my ($bibentry, $entry, $f) = @_;
   my $value = biber_decode_utf8($entry->get($f));
   my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
-
   $bibentry->set_datafield($field, $value, $form, $lang);
   return;
 }
@@ -605,8 +625,8 @@ sub _range {
   # If there is a range sep, then we set the end of the range even if it's null
   # If no  range sep, then the end of the range is undef
   foreach my $value (@values) {
-    $value =~ m/\A\s*([^-–]+)\s*\z/xms ||# Simple value without range
-      $value =~ m/\A\s*(\{[^\}]+\}|[^-– ]+)\s*([-–]+)\s*(\{[^\}]+\}|[^-–]*)\s*\z/xms;
+    $value =~ m/\A\s*([^\p{Pd}]+)\s*\z/xms ||# Simple value without range
+      $value =~ m/\A\s*(\{[^\}]+\}|[^\p{Pd} ]+)\s*([\p{Pd}]+)\s*(\{[^\}]+\}|[^\p{Pd}]*)\s*\z/xms;
     my $start = $1;
     my $end;
     if ($2) {
@@ -693,17 +713,10 @@ sub _date {
   my $section = $Biber::MASTER->sections->get_section($secnum);
   my $ds = $section->get_keytods($key);
 
-  # We are not validating dates here, just syntax parsing
-  my $date_re = qr/(\d{4}) # year
-                   (?:-(\d{2}))? # month
-                   (?:-(\d{2}))? # day
-                  /xms;
-  if (my ($byear, $bmonth, $bday, $r, $eyear, $emonth, $eday) =
-      $date =~ m|\A$date_re(/)?(?:$date_re)?\z|xms) {
-    # did this entry get its year/month fields from splitting an ISO8601 date field?
+  if (my ($byear, $bmonth, $bday, $r, $eyear, $emonth, $eday) = parse_date($date)) {
+    # Did this entry get its year/month fields from splitting an ISO8601 date field?
     # We only need to know this for date, year/month as year/month can also
-    # be explicitly set. It makes a difference on how we do any potential future
-    # date validation
+    # be explicitly set. This is useful to know in various places.
     $bibentry->set_field('datesplit', 1) if $datetype eq '';
     # Some warnings for overwriting YEAR and MONTH from DATE
     if ($byear and
@@ -735,7 +748,7 @@ sub _date {
   return;
 }
 
-# List fields
+# Bibtex list fields with listsep separator
 sub _list {
   my ($bibentry, $entry, $f) = @_;
   my $value = biber_decode_utf8($entry->get($f));
@@ -747,8 +760,6 @@ sub _list {
   $bibentry->set_datafield($field, [ @tmp ], $form, $lang);
   return;
 }
-
-
 
 =head2 cache_data
 
@@ -882,26 +893,28 @@ sub preprocess_file {
 
   # We read the file in the bib encoding and then output to UTF-8, even if it was already UTF-8,
   # just in case there was a BOM so we can delete it as it makes T::B complain
-  my $buf = File::Slurp::Unicode::read_file($filename, encoding => Biber::Config->getoption('input_encoding'))
-    or biber_error("Can't read $filename");
+  # Don't use File::Slurp binmode option - it's completely broken - see module RT queue
+  my $buf = File::Slurp::read_file($filename) or biber_error("Can't read $filename");
+  $buf = NFD(decode(Biber::Config->getoption('input_encoding'), $buf));# Unicode NFD boundary
 
   # strip UTF-8 BOM if it exists - this just makes T::B complain about junk characters
   $buf =~ s/\A\x{feff}//;
 
-  File::Slurp::Unicode::write_file($ufilename, {encoding => 'UTF-8'}, $buf)
-      or biber_error("Can't write $ufilename");
+  File::Slurp::write_file($ufilename, NFC(encode('UTF-8', $buf))) or
+      biber_error("Can't write $ufilename");# Unicode NFC boundary
 
   # Decode LaTeX to UTF8 if output is UTF-8
   if (Biber::Config->getoption('output_encoding') eq 'UTF-8') {
-    my $buf = File::Slurp::Unicode::read_file($ufilename, encoding => 'UTF-8')
-      or biber_error("Can't read $ufilename");
+    my $buf = File::Slurp::read_file($ufilename) or biber_error("Can't read $ufilename");
+    $buf = NFD(decode('UTF-8', $buf));# Unicode NFD boundary
+
     $logger->info('Decoding LaTeX character macros into UTF-8');
     $logger->trace("Buffer before decoding -> '$buf'");
     $buf = Biber::LaTeX::Recode::latex_decode($buf, strip_outer_braces => 1);
     $logger->trace("Buffer after decoding -> '$buf'");
-    # Even though we will just read this file again, let's treat it as a proper Unicode NFC boundary
-    File::Slurp::Unicode::write_file($ufilename, {encoding => 'UTF-8'}, NFC($buf))
-        or biber_error("Can't write $ufilename");
+
+    File::Slurp::write_file($ufilename, NFC(encode('UTF-8', $buf))) or
+        biber_error("Can't write $ufilename");# Unicode NFC boundary
   }
 
   return $ufilename;
@@ -1149,7 +1162,7 @@ sub _get_handler {
     return $h;
   }
   else {
-    return $handlers->{$dm->get_fieldtype($field)}{$dm->get_datatype($field)};
+    return $handlers->{$dm->get_fieldtype($field)}{$dm->get_fieldformat($field) || 'default'}{$dm->get_datatype($field)};
   }
 }
 

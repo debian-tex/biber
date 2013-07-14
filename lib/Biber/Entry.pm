@@ -71,9 +71,9 @@ sub relclone {
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
   if (my $relkeys = $self->get_field('related')) {
-    $logger->debug("Found RELATED field in '$citekey' with contents '$relkeys'");
+    $logger->debug("Found RELATED field in '$citekey' with contents " . join(',', @$relkeys));
     my @clonekeys;
-    foreach my $relkey (split /\s*,\s*/, $relkeys) {
+    foreach my $relkey (@$relkeys) {
       # Resolve any alias
       my $nrelkey = $section->get_citekey_alias($relkey) // $relkey;
       $logger->debug("Resolved RELATED key alias '$relkey' to '$nrelkey'") if $relkey ne $nrelkey;
@@ -104,8 +104,8 @@ sub relclone {
           $relclone->set_datafield('options', $relopts);
         }
         else {
-          process_entry_options($clonekey, 'skiplab, skiplos, uniquename=0, uniquelist=0');
-          $relclone->set_datafield('options', 'dataonly');
+          process_entry_options($clonekey, [ 'skiplab', 'skiplos', 'uniquename=0', 'uniquelist=0' ]);
+          $relclone->set_datafield('options', [ 'dataonly' ]);
         }
 
         $section->bibentries->add_entry($clonekey, $relclone);
@@ -125,7 +125,7 @@ sub relclone {
     # We have to add the citekeys as we need these clones in the .bbl
     # but the dataonly will cause biblatex not to print them in the bib
     $section->add_citekeys(@clonekeys);
-    $self->set_datafield('related', join(',', @clonekeys));
+    $self->set_datafield('related', [ @clonekeys ]);
   }
 }
 
@@ -328,7 +328,7 @@ sub get_field {
   $form = $form || 'original';
   $lang = $lang || 'default';
   # Override for special fields whose form and langs are assumed to be already resolved.
-  if ($key ~~ [ 'labelname', 'labeltitle', 'labelyear', 'labelmonth', 'labelday' ]) {
+  if ( first {$key eq $_} ( 'labelname', 'labeltitle', 'labelyear', 'labelmonth', 'labelday' )) {
     $form = 'original';
     $lang = 'default';
   }
@@ -588,7 +588,7 @@ sub has_keyword {
   $form = $form || 'original';
   $lang = $lang || 'default';
   if (my $keywords = Dive($self, 'datafields', 'keywords', $form, $lang)) {
-    return (first {$_ eq $keyword} split(/\s*,\s*/, $keywords)) ? 1 : 0;
+    return (first {$_ eq $keyword} @$keywords) ? 1 : 0;
   }
   else {
     return 0;
@@ -655,7 +655,7 @@ sub resolve_xdata {
   my $section = $Biber::MASTER->sections->get_section($secnum);
   my $entry_key = $self->get_field('citekey');
 
-  foreach my $xdatum (split /\s*,\s*/, $xdata) {
+  foreach my $xdatum (@$xdata) {
     unless (my $xdatum_entry = $section->bibentry($xdatum)) {
       biber_warn("Entry '$entry_key' references XDATA entry '$xdatum' which does not exist in section $secnum");
       next;
@@ -675,15 +675,18 @@ sub resolve_xdata {
         if (my $recurse_xdata = $xdatum_entry->get_field('xdata')) { # recurse
           $xdatum_entry->resolve_xdata($recurse_xdata);
         }
-        # For tool mode we need to copy the raw fields
-        if (Biber::Config->getoption('tool')) {
+        # For tool mode with bibtex output we need to copy the raw fields
+        if (Biber::Config->getoption('tool') and
+            Biber::Config->getoption('output_format') eq 'bibtex') {
           foreach my $field ($xdatum_entry->rawfields()) { # set raw fields
+            next if $field eq 'ids'; # Never inherit aliases
             $self->set_rawfield($field, $xdatum_entry->get_rawfield($field));
             $logger->debug("Setting field '$field' in entry '$entry_key' via XDATA");
           }
         }
         else {
           foreach my $field ($xdatum_entry->datafields()) { # set fields
+            next if $field eq 'ids'; # Never inherit aliases
             $self->set_datafield_forms($field, $xdatum_entry->get_field_forms($field));
 
             # Record graphing information if required
@@ -737,9 +740,7 @@ sub inherit_from {
 
   my $type        = $self->get_field('entrytype');
   my $parenttype  = $parent->get_field('entrytype');
-  # Normall this is a biblatex option but in tool mode, it comes from the Biber conf file and so is
-  # a Biber option
-  my $inheritance = Biber::Config->getblxoption('inheritance') || Biber::Config->getoption('inheritance');
+  my $inheritance = Biber::Config->getblxoption('inheritance');
   my %processed;
   # get defaults
   my $defaults = $inheritance->{defaults};
@@ -778,8 +779,9 @@ sub inherit_from {
                            "' as '" .
                            $field->{target} .
                            "' from entry '$source_key'");
-            # For tool mode we need to copy the raw fields
-            if (Biber::Config->getoption('tool')) {
+            # For tool mode with bibtex output we need to copy the raw fields
+            if (Biber::Config->getoption('tool') and
+                Biber::Config->getoption('output_format') eq 'bibtex') {
               $self->set_rawfield($field->{target}, $parent->get_rawfield($field->{source}));
             }
             else {
@@ -809,8 +811,9 @@ sub inherit_from {
       # Set the field if it doesn't exist or override is requested
       if (not $self->field_exists($field) or $override_target eq 'true') {
             $logger->debug("Entry '$target_key' is inheriting field '$field' from entry '$source_key'");
-            # For tool mode we need to copy the raw fields
-            if (Biber::Config->getoption('tool')) {
+            # For tool mode with bibtex output we need to copy the raw fields
+            if (Biber::Config->getoption('tool') and
+                Biber::Config->getoption('output_format') eq 'bibtex') {
               $self->set_rawfield($field, $parent->get_rawfield($field));
             }
             else {

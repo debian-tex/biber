@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use base 'Biber::Output::base';
 
+use Biber;
 use Biber::Config;
 use Biber::Constants;
 use Biber::Utils;
@@ -26,7 +27,7 @@ Biber::Output::bibtex - class for bibtex output of tool mode
 
 =head2 set_output_target_file
 
-    Set the output target file of a Biber::Output::bbl object
+    Set the output target file of a Biber::Output::bibtex object
     A convenience around set_output_target so we can keep track of the
     filename
 
@@ -62,16 +63,21 @@ sub set_output_entry {
 
   # Make the right casing function
   my $casing;
-  given (Biber::Config->getoption('tool_fieldcase')) {
-    when ('upper') {
-      $casing = sub {uc(shift)};
-    }
-    when ('lower') {
-      $casing = sub {lc(shift)};
-    }
-    when ('title') {
-      $casing = sub {ucfirst(shift)};
-    }
+  my $mss = Biber::Config->getoption('mssplit');
+  if (Biber::Config->getoption('tool_fieldcase') eq 'upper') {
+    $casing = sub {my $s = shift;
+                   my @s = split(/$mss/, $s);
+                   join($mss, uc(shift(@s)), @s)};
+  }
+  elsif (Biber::Config->getoption('tool_fieldcase') eq 'lower') {
+    $casing = sub {my $s = shift;
+                   my @s = split(/$mss/, $s);
+                   join($mss, lc(shift(@s)), @s)};
+  }
+  elsif (Biber::Config->getoption('tool_fieldcase') eq 'title') {
+    $casing = sub {my $s = shift;
+                   my @s = split(/$mss/, $s);
+                   join($mss, ucfirst(shift(@s)), @s)};
   }
 
   $acc .= '@';
@@ -84,14 +90,14 @@ sub set_output_entry {
   }
 
   foreach my $f ($be->rawfields) {
-    # If IDS, CROSSREF and XDATA have been resolved, don't output them
+    # If CROSSREF and XDATA have been resolved, don't output them
     # We can't use the usual skipout test for fields not to be output
-    # as this only refers to .bbl output and not to bibtex ouput since this
-    # latter is not reall a "processed" output, it is supposed to be something
+    # as this only refers to .bbl output and not to bibtex output since this
+    # latter is not really a "processed" output, it is supposed to be something
     # which could be again used as input and so we don't want to resolve/skip
     # fields like DATE etc.
     if (Biber::Config->getoption('tool_resolve')) {
-      next if lc($f) ~~ ['ids', 'xdata', 'crossref'];
+      next if first {lc($f) eq $_}  ('xdata', 'crossref');
     }
     # Save post-mapping data for tool mode
     my $value = decode_utf8($be->get_rawfield($f));
@@ -99,7 +105,15 @@ sub set_output_entry {
     $acc .= $casing->($f);
     $acc .= ' ' x ($max_field_len - Unicode::GCString->new($f)->length) if Biber::Config->getoption('tool_align');
     $acc .= ' = ';
-    $acc .= "\{$value\},\n";
+
+    # Don't wrap field which should be macros in braces
+    my $mfs = Biber::Config->getoption('tool_macro_fields');
+    if (defined($mfs) and first {lc($f) eq $_} map {lc($_)} split(/\s*,\s*/, $mfs) ) {
+      $acc .= "$value,\n";
+    }
+    else {
+      $acc .= "\{$value\},\n";
+    }
   }
 
   $acc .= "}\n\n";
@@ -145,8 +159,8 @@ sub output {
 
   $logger->debug("Writing entries in tool mode");
 
-  foreach my $key (@{$self->{output_data}{ENTRIES_ORDER}}) {
-    # There is only a (pseudo) section "0" in tool mode
+  # There is only a (pseudo) section "0" in tool mode
+  foreach my $key ($Biber::MASTER->sortlists->get_list(0, 'entry', 'tool')->get_keys) {
     out($target, ${$data->{ENTRIES}{0}{index}{$key}});
   }
 
@@ -169,13 +183,12 @@ sub create_output_section {
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
 
-  # We rely on the order of this array for the order of the output
-  foreach my $key ($section->get_orig_order_citekeys) {
-    my $be = $section->bibentry($key);
-    $self->set_output_entry($be, $section, Biber::Config->get_dm);
 
-    # Preserve order as we won't sort later in tool mode and we need original bib order
-    push @{$self->{output_data}{ENTRIES_ORDER}}, $key;
+  # We rely on the order of this array for the order of the .bbl
+  foreach my $k ($section->get_citekeys) {
+    # Regular entry
+    my $be = $section->bibentry($k) or biber_error("Cannot find entry with key '$k' to output");
+    $self->set_output_entry($be, $section, Biber::Config->get_dm);
   }
 
   # Make sure the output object knows about the output section
