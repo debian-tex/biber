@@ -34,22 +34,32 @@ my $orig_key_order = {};
 my $dm = Biber::Config->get_dm;
 my $handlers = {
                 'field' => {
-                            'csv'      => \&_verbatim,
-                            'code'     => \&_literal,
-                            'date'     => \&_date,
-                            'entrykey' => \&_verbatim,
-                            'integer'  => \&_verbatim,
-                            'key'      => \&_verbatim,
-                            'literal'  => \&_verbatim,
-                            'range'    => \&_range,
-                            'verbatim' => \&_verbatim,
-                            'uri'      => \&_uri,
+                            'default' => {
+                                          'csv'      => \&_verbatim,
+                                          'code'     => \&_literal,
+                                          'date'     => \&_date,
+                                          'datepart' => \&_verbatim,
+                                          'entrykey' => \&_verbatim,
+                                          'integer'  => \&_verbatim,
+                                          'key'      => \&_verbatim,
+                                          'literal'  => \&_verbatim,
+                                          'range'    => \&_range,
+                                          'verbatim' => \&_verbatim,
+                                          'uri'      => \&_uri
+                                         },
+                            'csv'     => {
+                                          'entrykey' => \&_csv,
+                                          'keyword'  => \&_csv,
+                                          'option'   => \&_csv,
+                                         }
                            },
                 'list' => {
-                           'entrykey' => \&_list,
-                           'key'      => \&_list,
-                           'literal'  => \&_list,
-                           'name'     => \&_name,
+                           'default' => {
+                                         'entrykey' => \&_list,
+                                         'key'      => \&_list,
+                                         'literal'  => \&_list,
+                                         'name'     => \&_name,
+                                        }
                           }
 };
 
@@ -145,20 +155,18 @@ sub extract_entries {
     }
     if (m/\A([A-Z][A-Z0-9])\s\s\-\s*(.+)?\n\z/xms) {
       $last_tag = $1;
-      given ($1) {
-        when ('TY')              { $e = {'TY' => $2} }
-        when ('KW')              { push @{$e->{KW}}, $2 } # amalgamate keywords
-        when ('SP')              { $e->{SPEP}{SP} = $2 }  # amalgamate page range
-        when ('EP')              { $e->{SPEP}{EP} = $2 }  # amalgamate page range
-        when ('A1')              { push @{$e->{A1}}, $2 } # amalgamate names
-        when ('A2')              { push @{$e->{A2}}, $2 } # amalgamate names
-        when ('A3')              { push @{$e->{A3}}, $2 } # amalgamate names
-        when ('AU')              { push @{$e->{AU}}, $2 } # amalgamate names
-        when ('ED')              { push @{$e->{ED}}, $2 } # amalgamate names
-        when ('ER')              { if (exists($e->{KW})) {$e->{KW} = join(',', @{$e->{KW}})}
+      if ($1 eq 'TY')     { $e = {'TY' => $2} }
+      elsif ($1 eq 'KW')  { push @{$e->{KW}}, $2 } # amalgamate keywords
+      elsif ($1 eq 'SP')  { $e->{SPEP}{SP} = $2 }  # amalgamate page range
+      elsif ($1 eq 'EP')  { $e->{SPEP}{EP} = $2 }  # amalgamate page range
+      elsif ($1 eq 'A1')  { push @{$e->{A1}}, $2 } # amalgamate names
+      elsif ($1 eq 'A2')  { push @{$e->{A2}}, $2 } # amalgamate names
+      elsif ($1 eq 'A3')  { push @{$e->{A3}}, $2 } # amalgamate names
+      elsif ($1 eq 'AU')  { push @{$e->{AU}}, $2 } # amalgamate names
+      elsif ($1 eq 'ED')  { push @{$e->{ED}}, $2 } # amalgamate names
+      elsif ($1 eq 'ER')  { if (exists($e->{KW})) {$e->{KW} = join(',', @{$e->{KW}})}
                                    push @ris_entries, $e }
-        default                  { $e->{$1} = $2 }
-      }
+      else                { $e->{$1} = $2 }
     }
     elsif (m/\A(.+)\n\z/xms) { # Deal with stupid line continuations
       $e->{$last_tag} .= " $1";
@@ -472,6 +480,13 @@ sub _verbatim {
   return;
 }
 
+# CSV field forms
+sub _csv {
+  my ($bibentry, $entry, $f) = @_;
+  $bibentry->set_datafield($f, [ split(/\s*,\s*/, $entry->{$f}) ]);
+  return;
+}
+
 # URI fields
 sub _uri {
   my ($bibentry, $entry, $f) = @_;
@@ -662,7 +677,7 @@ sub _get_handler {
     return $h;
   }
   else {
-    return $handlers->{$dm->get_fieldtype($field)}{$dm->get_datatype($field)};
+    return $handlers->{$dm->get_fieldtype($field)}{$dm->get_fieldformat($field)}{$dm->get_datatype($field)};
   }
 }
 

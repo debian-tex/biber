@@ -33,7 +33,6 @@ sub new {
   my $dm = shift;
   my $self;
   $self = bless {}, $class;
-
   # Pull out legal entrytypes, fields and constraints and make lookup hash
   # for quick tests later
   foreach my $f (@{$dm->{fields}{field}}) {
@@ -41,17 +40,27 @@ sub new {
     # In case of conflicts, we need to remove the previous definitions since
     # later overrides earlier
     if (my $previous = $self->{fieldsbyname}{$f->{content}}) {
-      @{$self->{fieldsbytype}{$previous->{'fieldtype'}}{$previous->{'datatype'}}} = grep {$_ ne $f->{content}} @{$self->{fieldsbytype}{$previous->{'fieldtype'}}{$previous->{'datatype'}}};
-      @{$self->{fieldsbyfieldtype}{$previous->{'fieldtype'}}} = grep {$_ ne $f->{content}} @{$self->{fieldsbyfieldtype}{$previous->{'fieldtype'}}};
-      @{$self->{fieldsbydatatype}{$previous->{'datatype'}}} = grep {$_ ne $f->{content}} @{$self->{fieldsbydatatype}{$previous->{'datatype'}}};
+
+      if ($f->{format}) {
+        @{$self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{$previous->{format}}} = grep {$_ ne $f->{content}} @{$self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{$previous->{format}}};
+      }
+      @{$self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{'*'}} = grep {$_ ne $f->{content}} @{$self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{'*'}};
+      @{$self->{fieldsbyfieldtype}{$previous->{fieldtype}}} = grep {$_ ne $f->{content}} @{$self->{fieldsbyfieldtype}{$previous->{fieldtype}}};
+      @{$self->{fieldsbydatatype}{$previous->{datatype}}} = grep {$_ ne $f->{content}} @{$self->{fieldsbydatatype}{$previous->{datatype}}};
+      @{$self->{fieldsbyformat}{$previous->{'format'}}} = grep {$_ ne $f->{content}} @{$self->{fieldsbyformat}{$previous->{format}}};
       delete $self->{fieldsbyname}{$f->{content}};
     }
 
-    $self->{fieldsbyname}{$f->{content}} = {'fieldtype' => $f->{fieldtype},
-                                            'datatype'  => $f->{datatype}};
-    push @{$self->{fieldsbytype}{$f->{fieldtype}}{$f->{datatype}}}, $f->{content};
+    $self->{fieldsbyname}{$f->{content}} = {'fieldtype'   => $f->{fieldtype},
+                                            'datatype'    => $f->{datatype},
+                                            'format'      => $f->{format} || 'default'};
+    if ($f->{format}) {
+      push @{$self->{fieldsbytype}{$f->{fieldtype}}{$f->{datatype}}{$f->{format}}}, $f->{content};
+    }
+    push @{$self->{fieldsbytype}{$f->{fieldtype}}{$f->{datatype}}{'*'}}, $f->{content};
     push @{$self->{fieldsbyfieldtype}{$f->{fieldtype}}}, $f->{content};
     push @{$self->{fieldsbydatatype}{$f->{datatype}}}, $f->{content};
+    push @{$self->{fieldsbyformat}{$f->{format} || 'default'}}, $f->{content};
 
     # check null_ok
     if ($f->{nullok}) {
@@ -235,6 +244,21 @@ sub get_fields_of_fieldtype {
   return $f ? [ sort @$f ] : [];
 }
 
+=head2 get_fields_of_fieldformat
+
+    Retrieve fields of a certain format from data model
+    Return in sorted order so that bbl order doesn't change when changing
+    .bcf. This really messes up tests otherwise.
+
+=cut
+
+sub get_fields_of_fieldformat {
+  my ($self, $format) = @_;
+  my $f = $self->{fieldsbyformat}{$format};
+  return $f ? [ sort @$f ] : [];
+}
+
+
 =head2 get_fields_of_datatype
 
     Retrieve fields of a certain biblatex datatype from data model
@@ -259,8 +283,15 @@ sub get_fields_of_datatype {
 =cut
 
 sub get_fields_of_type {
-  my ($self, $fieldtype, $datatype) = @_;
-  my $f = $self->{fieldsbytype}{$fieldtype}{$datatype};
+  my ($self, $fieldtype, $datatype, $format) = @_;
+  my $f;
+  if ($format) {
+    $f = $self->{fieldsbytype}{$fieldtype}{$datatype}{$format};
+  }
+  else {
+    $f = $self->{fieldsbytype}{$fieldtype}{$datatype}{'*'};
+  }
+
   return $f ? [ sort @$f ] : [];
 }
 
@@ -285,6 +316,18 @@ sub get_datatype {
   my ($self, $field) = @_;
   return $self->{fieldsbyname}{$field}{datatype};
 }
+
+=head2 get_fieldformat
+
+    Returns the format of a field
+
+=cut
+
+sub get_fieldformat {
+  my ($self, $field) = @_;
+  return $self->{fieldsbyname}{$field}{format};
+}
+
 
 =head2 get_dm_for_field
 
@@ -547,8 +590,9 @@ sub check_data_constraints {
         }
       }
     }
-    elsif ($c->{datatype} eq 'integer') {
-      my $dt = $DM_DATATYPES{'integer'};
+    elsif ($c->{datatype} eq 'integer' or
+           $c->{datatype} eq 'datepart') {
+      my $dt = $DM_DATATYPES{$c->{datatype}};
       foreach my $f (@{$c->{fields}}) {
         if (my $fv = $be->get_field($f)) {
           unless ( $fv =~ /$dt/ ) {

@@ -241,12 +241,20 @@ sub tool_mode_setup {
   my $bib_section = new Biber::Section('number' => 0);
   $bib_section->set_datasources([{type => 'file',
                                   name => $ARGV[0],
-                                  datatype => Biber::Config->getoption('tool_datatype')}]);
+                                  datatype => Biber::Config->getoption('input_format')}]);
   $bib_section->set_allkeys(1);
   $bib_sections->add_section($bib_section);
 
   # Add the Biber::Sections object to the Biber object
   $self->add_sections($bib_sections);
+
+  my $sortlists = new Biber::SortLists;
+  my $seclist = Biber::SortList->new(section => 0, label => 'tool');
+  $seclist->set_type('entry');
+  $seclist->set_sortscheme(Biber::Config->getblxoption('sorting'));
+  $logger->debug("Adding 'entry' list 'tool' for pseudo-section 0");
+  $sortlists->add_list($seclist);
+  $self->{sortlists} = $sortlists;
 
   # User maps are set in config file and need some massaging which normally
   # happend in parse_ctrlfile
@@ -338,7 +346,6 @@ sub parse_ctrlfile {
                                                            qr/\Abibdata\z/,
                                                            qr/\Adatasource\z/,
                                                            qr/\Asection\z/,
-                                                           qr/\Adtarget\z/,
                                                            qr/\Asortexclusion\z/,
                                                            qr/\Aexclusion\z/,
                                                            qr/\Asort\z/,
@@ -588,7 +595,7 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
 
     my @keys = ();
     foreach my $keyc (@{$section->{citekey}}) {
-      my $key = $keyc->{content};
+      my $key = biber_decode_utf8($keyc->{content});# Unicode NFD boundary
       # Stop reading citekeys if we encounter "*" as a citation as this means
       # "all keys"
       if ($key eq '*') {
@@ -723,7 +730,7 @@ sub process_setup {
   # Break data model information up into more processing-friendly formats
   # for use in verification checks later
   # This has to be here as opposed to in parse_control() so that it can pick
-  # up data model defaults in Constants.pm in case there is nothing in the .bcf
+  # up use config dm settings (for tool mode) in case there is nothing in the .bcf
   Biber::Config->set_dm(Biber::DataModel->new(Biber::Config->getblxoption('datamodel')));
 
   # Force output_safechars flag if output to ASCII and input_encoding is not ASCII
@@ -741,6 +748,8 @@ sub process_setup {
 
 sub process_setup_tool {
   my $self = shift;
+
+  Biber::Config->set_dm(Biber::DataModel->new(Biber::Config->getblxoption('datamodel')));
 
   # Force output_safechars flag if output to ASCII and input_encoding is not ASCII
   if (Biber::Config->getoption('output_encoding') =~ /(?:x-)?ascii/xmsi and
@@ -779,12 +788,12 @@ sub resolve_alias_refs {
     }
     # XDATA
     if (my $xdata = $be->get_field('xdata')) {
-      my @resolved_keys;
-      foreach my $refkey (split /\s*,\s*/, $xdata) {
+      my $resolved_keys;
+      foreach my $refkey (@$xdata) {
         $refkey = $section->get_citekey_alias($refkey) // $refkey;
-        push @resolved_keys, $refkey;
+        push @$resolved_keys, $refkey;
       }
-      $be->set_datafield('xdata', join(',', @resolved_keys));
+      $be->set_datafield('xdata', $resolved_keys);
     }
   }
 }
@@ -865,7 +874,7 @@ sub instantiate_dynamic {
 
     my $be = new Biber::Entry;
     $be->set_field('entrytype', 'set');
-    $be->set_field('entryset', join(',', @members));
+    $be->set_field('entryset', [ @members ]);
     $be->set_field('citekey', $dset);
     $be->set_field('datatype', 'dynamic');
     $section->bibentries->add_entry($dset, $be);
@@ -932,16 +941,16 @@ sub cite_setmembers {
     # promote indirectly cited inset set members to fully cited entries
     if ($be->get_field('entrytype') eq 'set' and
         $be->get_field('entryset')) {
-      my @inset_keys = split /\s*,\s*/, $be->get_field('entryset');
+      my $inset_keys = $be->get_field('entryset');
 
-      my @realmems;
-      foreach my $mem (@inset_keys) {
-        push @realmems, $section->get_citekey_alias($mem) // $mem;
+      my $realmems;
+      foreach my $mem (@$inset_keys) {
+        push @$realmems, $section->get_citekey_alias($mem) // $mem;
       }
-      @inset_keys = @realmems;
-      $be->set_datafield('entryset', join(',', @inset_keys));
+      $inset_keys = $realmems;
+      $be->set_datafield('entryset', $inset_keys);
 
-      foreach my $inset_key (@inset_keys) {
+      foreach my $inset_key (@$inset_keys) {
         $logger->debug("Adding set member '$inset_key' to the citekeys (section $secnum)");
         $section->add_citekeys($inset_key);
 
@@ -951,7 +960,7 @@ sub cite_setmembers {
         }
       }
       # automatically crossref for the first set member using plain set inheritance
-      $be->set_inherit_from($section->bibentry($inset_keys[0]), $section);
+      $be->set_inherit_from($section->bibentry($inset_keys->[0]), $section);
       # warning for the old pre-Biber way of doing things
       if ($be->get_field('crossref')) {
         biber_warn("Field 'crossref' is no longer needed in set entries in Biber - ignoring in entry '$citekey'", $be);
@@ -988,8 +997,8 @@ sub process_interentry {
     # It's best to do this in the loop here as every entry needs the information
     # from all other entries in process_sets()
     if ($be->get_field('entrytype') eq 'set') {
-      my @entrysetkeys = split /\s*,\s*/, $be->get_field('entryset');
-      foreach my $member (@entrysetkeys) {
+      my $entrysetkeys = $be->get_field('entryset');
+      foreach my $member (@$entrysetkeys) {
         Biber::Config->set_set_pc($citekey, $member);
         Biber::Config->set_set_cp($member, $citekey);
       }
@@ -1390,7 +1399,7 @@ sub process_sets {
     # Enforce Biber parts of virtual "dataonly" for set members
     # Also automatically create an "entryset" field for the members
     foreach my $member (@entrysetkeys) {
-      process_entry_options($member, 'skiplab, skiplos, uniquename=0, uniquelist=0');
+      process_entry_options($member, [ 'skiplab', 'skiplos', 'uniquename=0', 'uniquelist=0' ]);
 
       my $me = $section->bibentry($member);
       if ($me->get_field('entryset')) {
@@ -1398,7 +1407,7 @@ sub process_sets {
         $me->del_field('entryset');
       }
       # This ends up setting \inset{} in the bbl
-      $me->set_field('entryset', $citekey);
+      $me->set_field('entryset', [ $citekey ]);
     }
 
     unless (@entrysetkeys) {
@@ -1409,7 +1418,7 @@ sub process_sets {
   # had skips set by being seen as a member of that set yet
   else {
     if (Biber::Config->get_set_parents($citekey)) {
-      process_entry_options($citekey, 'skiplab, skiplos, uniquename=0, uniquelist=0');
+      process_entry_options($citekey, [ 'skiplab', 'skiplos', 'uniquename=0', 'uniquelist=0' ]);
     }
   }
 }
@@ -1456,7 +1465,7 @@ sub process_labelname {
       $lnameopt = $ln;
     }
 
-    unless ($ln ~~ $dm->get_fields_of_type('list', 'name')) {
+    unless (first {$ln eq $_} @{$dm->get_fields_of_type('list', 'name')}) {
       biber_warn("Labelname candidate '$ln' is not a name field - skipping");
       next;
     }
@@ -1485,7 +1494,7 @@ sub process_labelname {
     }
 
     # We have already warned about this above
-    unless ($ln ~~ $dm->get_fields_of_type('list', 'name')) {
+    unless (first {$ln eq $_} @{$dm->get_fields_of_type('list', 'name')}) {
       next;
     }
 
@@ -1910,7 +1919,6 @@ sub process_lists {
   foreach my $list (@{$self->sortlists->get_lists_for_section($secnum)}) {
     my $llabel = $list->get_label;
     my $ltype = $list->get_type;
-
     # Last-ditch fallback in case we still don't have a sorting spec
     $list->set_sortscheme(Biber::Config->getblxoption('sorting')) unless $list->get_sortscheme;
 
@@ -1948,7 +1956,7 @@ sub process_lists {
       # Sorting
       $self->generate_sortinfo($list);       # generate the sort information
       $self->sort_list($list);               # sort the list
-      $self->generate_extra($list);          # generate the extra* fields
+      $self->generate_extra($list) unless Biber::Config->getoption('tool'); # generate the extra* fields
 
       # Cache the results
       $logger->debug("Adding sorting cache entry for '$llabel'");
@@ -2268,25 +2276,23 @@ sub create_uniquename_info {
         my $key;
 
         # Context and key depend on the uniquename setting
-        given ($un) {
-          when ([1,3]) {
-            $namecontext = 'global';
-            $key = $nameinitstring;
-          }
-          when ([2,4]) {
-            $namecontext = 'global';
-            $key = $namestring;
-          }
-          when (5) {
-            $namecontext = $lastnames_string;
-            $key = $initnames_string;
-            $name->set_minimal_info($lastnames_string);
-          }
-          when (6) {
-            $namecontext = $lastnames_string;
-            $key = $fullnames_string;
-            $name->set_minimal_info($lastnames_string);
-          }
+        if ($un == 1 or $un == 3) {
+          $namecontext = 'global';
+          $key = $nameinitstring;
+        }
+        elsif ($un == 2 or $un == 4) {
+          $namecontext = 'global';
+          $key = $namestring;
+        }
+        elsif ($un == 5) {
+          $namecontext = $lastnames_string;
+          $key = $initnames_string;
+          $name->set_minimal_info($lastnames_string);
+        }
+        elsif ($un == 6) {
+          $namecontext = $lastnames_string;
+          $key = $fullnames_string;
+          $name->set_minimal_info($lastnames_string);
         }
         if (first {Compare($_, $name)} @truncnames) {
           # Record a uniqueness information entry for the lastname showing that
@@ -2407,14 +2413,12 @@ sub generate_uniquename {
           # But restrict to uniquename biblatex option maximum
           elsif (Biber::Config->get_numofuniquenames($namestring, $namecontext) == 1) {
             my $run;
-            given ($un) {
-              when (1) {$run = 1}   # init
-              when (2) {$run = 2}   # full
-              when (3) {$run = 1}   # allinit
-              when (4) {$run = 2}   # allfull
-              when (5) {$run = 1}   # mininit
-              when (6) {$run = 2}   # minfull
-            }
+            if ($un == 1)    {$run = 1}   # init
+            elsif ($un == 2) {$run = 2}   # full
+            elsif ($un == 3) {$run = 1}   # allinit
+            elsif ($un == 4) {$run = 2}   # allfull
+            elsif ($un == 5) {$run = 1}   # mininit
+            elsif ($un == 6) {$run = 2}   # minfull
             $name->set_uniquename($run)
           }
           # Otherwise, there must be more than one key for the full name,
@@ -2435,14 +2439,12 @@ sub generate_uniquename {
           }
           elsif (Biber::Config->get_numofuniquenames_all($namestring, $namecontext) == 1) {
             my $run;
-            given ($un) {
-              when (1) {$run = 1}   # init
-              when (2) {$run = 2}   # full
-              when (3) {$run = 1}   # allinit
-              when (4) {$run = 2}   # allfull
-              when (5) {$run = 1}   # mininit
-              when (6) {$run = 2}   # minfull
-            }
+            if ($un == 1) {$run = 1}   # init
+            elsif ($un == 2) {$run = 2}   # full
+            elsif ($un == 3) {$run = 1}   # allinit
+            elsif ($un == 4) {$run = 2}   # allfull
+            elsif ($un == 5) {$run = 1}   # mininit
+            elsif ($un == 6) {$run = 2}   # minfull
             $name->set_uniquename_all($run)
           }
           else {
@@ -2750,7 +2752,7 @@ sub sort_list {
   }
   $logger->debug("Keys before sort:\n");
   foreach my $k (@keys) {
-    $logger->debug("$k => " . $list->get_sortdata($k)->[0] . "\n");
+    $logger->debug("$k => " . $list->get_sortdata($k)->[0]);
   }
 
   $logger->trace("Sorting '$ltype' list '$llabel' with scheme\n-------------------\n" . Data::Dump::pp($sortscheme) . "\n-------------------\n");
@@ -2965,7 +2967,7 @@ sub sort_list {
 
   $logger->debug("Keys after sort:\n");
   foreach my $k (@keys) {
-    $logger->debug("$k => " . $list->get_sortdata($k)->[0] . "\n");
+    $logger->debug("$k => " . $list->get_sortdata($k)->[0]);
   }
   $list->set_keys([ @keys ]);
 
@@ -3048,6 +3050,7 @@ sub prepare_tool {
     $self->process_interentry; # Process crossrefs/sets etc.
   }
 
+  $self->process_lists;                # process the output lists (sort and filtering)
   $out->create_output_section; # Generate and push the section output into the
                                # into the output object ready for writing
   return;
@@ -3083,10 +3086,11 @@ sub fetch_data {
   my @citekeys = $section->get_static_citekeys;
   no strict 'refs'; # symbolic references below ...
 
-  # Clear all T::B macro definitions between sections
-  # T::B never clears these
-  $logger->debug('Clearing Text::BibTeX macros definitions');
-  Text::BibTeX::delete_all_macros();
+  # Clear all T::B macro definitions between sections if asked as T::B never clears these
+  if (Biber::Config->getoption('clrmacros')) {
+    $logger->debug('Clearing Text::BibTeX macros definitions');
+    Text::BibTeX::delete_all_macros();
+  }
 
   # (Re-)define the old BibTeX month macros to what biblatex wants unless user stops this
   unless (Biber::Config->getoption('nostdmacros')) {
@@ -3104,6 +3108,7 @@ sub fetch_data {
                   'dec' => '12');
 
     foreach my $mon (keys %months) {
+      Text::BibTeX::delete_macro($mon);
       Text::BibTeX::add_macro_text($mon, $months{$mon});
     }
   }
@@ -3150,9 +3155,7 @@ sub fetch_data {
   # dependent key list generation - has to be a sub as it's recursive to catch
   # nested crossrefs, xdata etc.
   get_dependents($self, [$section->get_citekeys]);
-
   $logger->debug("Citekeys for section '$secnum' after fetching data: " . join(', ', $section->get_citekeys));
-
   return;
 }
 
@@ -3195,7 +3198,7 @@ sub get_dependents {
 
       # xdata
       if (my $xdata = $be->get_field('xdata')) {
-        foreach my $xdatum (split /\s*,\s*/, $xdata) {
+        foreach my $xdatum (@$xdata) {
           # skip looking for dependent if it's already there (loop suppression)
           push @$new_deps, $xdatum unless $section->bibentry($xdatum);
           $logger->debug("Entry '$citekey' has xdata '$xdatum'");
@@ -3215,22 +3218,21 @@ sub get_dependents {
 
       # static sets
       if ($be->get_field('entrytype') eq 'set') {
-        my @smems = split /\s*,\s*/, $be->get_field('entryset');
+        my $smems = $be->get_field('entryset');
         # skip looking for dependent if it's already there (loop suppression)
-        foreach my $sm (@smems) {
+        foreach my $sm (@$smems) {
           unless ($section->has_citekey($sm)) {
             push @$new_deps, $sm;
             $dep_map->{$citekey} = 1;
           }
         }
-        $logger->debug("Static set entry '$citekey' has members: " . join(', ', @smems));
+        $logger->debug("Static set entry '$citekey' has members: " . join(', ', @$smems));
       }
 
       # Related entries
       if (my $relkeys = $be->get_field('related')) {
-        my @rmems = split /\s*,\s*/, $relkeys;
         # skip looking for dependent if it's already there (loop suppression)
-        foreach my $rm (@rmems) {
+        foreach my $rm (@$relkeys) {
           unless ($section->has_citekey($rm) or $section->is_related($rm)) {
             # record that $rm is used as a related entry key
             $section->add_related($rm);
@@ -3238,7 +3240,7 @@ sub get_dependents {
             $dep_map->{$citekey} = 1;
           }
         }
-        $logger->debug("Entry '$citekey' has related entries: " . join(', ', @rmems));
+        $logger->debug("Entry '$citekey' has related entries: " . join(', ', @$relkeys));
       }
     }
   }
@@ -3306,7 +3308,7 @@ sub remove_undef_dependent {
 
   # remove from any dynamic keys
   if (my @dmems = $section->get_dynamic_set($citekey)){
-    if ($missing_key ~~ @dmems) {
+    if (first {$missing_key eq $_} @dmems) {
       $section->set_dynamic_set($citekey, grep {$_ ne $missing_key} @dmems);
     }
     else {
@@ -3329,27 +3331,25 @@ sub remove_undef_dependent {
 
     # remove xdata
     if (my $xdata = $be->get_field('xdata')) {
-      my @xdatum = split /\s*,\s*/, $xdata;
-      if ($missing_key ~~ @xdatum) {
-        $be->set_datafield('xdata', join(',', grep {$_ ne $missing_key} @xdatum));
+      if (first {$missing_key eq $_} @$xdata) {
+        $be->set_datafield('xdata', [ grep {$_ ne $missing_key} @$xdata ]) ;
         biber_warn("I didn't find a database entry for xdata entry '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
       }
     }
 
     # remove static sets
     if ($be->get_field('entrytype') eq 'set') {
-      my @smems = split /\s*,\s*/, $be->get_field('entryset');
-      if ($missing_key ~~ @smems) {
-        $be->set_datafield('entryset', join(',', grep {$_ ne $missing_key} @smems));
+      my $smems = $be->get_field('entryset');
+      if (first {$missing_key eq $_} @$smems) {
+        $be->set_datafield('entryset', [ grep {$_ ne $missing_key} @$smems ]);
         biber_warn("I didn't find a database entry for static set member '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
       }
     }
 
     # remove related entries
     if (my $relkeys = $be->get_field('related')) {
-      my @rmems = split /\s*,\s*/, $relkeys;
-      if ($missing_key ~~ @rmems) {
-        $be->set_datafield('related', join(',', grep {$_ ne $missing_key} @rmems));
+      if (first {$missing_key eq $_} @$relkeys) {
+        $be->set_datafield('related', [ grep {$_ ne $missing_key} @$relkeys ]);
         # If no more related entries, remove the other related fields
         unless ($be->get_field('related')) {
           $be->del_field('relatedtype');

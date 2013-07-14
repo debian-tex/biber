@@ -162,14 +162,16 @@ start =
     # noinit specification
     element bcf:noinits {
       element bcf:noinit {
-        attribute value { xsd:string }
+        attribute value { xsd:string },
+        empty
       }+
     }?,
     # nosort specification
     element bcf:nosorts {
       element bcf:nosort {
         attribute field { xsd:string },
-        attribute value { xsd:string }
+        attribute value { xsd:string },
+        empty
       }+
     }?,
     # Global sorting specification
@@ -190,15 +192,15 @@ start =
         element bcf:field {
           # fieldtype is "field" or "list"
           attribute fieldtype { "field" | "list" },
+          # format is a specification of the format of the field. If not specified, field contents
+          # are just as is. 
+          attribute format { "csv" }?,
           # datatype of field content
-          attribute datatype { "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "csv" | "code" | "uri" },
+          attribute datatype { "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "csv" | "code" | "uri" | "datepart" | "keyword" | "option" },
           # Are we allowed to output a null field value to the .bbl for this field?
           attribute nullok { "true" }?,
           # Should this field be skipped and not output to the .bbl?
           attribute skip_output { "true" }?,
-          # limit this field definition to specific entrytypes?
-          # Is parsed as a csv list
-          attribute entrytypes { text }?,
           text
         }+
       },
@@ -304,7 +306,7 @@ sort =
     # order of this specification in the set of all sort specifications
     attribute order { xsd:integer },
     # Should we stop generating sorting information after this item?
-    attribute final { xsd:integer }?,
+    attribute final { "1" }?,
     # Sort ascending or descending
     attribute sort_direction { "ascending" | "descending" }?,
     # Sort case sensitive or not?
@@ -637,11 +639,13 @@ map =
           attribute map_field_target { xsd:string {minLength="1"} }?,
           attribute map_final { "1" }?,
           attribute map_match { xsd:string {minLength="1"} }?,
+          attribute map_notmatch { xsd:string {minLength="1"} }?,
           attribute map_replace { xsd:string {minLength="1"} }?
         ) |
         (
           attribute map_field_set { xsd:string {minLength="1"} },
           attribute map_append { "1" }?,
+          attribute map_final { "1" }?,
           ( attribute map_null { "1" } |
             attribute map_origfield { "1" } |
             attribute map_origfieldval { "1" } |
