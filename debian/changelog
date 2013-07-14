@@ -1,4 +1,4 @@
-biber (1.5-1) UNRELEASED; urgency=low
+biber (1.6-1) UNRELEASED; urgency=low
 
   [ gregor herrmann ]
   * debian/control: update {versioned,alternative} (build) dependencies.
@@ -28,7 +28,10 @@ biber (1.5-1) UNRELEASED; urgency=low
   [ Axel Beckert ]
   * Fix Vcs-Browser header (Closes: #710246)
 
- -- Danai SAE-HAN (韓達耐) <danai@danai.kalimero>  Mon, 04 Feb 2013 09:26:17 +0800
+  [ Norbert Preining ]
+  * rebuild the git repository
+
+ -- Norbert Preining <preining@debian.org>  Sun, 14 Jul 2013 23:12:29 +0900
 
 biber (0.9.9+git2012426-3) unstable; urgency=low
 
