@@ -3,80 +3,88 @@ Origin: vendor
 Forwarded: not-needed
 Author: Danai SAE-HAN (韓達耐)
 Reviewed-by: gregor herrmann <gregoa@debian.org>
-Last-Update: 2012-06-05
+Last-Update: 2013-08-29
 
---- a/lib/Biber/Input/file/biblatexml.pm
-+++ b/lib/Biber/Input/file/biblatexml.pm
-@@ -75,11 +75,7 @@
-       # We have to explicitly set the cert path because otherwise the https module
+---
+ lib/Biber/Input/file/biblatexml.pm   |    6 +-----
+ lib/Biber/Input/file/bibtex.pm       |    6 +-----
+ lib/Biber/Input/file/endnotexml.pm   |    6 +-----
+ lib/Biber/Input/file/ris.pm          |    6 +-----
+ lib/Biber/Input/file/zoterordfxml.pm |    6 +-----
+ 5 files changed, 5 insertions(+), 25 deletions(-)
+
+--- biber-norb.git.orig/lib/Biber/Input/file/biblatexml.pm
++++ biber-norb.git/lib/Biber/Input/file/biblatexml.pm
+@@ -88,11 +88,7 @@
        # can't find the .pem when PAR::Packer'ed
-       if (not exists($ENV{PERL_LWP_SSL_CA_FILE})) {
+       if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
+           not defined(Biber::Config->getoption('ssl-nointernalca'))) {
 -        require Mozilla::CA; # Have to explicitly require this here to get it into %INC below
 -        # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
 -        (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
 -        $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
 -        $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
-+          $ENV{PERL_LWP_SSL_CA_FILE} = '/etc/ssl/certs/ca-certificates.crt';
++        $ENV{PERL_LWP_SSL_CA_FILE} = '/etc/ssl/certs/ca-certificates.crt';
        }
        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
            $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
---- a/lib/Biber/Input/file/bibtex.pm
-+++ b/lib/Biber/Input/file/bibtex.pm
-@@ -100,11 +100,7 @@
-       # We have to explicitly set the cert path because otherwise the https module
+--- biber-norb.git.orig/lib/Biber/Input/file/bibtex.pm
++++ biber-norb.git/lib/Biber/Input/file/bibtex.pm
+@@ -129,11 +129,7 @@
        # can't find the .pem when PAR::Packer'ed
-       if (not exists($ENV{PERL_LWP_SSL_CA_FILE})) {
+       if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
+           not defined(Biber::Config->getoption('ssl-nointernalca'))) {
 -        require Mozilla::CA; # Have to explicitly require this here to get it into %INC below
 -        # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
 -        (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
 -        $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
 -        $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
-+          $ENV{PERL_LWP_SSL_CA_FILE} = '/etc/ssl/certs/ca-certificates.crt';
++        $ENV{PERL_LWP_SSL_CA_FILE} = '/etc/ssl/certs/ca-certificates.crt';
        }
        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
            $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
---- a/lib/Biber/Input/file/endnotexml.pm
-+++ b/lib/Biber/Input/file/endnotexml.pm
-@@ -73,11 +73,7 @@
-       # We have to explicitly set the cert path because otherwise the https module
+--- biber-norb.git.orig/lib/Biber/Input/file/endnotexml.pm
++++ biber-norb.git/lib/Biber/Input/file/endnotexml.pm
+@@ -106,11 +106,7 @@
        # can't find the .pem when PAR::Packer'ed
-       if (not exists($ENV{PERL_LWP_SSL_CA_FILE})) {
+       if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
+           not defined(Biber::Config->getoption('ssl-nointernalca'))) {
 -        require Mozilla::CA; # Have to explicitly require this here to get it into %INC below
 -        # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
 -        (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
 -        $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
 -        $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
-+          $ENV{PERL_LWP_SSL_CA_FILE} = '/etc/ssl/certs/ca-certificates.crt';
++        $ENV{PERL_LWP_SSL_CA_FILE} = /etc/ssl/certs/ca-certificates.crt';
        }
        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
            $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
---- a/lib/Biber/Input/file/ris.pm
-+++ b/lib/Biber/Input/file/ris.pm
-@@ -69,11 +69,7 @@
-       # We have to explicitly set the cert path because otherwise the https module
+--- biber-norb.git.orig/lib/Biber/Input/file/ris.pm
++++ biber-norb.git/lib/Biber/Input/file/ris.pm
+@@ -101,11 +101,7 @@
        # can't find the .pem when PAR::Packer'ed
-       if (not exists($ENV{PERL_LWP_SSL_CA_FILE})) {
+       if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
+           not defined(Biber::Config->getoption('ssl-nointernalca'))) {
 -        require Mozilla::CA; # Have to explicitly require this here to get it into %INC below
 -        # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
 -        (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
 -        $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
 -        $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
-+          $ENV{PERL_LWP_SSL_CA_FILE} = '/etc/ssl/certs/ca-certificates.crt';
++        $ENV{PERL_LWP_SSL_CA_FILE} = '/etc/ssl/certs/ca-certificates.crt';
        }
        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
            $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
---- a/lib/Biber/Input/file/zoterordfxml.pm
-+++ b/lib/Biber/Input/file/zoterordfxml.pm
-@@ -84,11 +84,7 @@
-       # We have to explicitly set the cert path because otherwise the https module
+--- biber-norb.git.orig/lib/Biber/Input/file/zoterordfxml.pm
++++ biber-norb.git/lib/Biber/Input/file/zoterordfxml.pm
+@@ -118,11 +118,7 @@
        # can't find the .pem when PAR::Packer'ed
-       if (not exists($ENV{PERL_LWP_SSL_CA_FILE})) {
+       if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
+           not defined(Biber::Config->getoption('ssl-nointernalca'))) {
 -        require Mozilla::CA; # Have to explicitly require this here to get it into %INC below
 -        # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
 -        (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
 -        $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
 -        $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
-+          $ENV{PERL_LWP_SSL_CA_FILE} = '/etc/ssl/certs/ca-certificates.crt';
++        $ENV{PERL_LWP_SSL_CA_FILE} = '/etc/ssl/certs/ca-certificates.crt';
        }
        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
            $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
