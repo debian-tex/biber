@@ -5,9 +5,17 @@ Author: Danai SAE-HAN (韓達耐)
 Reviewed-by: gregor herrmann <gregoa@debian.org>
 Last-Update: 2012-06-05
 
---- a/lib/Biber/Input/file/biblatexml.pm
-+++ b/lib/Biber/Input/file/biblatexml.pm
-@@ -123,11 +123,7 @@ sub extract_entries {
+---
+ lib/Biber/Input/file/biblatexml.pm   |    6 +-----
+ lib/Biber/Input/file/bibtex.pm       |    6 +-----
+ lib/Biber/Input/file/endnotexml.pm   |    6 +-----
+ lib/Biber/Input/file/ris.pm          |    6 +-----
+ lib/Biber/Input/file/zoterordfxml.pm |    6 +-----
+ 5 files changed, 5 insertions(+), 25 deletions(-)
+
+--- biber-norb.git.orig/lib/Biber/Input/file/biblatexml.pm
++++ biber-norb.git/lib/Biber/Input/file/biblatexml.pm
+@@ -97,11 +97,7 @@
        # can't find the .pem when PAR::Packer'ed
        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
            not defined(Biber::Config->getoption('ssl-nointernalca'))) {
@@ -20,9 +28,9 @@ Last-Update: 2012-06-05
        }
        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
            $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
---- a/lib/Biber/Input/file/endnotexml.pm
-+++ b/lib/Biber/Input/file/endnotexml.pm
-@@ -138,11 +138,7 @@ sub extract_entries {
+--- biber-norb.git.orig/lib/Biber/Input/file/endnotexml.pm
++++ biber-norb.git/lib/Biber/Input/file/endnotexml.pm
+@@ -116,11 +116,7 @@
        # can't find the .pem when PAR::Packer'ed
        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
            not defined(Biber::Config->getoption('ssl-nointernalca'))) {
@@ -35,9 +43,9 @@ Last-Update: 2012-06-05
        }
        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
            $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
---- a/lib/Biber/Input/file/ris.pm
-+++ b/lib/Biber/Input/file/ris.pm
-@@ -133,11 +133,7 @@ sub extract_entries {
+--- biber-norb.git.orig/lib/Biber/Input/file/ris.pm
++++ biber-norb.git/lib/Biber/Input/file/ris.pm
+@@ -111,11 +111,7 @@
        # can't find the .pem when PAR::Packer'ed
        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
            not defined(Biber::Config->getoption('ssl-nointernalca'))) {
@@ -50,9 +58,9 @@ Last-Update: 2012-06-05
        }
        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
            $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
---- a/lib/Biber/Input/file/zoterordfxml.pm
-+++ b/lib/Biber/Input/file/zoterordfxml.pm
-@@ -149,11 +149,7 @@ sub extract_entries {
+--- biber-norb.git.orig/lib/Biber/Input/file/zoterordfxml.pm
++++ biber-norb.git/lib/Biber/Input/file/zoterordfxml.pm
+@@ -127,11 +127,7 @@
        # can't find the .pem when PAR::Packer'ed
        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
            not defined(Biber::Config->getoption('ssl-nointernalca'))) {
@@ -65,9 +73,9 @@ Last-Update: 2012-06-05
        }
        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
            $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
---- a/lib/Biber/Input/file/bibtex.pm
-+++ b/lib/Biber/Input/file/bibtex.pm
-@@ -160,11 +160,7 @@ sub extract_entries {
+--- biber-norb.git.orig/lib/Biber/Input/file/bibtex.pm
++++ biber-norb.git/lib/Biber/Input/file/bibtex.pm
+@@ -138,11 +138,7 @@
        # can't find the .pem when PAR::Packer'ed
        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
            not defined(Biber::Config->getoption('ssl-nointernalca'))) {
