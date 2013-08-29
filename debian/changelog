@@ -31,8 +31,9 @@ biber (1.6-1) UNRELEASED; urgency=low
   [ Norbert Preining ]
   * rebuild the git repository
   * update patches to current biber
+  * replace Data::Diver::Dive by our own implementation, drop dependency on libdata-diver-perl
 
- -- Norbert Preining <preining@debian.org>  Thu, 29 Aug 2013 13:26:30 +0900
+ -- Norbert Preining <preining@debian.org>  Thu, 29 Aug 2013 13:46:46 +0900
 
 biber (0.9.9+git2012426-3) unstable; urgency=low
 
