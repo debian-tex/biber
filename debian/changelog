@@ -32,7 +32,13 @@ biber (1.7-1) UNRELEASED; urgency=low
   [ Axel Beckert ]
   * Fix Vcs-Browser header (Closes: #710246)
 
- -- Danai SAE-HAN (韓達耐) <danai@debian.org>  Sun, 07 Jul 2013 02:40:01 +0800
+  [ Norbert Preining ]
+  * rebuild the git repository
+  * update patches to current biber
+  * replace Data::Diver::Dive by our own implementation, drop dependency 
+    on libdata-diver-perl
+
+ -- Norbert Preining <preining@debian.org>  Thu, 29 Aug 2013 20:18:49 +0900
 
 biber (0.9.9+git2012426-3) unstable; urgency=low
 

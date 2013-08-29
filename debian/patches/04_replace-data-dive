@@ -1,0 +1,102 @@
+Description: remove requirement for Data::Diver, provide our own Dive function
+Origin: vendor
+Forwarded: maybe
+Author: Norbert Preining <preining@debian.org>
+Last-Update: 2013-08-29
+---
+ Build.PL               |    1 -
+ META.json              |    1 -
+ META.yml               |    1 -
+ lib/Biber/Entry.pm     |    1 -
+ lib/Biber/Internals.pm |    1 -
+ lib/Biber/Utils.pm     |   22 ++++++++++++++++++++++
+ 6 files changed, 22 insertions(+), 5 deletions(-)
+
+--- biber-norb.git.orig/Build.PL
++++ biber-norb.git/Build.PL
+@@ -42,7 +42,6 @@
+     requires => {
+         'Data::Dump' => 0,
+         'Data::Compare' => 0,
+-        'Data::Diver' => 0,
+         'Date::Simple' => 0,
+         'File::Slurp'  => 0,
+         'IPC::Cmd' => 0,
+--- biber-norb.git.orig/META.json
++++ biber-norb.git/META.json
+@@ -34,7 +34,6 @@
+             "Business::ISMN" : "0",
+             "Business::ISSN" : "0",
+             "Data::Compare" : "0",
+-            "Data::Diver" : "0",
+             "Data::Dump" : "0",
+             "Date::Simple" : "0",
+             "Encode::EUCJPASCII" : "0",
+--- biber-norb.git.orig/META.yml
++++ biber-norb.git/META.yml
+@@ -74,7 +74,6 @@
+   Business::ISMN: 0
+   Business::ISSN: 0
+   Data::Compare: 0
+-  Data::Diver: 0
+   Data::Dump: 0
+   Date::Simple: 0
+   Encode::EUCJPASCII: 0
+--- biber-norb.git.orig/lib/Biber/Entry.pm
++++ biber-norb.git/lib/Biber/Entry.pm
+@@ -6,7 +6,6 @@
+ use Biber::Utils;
+ use Biber::Internals;
+ use Biber::Constants;
+-use Data::Diver qw( Dive );
+ use Data::Dump qw( pp );
+ use Digest::MD5 qw( md5_hex );
+ use Log::Log4perl qw( :no_extra_logdie_message );
+--- biber-norb.git.orig/lib/Biber/Internals.pm
++++ biber-norb.git/lib/Biber/Internals.pm
+@@ -8,7 +8,6 @@
+ use Biber::Utils;
+ use Biber::DataModel;
+ use Data::Compare;
+-use Data::Diver qw( Dive );
+ use List::AllUtils qw( :all );
+ use Log::Log4perl qw(:no_extra_logdie_message);
+ use Digest::MD5 qw( md5_hex );
+--- biber-norb.git.orig/lib/Biber/Utils.pm
++++ biber-norb.git/lib/Biber/Utils.pm
+@@ -44,6 +44,7 @@
+   is_def is_undef is_def_and_notnull is_def_and_null
+   is_undef_or_null is_notnull is_null normalise_utf8 inits join_name latex_recode_output
+   filter_entry_options biber_error biber_warn ireplace imatch validate_biber_xml
++  Dive
+   process_entry_options escape_label unescape_label biber_decode_utf8 out parse_date};
+ 
+ =head1 FUNCTIONS
+@@ -971,6 +972,27 @@
+   return;
+ }
+ 
++=head2 Dive
++
++  A minimal implementation of Data::Diver since this one cannot be
++  included in Debian due to license issues.
++  
++  Pulls out one value from a nested data structure.
++
++=cut
++
++sub Dive {
++  my ($ref, @keys) = @_;
++  return unless defined($ref);
++  for my $k (@keys) {
++    if ($k =~ m/^-?\d+$/) {
++      $ref = $ref->[$k];
++    } else {
++      $ref = $ref->{$k};
++    }
++  }
++  return $ref;
++}
+ 
+ 1;
+ 
