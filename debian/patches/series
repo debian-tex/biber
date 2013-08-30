@@ -2,3 +2,4 @@
 02_spelling.patch
 03_whatis.patch
 04_replace-data-dive
+05_perl518_sort_keys
