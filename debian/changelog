@@ -35,14 +35,14 @@ biber (1.7-1) UNRELEASED; urgency=low
   [ Norbert Preining ]
   * rebuild the git repository
   * update patches to current biber
-  * replace Data::Diver::Dive by our own implementation, drop dependency 
-    on libdata-diver-perl
+  * include a patch from upstream (to be in 1.8) to remove dependency
+    on Data::Diver and switch to autovivification module, edit control
   * add more build-deps, don't know whether all of them are really necessary
   * add myself to the uploaders
   * add a patch taken from OpenSuSE to ensure tests succeed with perl 5.18
     randomization of hash keys (thanks Werner Fink)
 
- -- Norbert Preining <preining@debian.org>  Fri, 30 Aug 2013 20:54:59 +0900
+ -- Norbert Preining <preining@debian.org>  Sun, 01 Sep 2013 22:34:06 +0900
 
 biber (0.9.9+git2012426-3) unstable; urgency=low
 

@@ -5,6 +5,7 @@ Section: perl
 Priority: optional
 Build-Depends: debhelper (>= 9),
                perl (>= 5.14.0),
+	       libautovivification-perl,
                libconfig-autoconf-perl (>= 0.15-1),
                libdata-compare-perl,
                libdata-dump-perl,

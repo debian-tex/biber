@@ -1,0 +1,199 @@
+Description: remove requirement for Data::Diver, use noautovivification
+Origin: upstream
+Author: Philip Kime
+Last-Update: 2013-09-01
+---
+ Build.PL               |    2 +-
+ lib/Biber/Entry.pm     |   45 +++++++++++++++++++++++++++------------------
+ lib/Biber/Internals.pm |    4 ++--
+ 3 files changed, 30 insertions(+), 21 deletions(-)
+
+--- biber-norb.git.orig/Build.PL
++++ biber-norb.git/Build.PL
+@@ -40,9 +40,9 @@
+         'ExtUtils::LibBuilder' => '0.02'
+     },
+     requires => {
++        'autovivification' => 0,
+         'Data::Dump' => 0,
+         'Data::Compare' => 0,
+-        'Data::Diver' => 0,
+         'Date::Simple' => 0,
+         'File::Slurp'  => 0,
+         'IPC::Cmd' => 0,
+--- biber-norb.git.orig/lib/Biber/Entry.pm
++++ biber-norb.git/lib/Biber/Entry.pm
+@@ -6,7 +6,6 @@
+ use Biber::Utils;
+ use Biber::Internals;
+ use Biber::Constants;
+-use Data::Diver qw( Dive );
+ use Data::Dump qw( pp );
+ use Digest::MD5 qw( md5_hex );
+ use Log::Log4perl qw( :no_extra_logdie_message );
+@@ -322,6 +321,7 @@
+ =cut
+ 
+ sub get_field {
++  no autovivification;
+   my $self = shift;
+   my ($key, $form, $lang) = @_;
+   return undef unless $key;
+@@ -332,9 +332,9 @@
+     $form = 'original';
+     $lang = 'default';
+   }
+-  return Dive($self, 'datafields', $key, $form, $lang) //
+-         Dive($self, 'derivedfields', $key, $form, $lang) //
+-         Dive($self, 'rawfields', $key);
++  return $self->{datafields}{$key}{$form}{$lang} //
++         $self->{derivedfields}{$key}{$form}{$lang} //
++         $self->{rawfields}{$key};
+ }
+ 
+ 
+@@ -345,11 +345,13 @@
+ =cut
+ 
+ sub get_field_forms {
++  no autovivification;
+   my $self = shift;
+   my $key = shift;
+   return undef unless $key;
+-  return Dive($self, 'datafields', $key) ||
+-         Dive($self, 'derivedfields', $key);
++  return $self->{datafields}{$key} ||
++         $self->{derivedfields}{$key};
++
+ }
+ 
+ =head2 get_field_form_names
+@@ -359,11 +361,12 @@
+ =cut
+ 
+ sub get_field_form_names {
++  no autovivification;
+   my $self = shift;
+   my $key = shift;
+   return undef unless $key;
+-  return keys %{Dive($self, 'datafields', $key) ||
+-                Dive($self, 'derivedfields', $key) ||
++  return sort keys %{$self->{datafields}{$key} ||
++                     $self->{derivedfields}{$key} ||
+                 {}};
+ }
+ 
+@@ -374,12 +377,13 @@
+ =cut
+ 
+ sub get_field_form_lang_names {
++  no autovivification;
+   my $self = shift;
+   my ($key, $form) = @_;
+   return undef unless $key;
+   return undef unless $form;
+-  return keys %{Dive($self, 'datafields', $key, $form) ||
+-                Dive($self, 'derivedfields', $key, $form) ||
++  return sort keys %{$self->{datafields}{$key}{$form} ||
++                     $self->{derivedfields}{$key}{$form} ||
+                 {}};
+ }
+ 
+@@ -432,9 +436,10 @@
+ =cut
+ 
+ sub get_rawfield {
++  no autovivification;
+   my $self = shift;
+   my $key = shift;
+-  return Dive($self, 'rawfields', $key);
++  return $self->{rawfields}{$key};
+ }
+ 
+ 
+@@ -445,11 +450,12 @@
+ =cut
+ 
+ sub get_datafield {
++  no autovivification;
+   my $self = shift;
+   my ($key, $form, $lang) = @_;
+   $form = $form || 'original';
+   $lang = $lang || 'default';
+-  return Dive($self, 'datafields', $key, $form, $lang);
++  return $self->{datafields}{$key}{$form}{$lang};
+ }
+ 
+ 
+@@ -489,11 +495,12 @@
+ =cut
+ 
+ sub field_exists {
++  no autovivification;
+   my $self = shift;
+   my $key = shift;
+-  return (Dive($self, 'datafields', $key) ||
+-          Dive($self, 'derivedfields', $key) ||
+-          Dive($self, 'rawfields', $key)) ? 1 : 0;
++  return ($self->{datafields}{$key} ||
++          $self->{derivedfields}{$key} ||
++          $self->{rawfields}{$key}) ? 1 : 0;
+ }
+ 
+ =head2 field_form_exists
+@@ -503,11 +510,12 @@
+ =cut
+ 
+ sub field_form_exists {
++  no autovivification;
+   my $self = shift;
+   my ($key, $form) = @_;
+   $form = $form || 'original';
+-  return (Dive($self, 'datafields', $key, $form) ||
+-          Dive($self, 'derivedfields', $key, $form)) ? 1 : 0;
++  return ($self->{datafields}{$key}{$form} ||
++          $self->{derivedfields}{$key}{$form}) ? 1 : 0;
+ }
+ 
+ 
+@@ -583,11 +591,12 @@
+ =cut
+ 
+ sub has_keyword {
++  no autovivification;
+   my $self = shift;
+   my ($keyword, $form, $lang) = @_;
+   $form = $form || 'original';
+   $lang = $lang || 'default';
+-  if (my $keywords = Dive($self, 'datafields', 'keywords', $form, $lang)) {
++  if (my $keywords = $self->{datafields}{keywords}{$form}{$lang}) {
+     return (first {$_ eq $keyword} @$keywords) ? 1 : 0;
+   }
+   else {
+--- biber-norb.git.orig/lib/Biber/Internals.pm
++++ biber-norb.git/lib/Biber/Internals.pm
+@@ -8,7 +8,6 @@
+ use Biber::Utils;
+ use Biber::DataModel;
+ use Data::Compare;
+-use Data::Diver qw( Dive );
+ use List::AllUtils qw( :all );
+ use Log::Log4perl qw(:no_extra_logdie_message);
+ use Digest::MD5 qw( md5_hex );
+@@ -1104,6 +1103,7 @@
+ }
+ 
+ sub _sort_labeldate {
++  no autovivification;
+   my ($self, $citekey, $sortelementattributes, $args) = @_;
+   my $ldc = $args->[0]; # labeldate component
+   my $secnum = $self->get_current_section;
+@@ -1111,7 +1111,7 @@
+   my $be = $section->bibentry($citekey);
+   # re-direct to the right sorting routine for the labeldate component
+   if (my $ldi = $be->get_labeldate_info) {
+-    if (my $ldf = Dive($ldi, 'field', $ldc)) {
++    if (my $ldf = $ldi->{field}{$ldc}) {
+       # Don't process attributes as they will be processed in the real sub
+       return $self->_dispatch_sorting($ldf, $citekey, $sortelementattributes);
+     }

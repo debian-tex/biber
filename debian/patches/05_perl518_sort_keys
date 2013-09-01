@@ -3,41 +3,12 @@ Origin: https://build.opensuse.org/package/view_file/Publishing:TeXLive/texlive/
 Author: Werner Fink
 Last-Update: 2013-08-30
 ---
- lib/Biber/Entry.pm        |   12 ++++++------
  lib/Biber/LaTeX/Recode.pm |   22 +++++++++++-----------
  t/full.t                  |   12 ++++++++++--
  t/remote-files.t          |   14 ++++++++------
  t/tool-bltxml.t           |   24 ++++++++++++------------
- 5 files changed, 47 insertions(+), 37 deletions(-)
+ 4 files changed, 41 insertions(+), 31 deletions(-)
 
---- biber-norb.git.orig/lib/Biber/Entry.pm
-+++ biber-norb.git/lib/Biber/Entry.pm
-@@ -361,9 +361,9 @@
-   my $self = shift;
-   my $key = shift;
-   return undef unless $key;
--  return keys %{Dive($self, 'datafields', $key) ||
--                Dive($self, 'derivedfields', $key) ||
--                {}};
-+  return sort keys %{Dive($self, 'datafields', $key) ||
-+                     Dive($self, 'derivedfields', $key) ||
-+                     {}};
- }
- 
- =head2 get_field_form_lang_names
-@@ -377,9 +377,9 @@
-   my ($key, $form) = @_;
-   return undef unless $key;
-   return undef unless $form;
--  return keys %{Dive($self, 'datafields', $key, $form) ||
--                Dive($self, 'derivedfields', $key, $form) ||
--                {}};
-+  return sort keys %{Dive($self, 'datafields', $key, $form) ||
-+                     Dive($self, 'derivedfields', $key, $form) ||
-+                     {}};
- }
- 
- =head2 set_datafield
 --- biber-norb.git.orig/lib/Biber/LaTeX/Recode.pm
 +++ biber-norb.git/lib/Biber/LaTeX/Recode.pm
 @@ -130,21 +130,21 @@
