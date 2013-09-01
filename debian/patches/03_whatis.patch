@@ -4,9 +4,21 @@ Forwarded: no
 Author: gregor herrmann <gregoa@debian.org>
 Last-Update: 2012-06-05
 
---- a/lib/Biber/Entries.pm
-+++ b/lib/Biber/Entries.pm
-@@ -7,7 +7,7 @@ use warnings;
+---
+ lib/Biber/DataModel.pm   |    2 +-
+ lib/Biber/Entries.pm     |    2 +-
+ lib/Biber/Entry.pm       |    2 +-
+ lib/Biber/Entry/Name.pm  |    2 +-
+ lib/Biber/Entry/Names.pm |    2 +-
+ lib/Biber/Section.pm     |    2 +-
+ lib/Biber/Sections.pm    |    2 +-
+ lib/Biber/SortList.pm    |    2 +-
+ lib/Biber/SortLists.pm   |    2 +-
+ 9 files changed, 9 insertions(+), 9 deletions(-)
+
+--- biber-norb.git.orig/lib/Biber/Entries.pm
++++ biber-norb.git/lib/Biber/Entries.pm
+@@ -7,7 +7,7 @@
  
  =head1 NAME
  
@@ -15,9 +27,9 @@ Last-Update: 2012-06-05
  
  =head2 new
  
---- a/lib/Biber/Entry.pm
-+++ b/lib/Biber/Entry.pm
-@@ -19,7 +19,7 @@ my $logger = Log::Log4perl::get_logger('
+--- biber-norb.git.orig/lib/Biber/Entry.pm
++++ biber-norb.git/lib/Biber/Entry.pm
+@@ -19,7 +19,7 @@
  
  =head1 NAME
  
@@ -26,9 +38,9 @@ Last-Update: 2012-06-05
  
  =head2 new
  
---- a/lib/Biber/Entry/Name.pm
-+++ b/lib/Biber/Entry/Name.pm
-@@ -15,7 +15,7 @@ my $logger = Log::Log4perl::get_logger('
+--- biber-norb.git.orig/lib/Biber/Entry/Name.pm
++++ biber-norb.git/lib/Biber/Entry/Name.pm
+@@ -15,7 +15,7 @@
  
  =head1 NAME
  
@@ -37,9 +49,9 @@ Last-Update: 2012-06-05
  
  =head2 new
  
---- a/lib/Biber/Entry/Names.pm
-+++ b/lib/Biber/Entry/Names.pm
-@@ -13,7 +13,7 @@ my $logger = Log::Log4perl::get_logger('
+--- biber-norb.git.orig/lib/Biber/Entry/Names.pm
++++ biber-norb.git/lib/Biber/Entry/Names.pm
+@@ -13,7 +13,7 @@
  
  =head1 NAME
  
@@ -48,9 +60,9 @@ Last-Update: 2012-06-05
  
  =head2 new
  
---- a/lib/Biber/Section.pm
-+++ b/lib/Biber/Section.pm
-@@ -11,7 +11,7 @@ use List::Util qw( first );
+--- biber-norb.git.orig/lib/Biber/Section.pm
++++ biber-norb.git/lib/Biber/Section.pm
+@@ -11,7 +11,7 @@
  
  =head1 NAME
  
@@ -59,9 +71,9 @@ Last-Update: 2012-06-05
  
  =head2 new
  
---- a/lib/Biber/Sections.pm
-+++ b/lib/Biber/Sections.pm
-@@ -7,7 +7,7 @@ use warnings;
+--- biber-norb.git.orig/lib/Biber/Sections.pm
++++ biber-norb.git/lib/Biber/Sections.pm
+@@ -7,7 +7,7 @@
  
  =head1 NAME
  
@@ -70,9 +82,9 @@ Last-Update: 2012-06-05
  
  =head2 new
  
---- a/lib/Biber/SortList.pm
-+++ b/lib/Biber/SortList.pm
-@@ -11,7 +11,7 @@ use List::Util qw( first );
+--- biber-norb.git.orig/lib/Biber/SortList.pm
++++ biber-norb.git/lib/Biber/SortList.pm
+@@ -11,7 +11,7 @@
  
  =head1 NAME
  
@@ -81,9 +93,9 @@ Last-Update: 2012-06-05
  
  =head2 new
  
---- a/lib/Biber/SortLists.pm
-+++ b/lib/Biber/SortLists.pm
-@@ -7,7 +7,7 @@ use warnings;
+--- biber-norb.git.orig/lib/Biber/SortLists.pm
++++ biber-norb.git/lib/Biber/SortLists.pm
+@@ -7,7 +7,7 @@
  
  =head1 NAME
  
@@ -92,3 +104,14 @@ Last-Update: 2012-06-05
  
  =head2 new
  
+--- biber-norb.git.orig/lib/Biber/DataModel.pm
++++ biber-norb.git/lib/Biber/DataModel.pm
+@@ -14,7 +14,7 @@
+ 
+ =head1 NAME
+ 
+-Biber::DataModel
++Biber::DataModel - Biber::DataModel objects
+ 
+ 
+ =cut

@@ -1,4 +1,4 @@
-biber (1.7-1) UNRELEASED; urgency=low
+biber (1.7-1) unstable; urgency=low
 
   [ gregor herrmann ]
   * debian/control: update {versioned,alternative} (build) dependencies.
@@ -11,8 +11,7 @@ biber (1.7-1) UNRELEASED; urgency=low
     - There are a lot of changes and updates since the last Debian
       package (v0.9.9).  I thoroughly recommend to have a look at
       the upstream changelog which you can find under
-      /usr/share/doc/biber/changelog.gz or online at
-      https://github.com/plk/biber/blob/8e3bebc6682f6360eb60f64f925d05f3ff9d793f/Changes .
+      /usr/share/doc/biber/changelog.gz
     - Some highlights are:
       + A number of options have changed names; ATM the old ones are
         still supported.
@@ -41,8 +40,10 @@ biber (1.7-1) UNRELEASED; urgency=low
   * add myself to the uploaders
   * add a patch taken from OpenSuSE to ensure tests succeed with perl 5.18
     randomization of hash keys (thanks Werner Fink)
+  * bump standards version to 3.9.4, no changes necessary
+  * fix lintian warnings
 
- -- Norbert Preining <preining@debian.org>  Sun, 01 Sep 2013 22:34:06 +0900
+ -- Norbert Preining <preining@debian.org>  Sun, 01 Sep 2013 22:39:59 +0900
 
 biber (0.9.9+git2012426-3) unstable; urgency=low
 
