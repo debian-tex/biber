@@ -42,8 +42,9 @@ biber (1.7-1) unstable; urgency=low
     randomization of hash keys (thanks Werner Fink)
   * bump standards version to 3.9.4, no changes necessary
   * fix lintian warnings
+  * switch maintainers to the Debian TeX Group
 
- -- Norbert Preining <preining@debian.org>  Sun, 01 Sep 2013 22:39:59 +0900
+ -- Norbert Preining <preining@debian.org>  Sun, 01 Sep 2013 22:56:39 +0900
 
 biber (0.9.9+git2012426-3) unstable; urgency=low
 
