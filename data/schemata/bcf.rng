@@ -439,6 +439,7 @@
               <attribute name="value">
                 <data type="string"/>
               </attribute>
+              <empty/>
             </element>
           </oneOrMore>
         </element>
@@ -454,6 +455,7 @@
               <attribute name="value">
                 <data type="string"/>
               </attribute>
+              <empty/>
             </element>
           </oneOrMore>
         </element>
@@ -491,6 +493,15 @@
                     <value>list</value>
                   </choice>
                 </attribute>
+                <optional>
+                  <!--
+                    format is a specification of the format of the field. If not specified, field contents
+                    are just as is. 
+                  -->
+                  <attribute name="format">
+                    <value>csv</value>
+                  </attribute>
+                </optional>
                 <!-- datatype of field content -->
                 <attribute name="datatype">
                   <choice>
@@ -505,6 +516,9 @@
                     <value>csv</value>
                     <value>code</value>
                     <value>uri</value>
+                    <value>datepart</value>
+                    <value>keyword</value>
+                    <value>option</value>
                   </choice>
                 </attribute>
                 <optional>
@@ -518,13 +532,6 @@
                   <attribute name="skip_output">
                     <value>true</value>
                   </attribute>
-                </optional>
-                <optional>
-                  <!--
-                    limit this field definition to specific entrytypes?
-                    Is parsed as a csv list
-                  -->
-                  <attribute name="entrytypes"/>
                 </optional>
                 <text/>
               </element>
@@ -771,7 +778,7 @@
         <optional>
           <!-- Should we stop generating sorting information after this item? -->
           <attribute name="final">
-            <data type="integer"/>
+            <value>1</value>
           </attribute>
         </optional>
         <optional>
@@ -1635,6 +1642,13 @@
                 </attribute>
               </optional>
               <optional>
+                <attribute name="map_notmatch">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+              </optional>
+              <optional>
                 <attribute name="map_replace">
                   <data type="string">
                     <param name="minLength">1</param>
@@ -1650,6 +1664,11 @@
               </attribute>
               <optional>
                 <attribute name="map_append">
+                  <value>1</value>
+                </attribute>
+              </optional>
+              <optional>
+                <attribute name="map_final">
                   <value>1</value>
                 </attribute>
               </optional>

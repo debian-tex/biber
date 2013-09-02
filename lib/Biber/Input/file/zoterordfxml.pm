@@ -15,8 +15,9 @@ use Biber::Section;
 use Biber::Utils;
 use Biber::Config;
 use Digest::MD5 qw( md5_hex );
+use Encode;
 use File::Spec;
-use File::Slurp::Unicode;
+use File::Slurp;
 use File::Temp;
 use Log::Log4perl qw(:no_extra_logdie_message);
 use List::AllUtils qw( :all );
@@ -42,22 +43,30 @@ my $handlers = {
                              'BIBERCUSTOMsubject'     => \&_subject,
                             },
                 'field' => {
-                            'csv'      => \&_csv,
-                            'code'     => \&_literal,
-                            'date'     => \&_date,
-                            'entrykey' => \&_literal,
-                            'integer'  => \&_literal,
-                            'key'      => \&_literal,
-                            'literal'  => \&_literal,
-                            'range'    => \&_range,
-                            'verbatim' => \&_literal,
-                            'uri'      => \&_uri,
+                            'default' => {
+                                          'code'     => \&_literal,
+                                          'date'     => \&_date,
+                                          'entrykey' => \&_literal,
+                                          'integer'  => \&_literal,
+                                          'key'      => \&_literal,
+                                          'literal'  => \&_literal,
+                                          'range'    => \&_range,
+                                          'verbatim' => \&_literal,
+                                          'uri'      => \&_uri
+                                         },
+                            'csv'     => {
+                                          'entrykey' => \&_csv,
+                                          'keyword'  => \&_csv,
+                                          'option'   => \&_csv,
+                                         }
                            },
                 'list' => {
-                           'entrykey' => \&_literal,
-                           'key'      => \&_list,
-                           'literal'  => \&_list,
-                           'name'     => \&_name,
+                           'default' => {
+                                         'entrykey' => \&_literal,
+                                         'key'      => \&_list,
+                                         'literal'  => \&_list,
+                                         'name'     => \&_name
+                                        }
                           }
 };
 
@@ -152,8 +161,9 @@ sub extract_entries {
 
   # Set up XML parser and namespaces
   my $parser = XML::LibXML->new();
-  my $xml = File::Slurp::Unicode::read_file($filename, encoding => 'UTF-8') or biber_error("Can't parse file $filename");
-  my $rdfxml = $parser->parse_string(NFD($xml));# Unicode NFD boundary
+  my $xml = File::Slurp::read_file($filename) or biber_error("Can't read file $filename");
+  $xml = NFD(decode('UTF-8', $xml));# Unicode NFD boundary
+  my $rdfxml = $parser->parse_string($xml);
   my $xpc = XML::LibXML::XPathContext->new($rdfxml);
   foreach my $ns (keys %PREFICES) {
     $xpc->registerNs($ns, $PREFICES{$ns});
@@ -764,7 +774,7 @@ sub _get_handler {
     return $h;
   }
   else {
-    return $handlers->{$dm->get_fieldtype(_strip_ns($field))}{$dm->get_datatype(_strip_ns($field))};
+    return $handlers->{$dm->get_fieldtype(_strip_ns($field))}{$dm->get_fieldformat(_strip_ns($field)) || 'default'}{$dm->get_datatype(_strip_ns($field))};
   }
 }
 

@@ -14,6 +14,7 @@
 \usepackage{color}
 \usepackage{listings}
 \usepackage{metalogo}
+
 \usepackage[retainmissing]{MnSymbol}
 \setmainfont[Ligatures=TeX]{CMU Serif}
 \setsansfont[Ligatures=TeX]{CMU Sans Serif}
@@ -27,8 +28,8 @@
 \newcommand*{\biblatex}{Biblatex\xspace}
 \MakeAutoQuote{«}{»}
 
-\gdef\biberversion{1.6}    % BIBER VERSION
-\gdef\biblatexversion{2.6}   % BIBLATEX VERSION
+\gdef\biberversion{1.7}    % BIBER VERSION
+\gdef\biblatexversion{2.7}   % BIBLATEX VERSION
 
 % Set up tikz things
 
@@ -165,7 +166,7 @@ with standard \verb+.bst+ styles. \biber's role is to support
 \biblatex\ by performing the following tasks:
 
 \begin{itemize}
-\item Parsing data from data sources
+\item Parsing data from datasources
 \item Processing cross-references, entry sets, related entries
 \item Generating data for name, name list and name/year disambiguation
 \item Structural validation according to \biblatex\ data model
@@ -206,6 +207,7 @@ compatibility matrix for the recent versions.
 \toprule
 \biber\ version & \biblatex\ version\\
 \midrule
+1.7 & 2.7\\
 1.6 & 2.6\\
 1.5 & 2.5\\
 1.4 & 2.4\\
@@ -283,11 +285,11 @@ tasks to do with \verb+.bbl+ preparation. Its main features are:
 \item Handles complex auto-expansion and contraction of names and
   namelists (See section 4.11.4 of the \biblatex\ manual for an excellent
   explanation with examples, this is quite an impressive feature \ldots)
-\item Extensible modular data sources architecture for ease of adding
-  more data source types
-\item Support for remote data sources
+\item Extensible modular datasource architecture for ease of adding
+  more datasource types
+\item Support for remote datasources
 \item User-definable mapping and suppression of fields and entrytypes in
-  data sources. You can use this to, for example, ignore all
+  datasources. You can use this to, for example, ignore all
   \bibfield{ABSTRACT} fields completely. See section \ref{map}
 \item Support for related entries, to enable generic treatment of things
   like «translated as», «reprinted as», «reprint of»
@@ -396,12 +398,12 @@ the development in 2009 and is largely responsible for making it what it is toda
 \section{Use}
 
 Firstly, please note that \biber\ will \emph{not} attempt to sanitise
-the content of \BibTeX\ data sources. That is, don't expect it to
+the content of \BibTeX\ datasources. That is, don't expect it to
 auto-escape any \TeX\ special characters like «\verb+&+» or «\verb+%+» which
 it finds in, for example, your \bibfield{TITLE} fields. It used to do this in
 earlier versions in some cases but as of version 0.9, it doesn't because
 it's fraught with problems and leads to inconsistent expectations and
-behaviour between different data source types. In your \BibTeX\ data
+behaviour between different datasource types. In your \BibTeX\ data
 sources, please make sure your entries are legal \TeX\ code.
 
 Running \opt{biber --help} will display all options and a brief
@@ -549,6 +551,7 @@ an example config file which displays the \biber\ defaults:
 \begin{lstlisting}[language=xml]
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
+  <clrmacros>0</clrmacros>
   <collate>1</collate>
   <collate_options>
     <option name="level" value="4"/>
@@ -574,7 +577,7 @@ an example config file which displays the \biber\ defaults:
   <nosort>
     <!-- strip prefices like 'El-' when sorting name fields -->
     <option name="type_name" value="\A\p{L}{2}\p{Pd}"/>
-    <!-- strip diacritics when sorting name fields -->
+    <!-- strip some diacritics when sorting name fields -->
     <option name="type_name" value="[\x{2bf}\x{2018}]"/>
   </nosort>
   <onlylog>0</onlylog>
@@ -612,13 +615,13 @@ which is described in section \ref{map}.
 
 \subsubsection{The \texttt{sourcemap} option}\label{map}
 
-The data source drivers implement a mapping from data source
+The datasource drivers implement a mapping from datasource
 entrytypes and fields into the \biblatex\ data model. If you want to
 override or augment the driver mappings you can use the
 \opt{sourcemap} option which makes it possible to, for example, have a
-data source with non-standard entrytypes or fields and to have these
+datasource with non-standard entrytypes or fields and to have these
 automatically mapped into other entrytypes/fields without modifying
-your data source.  Essentially, this alters the source data stream
+your datasource.  Essentially, this alters the source data stream
 which \biber\ uses to build the internal \biblatex\ data model and is an
 automatic way of editing the datasource as it is read by \biber.
 
@@ -632,12 +635,12 @@ in a defined order. See the \biblatex\ manual regarding these macros:\\[2ex]
 
 The \opt{sourcemap} option can only be set in the config file
 and not on the command line as it has a complex structure. This
-option allows you to perform various data source mapping
+option allows you to perform various datasource mapping
 tasks which can be useful for pre-processing data which you do not
 generate yourself:
 
 \begin{itemize}
-\item Map data source entrytypes to different entrytypes.
+\item Map datasource entrytypes to different entrytypes.
 \item Map datasource fields to different fields.
 \item Add new fields to an entry
 \item Remove fields from an entry
@@ -704,21 +707,23 @@ examples. A \opt{map} element looks like this:
   +\textcolor{blue}{<per\_datasource>\textcolor{red}{datasource}</per\_datasource>}+
   +\textcolor{blue}{<per\_type>\textcolor{red}{entrytype}</per\_type>}+
   <map_step +\textcolor{blue}{map\_type\_source="\textcolor{red}{source-entrytype}"}+
-              +\textcolor{blue}{map\_field\_source="\textcolor{red}{source-field}"}+
-              +\textcolor{blue}{map\_type\_target="\textcolor{red}{target-entrytype}"}+
-              +\textcolor{blue}{map\_field\_target="\textcolor{red}{target-field}"}+
-              +\textcolor{blue}{map\_match="\textcolor{red}{match-regexp}"}+
-              +\textcolor{blue}{map\_replace="\textcolor{red}{replace-regexp}"}+
-              +\textcolor{blue}{map\_field\_set="\textcolor{red}{set-field}"}+
-              +\textcolor{blue}{map\_field\_value="\textcolor{red}{set-value}"}+
-              +\textcolor{blue}{map\_append="1"}+
-              +\textcolor{blue}{map\_null="1"}+
-              +\textcolor{blue}{map\_origfield="1"}+
-              +\textcolor{blue}{map\_origfieldval="1"}+
-              +\textcolor{blue}{map\_origentrytype="1"}+
-              +\textcolor{blue}{map\_final="1"}+/>
+             +\textcolor{blue}{map\_field\_source="\textcolor{red}{source-field}"}+
+             +\textcolor{blue}{map\_type\_target="\textcolor{red}{target-entrytype}"}+
+             +\textcolor{blue}{map\_field\_target="\textcolor{red}{target-field}"}+
+             +\textcolor{blue}{map\_match="\textcolor{red}{match-regexp}"}+
+             +\textcolor{blue}{map\_nomatch="\textcolor{red}{match-regexp}"}+
+             +\textcolor{blue}{map\_replace="\textcolor{red}{replace-regexp}"}+
+             +\textcolor{blue}{map\_field\_set="\textcolor{red}{set-field}"}+
+             +\textcolor{blue}{map\_field\_value="\textcolor{red}{set-value}"}+
+             +\textcolor{blue}{map\_append="1"}+
+             +\textcolor{blue}{map\_null="1"}+
+             +\textcolor{blue}{map\_entry\_null="1"}+
+             +\textcolor{blue}{map\_origfield="1"}+
+             +\textcolor{blue}{map\_origfieldval="1"}+
+             +\textcolor{blue}{map\_origentrytype="1"}+
+             +\textcolor{blue}{map\_final="1"}+/>
 </map>
-\end{lstlisting}%| <- sometimee emacs highlighting needs this
+\end{lstlisting}%| <- sometimes emacs highlighting needs this
 
 \begin{itemize}
 \item If there are any \textcolor{red}{\texttt{datasource}}s named in
@@ -758,6 +763,8 @@ datasource entry being processed. A \opt{map\_step} works like this:
   step if the \textcolor{red}{\texttt{source-field}} matches
   \textcolor{blue}{\texttt{map\_match}}. You can use parentheses as usual
   to capture parts of the match and can then use these later when setting a \textcolor{blue}{\texttt{map\_field\_value}}.
+\item \textcolor{blue}{\texttt{map\_notmatch}} is the same as
+  \textcolor{blue}{\texttt{map\_match}} but with the logic reversed.
 \item Perform a Perl regular expression match and replace on the value of
   \textcolor{red}{\texttt{source-field}} if
   \textcolor{blue}{\texttt{map\_match}} and
@@ -985,7 +992,7 @@ particular name, which presumably has some variants in the datasource.
 will be completely ignored.
 \bigskip
 \minisec{Other datasource types}
-For data sources other than \BibTeX, (e.g. \verb+ris+, \verb+endnotexml+
+For datasources other than \BibTeX, (e.g. \verb+ris+, \verb+endnotexml+
 and \verb+zoterordfxml+), the source entrytypes and fields are usually very
 differently modelled and named. For example, here is how to drop
 \verb+dc:subject+ fields from various entrytypes in Zotero XML RDF format data
@@ -1003,7 +1010,7 @@ sources:
 \end{lstlisting}
 
 \noindent Or here, mapping journal articles into \bibtype{Report} entries for
-Endnote XML format data sources within a particular data source.
+Endnote XML format datasources within a particular datasource.
 
 \begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
 <maps datatype="endnotexml" map_overwrite="1">
@@ -1150,7 +1157,7 @@ in names which should not be considered when sorting. Given (the default):
   </noinit>
 \end{lstlisting}
 
-\noindent and the \BibTeX\ data source entry:
+\noindent and the \BibTeX\ datasource entry:
 
 \begin{verbatim}
 AUTHOR = {{al-Hasan}, ʿAlī},
@@ -1166,7 +1173,249 @@ so as to avoid breaking things like «Ho-Pun» where you want the initials to
 be «H.-P.», for example. See the Perl regular expression manual page for
 details of the regular expression
 syntax\footnote{\url{http://perldoc.perl.org/perlre.html}}.
+\bigskip
+\subsubsection{The \texttt{sorting} option}\label{sorting}
 
+The \opt{sorting} option defines the sorting rules for the bibliography
+lists. \biblatex allows multiple sorting specifications referenced by name
+as it can print bibliography information as many times as the user wishes
+with different filtering and sorting. This is normally handled by macros in
+\biblatex which write the XML sorting specification(s) to the \file{.bcf}
+file for \biber to read but there may be occasions (usually when using
+\biber in «tool» mode (see section\ref{tool}) when you need to specify the
+global sorting specification directly in a \biber config file. This section
+documents the XML format of the sorting specification. Items in
+\textcolor{red}{red} are not literal, they are descriptive meta-values
+which are explained in the accompanying text. Items in
+\textcolor{blue}{blue} are optional within their parent section or element.
+See also the \texttt{nosort} option in section \ref{nosort}.
+
+\begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
+<sorting>
+  <presort +\textcolor{blue}{type=\textcolor{red}{type}}+>+\textcolor{red}{string}+</presort>
+  +\textcolor{blue}{<sortexclusion type=\textcolor{red}{type}>}+
+      +\textcolor{blue}{<exclusion>\textcolor{red}{field}</exclusion>}+
+                 $\vdots$
+  +\textcolor{blue}{</sortexclusion>}+
+  <sort order="+\textcolor{red}{n}+"
+        +\textcolor{blue}{final=1}+
+        +\textcolor{blue}{sort\_direction="ascending|descending"}+
+        +\textcolor{blue}{sort\_case="1|0"}+
+        +\textcolor{blue}{sort\_upper="1|0"}+>
+    <sortitem order="+\textcolor{red}{m}+"
+              +\textcolor{blue}{substring\_side="left|right"}+
+              +\textcolor{blue}{substring\_width="\textcolor{red}{int}"}+
+              +\textcolor{blue}{pad\_side="left|right"}+
+              +\textcolor{blue}{pad\_width="\textcolor{red}{int}"}+
+              +\textcolor{blue}{pad\_char="\textcolor{red}{string}"}+>+\textcolor{red}{field|literal|citeorder}+</sortitem>
+              $\vdots$
+  </sort>
+     $\vdots$
+</sorting>
+\end{lstlisting}
+
+Sorting in \biber is a sophisticated procedure of building up a sorting
+object for an entry based on a sorting scheme template, the general form of
+which is shown above. The sorting routine first traverses every entry in
+the bibliography list and generates a sorting object based on the sorting
+scheme. When this is done, it sorts the entries according to the sorting
+objects it has generated for each entry.
+
+A sorting specification is comprised of a number of \texttt{sort} elements.
+Sorting is essentially a process of comparing whatever information the \textcolor{red}{n}th
+\texttt{sort} element collected for every entry (otherwise known as
+«multi-field» sorting). Within a \texttt{sort} element, there can be any
+number of \texttt{sortitem} elements which describe what information to
+look for in the entry in order to construct this part of the sorting
+object; either a field, a literal string or the special «citeorder»
+pseudo-field.
+
+When generating the sorting information for an entry, within each
+\texttt{sort} element, the first \texttt{sortitem} to return a non-empty
+value for the bibliography entry is used and the rest of the
+\texttt{sortitem}s in the \texttt{sort} are skipped. A \texttt{sortitem}
+essentially looks for a piece of information in the entry and adds this to
+the sorting object. If it is looking for a \textcolor{red}{\texttt{field}},
+then the field must exist in the entry. If it does not, the
+\texttt{sortitem} is skipped. If the \textcolor{red}{\texttt{field}} does
+exist, it is added to the sorting object for the entry after being modified
+by the attributes of the \texttt{sortitem}.
+
+Once a \texttt{sortitem} has returned the contents of a
+\textcolor{red}{\texttt{field}}, you can use the
+\textcolor{blue}{substring\_side} (default «left» if any other
+\textcolor{blue}{substring} attributes are set) and
+\textcolor{blue}{substring\_width} (default «4» if any other
+\textcolor{blue}{substring} attributes are set) attributes to truncate the
+contents of the \textcolor{red}{\texttt{field}} by reducing it to a
+substring taken from the left or right side of the string and of a number
+of (UTF-8) characters of your choice. You can also pad the
+\textcolor{red}{\texttt{field}} with repeated arbitrary characters on
+either side using the \textcolor{blue}{pad\_side} (default «left» if any other
+\textcolor{blue}{pad} attributes are set),
+\textcolor{blue}{pad\_width} (default «4» if any other
+\textcolor{blue}{pad} attributes are set) and \textcolor{blue}{pad\_char}
+(default «0»---the digit zero if any other
+\textcolor{blue}{pad} attributes are set) attributes.
+
+A \texttt{sortitem} which is neither a known bibliography sorting field nor
+the special «citeorder» string is treated as a literal string to add to the
+sorting object. Naturally, such a \texttt{sortitem} always «finds»
+something to add to the sorting object and so it should never have any
+other \texttt{sortitem}s after it within the \texttt{sort} section as they
+will never be considered. The «citeorder» \texttt{sortitem} value has a
+special meaning. It requests a sort based on the lexical order of the
+actual citations. For entries cited in \biblatex within the same citation
+command like:
+
+\begin{lstlisting}[style=latex]{}
+\cite{one,two}
+\end{lstlisting}
+%
+there is a distinction between the lexical order and the semantic order.
+Here «one» and «two» have the same semantic order but a unique lexical
+order. The semantic order only matters if you specify further sorting to
+disambiguate entries with the same semantic order. For example, this is the
+definition of the \biblatex \opt{none} sorting scheme: 
+
+\begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
+<sorting>
+  <presort>mm</presort>
+  <sort order="1">
+    <sortitem order="1">citeorder</sortitem>
+  </sort>
+</sorting>
+\end{lstlisting}
+%
+This sorts the bibliography purely lexically by the order of the keys in
+the citation commands. In the example above, it sorts entry «one» before «two».
+However, suppose that you consider «one» and «two» to have the same order
+(semantic order) since they are cited at the same time and want to further
+sort these by year. Suppose «two» has an earlier \bibfield{YEAR} than
+«one»:
+
+\begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
+<sorting>
+  <presort>mm</presort>
+  <sort order="1">
+    <sortitem order="1">citeorder</sortitem>
+  </sort>
+  <sort order="2">
+    <sortitem order="1">year</sortitem>
+  </sort>
+</sorting>
+\end{lstlisting}
+%
+This sorts «two» before «one», even though lexically, «one» would sort
+before «two». This is possible because the semantic order can be
+disambiguated by the further sorting on year. With the standard \biblatex
+\opt{none} sorting scheme, the lexical order and semantic order are identical because
+there is nothing further to disambiguate them. This means that you can use
+«citeorder» just like any other \texttt{sortitem} value, choosing
+how to further sort entries cited at the same time (in the same citation
+command).
+
+Both \texttt{sort} and \texttt{sortitem} elements have a mandatory \texttt{order}
+attribute which should start at «1» and increase for each further element.
+Order numbers for \texttt{sortitem} elements within a \texttt{sort} element
+always begin with «1» and don't increase between \texttt{sort} elements.
+
+Once a \texttt{sortitem} element has added something to the sorting object
+(or all \texttt{sortitem} elements within a \texttt{sort} have been
+processed, regardless of whether anything was added to the sort object for
+the entry), some attributes are applied to the information added and the
+next \texttt{sort} element is processed. These attributes on the
+\texttt{sort} element further determine how any sorting specification added
+by the \texttt{sortitem} elements will be used in the sorting.
+
+If the \texttt{sort} element has the \textcolor{blue}{\texttt{final}}
+attribute set to «1», then if any \texttt{sortitem} within the
+\texttt{sort} returned a non-empty string to add to the sorting object, the
+construction of the sorting object for the entry ceases at this point and
+no more \texttt{sort} elements are processed. This is used typically to
+make sure that master sorting keys such as those specified with the
+\bibfield{SORTKEY} field, if found, are the only thing used to construct
+the sorting object. The \texttt{sort} element may further specify that the
+information at \texttt{order} «\textcolor{red}{n}» should be sorted in ascending order or
+descending order (default «ascending»), whether case
+should be considered when sorting (default depends on the \biber\
+\opt{sortcase} option which defaults to true)
+and whether uppercase characters should be sorted before lower
+(default depends on the \biber\ «sortupper» option which defaults to true).
+
+Finally, there are two special sorting section elements to consider. The
+\texttt{presort} element is mandatory and specifies a literal \textcolor{red}{string} to add
+to the very beginning of all sorting objects for all entries. This is useful
+when combined with the fact that you may specify an optional
+\textcolor{blue}{\texttt{type}} attribute which specifies a particular
+entry type for the presort \textcolor{red}{string} specified. Using this
+mechanism, you can sort, for example, all \bibfield{ARTICLE} entries before
+all \bibfield{BOOK} entries and then all other types of entry:
+
+\begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
+<sorting>
+  <presort type="article">aa</presort>
+  <presort type="book">bb</presort>
+  <presort>mm</presort>
+     $\vdots$
+</sorting>
+\end{lstlisting}
+%
+This makes it easy to divide a bibliography by type of entry.
+
+The optional \textcolor{blue}{\texttt{sortexclusion}} element allows you to
+exclude fields from consideration by \texttt{sortitem} on a per-type basis.
+For example, if you wanted to ignore the \bibfield{YEAR} field of any
+\bibfield{REPORT} entry types because they are not reliably populated with
+data representing a year, you could do:
+
+\begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
+<sorting>
+     $\vdots$
+  <sortexclusion type="report">year</sortexclusion>
+     $\vdots$
+</sorting>
+\end{lstlisting}
+%
+It is much easier to see how intuitive this all is if you look at a
+standard sorting scheme definition. Below is the default \biblatex sorting
+scheme which appears in the \file{.bcf} when you run \biblatex with no
+\opt{sorting} option. This is fully documented and described in the
+\biblatex manual along with the \latex macros which generate this XML in
+the \file{.bcf}:
+
+\begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
+<sorting>
+  <presort>mm</presort>
+  <sort order="1">
+    <sortitem order="1">presort</sortitem>
+  </sort>
+  <sort order="2" final="1">
+    <sortitem order="1">sortkey</sortitem>
+  </sort>
+  <sort order="3">
+    <sortitem order="1">sortname</sortitem>
+    <sortitem order="2">author</sortitem>
+    <sortitem order="3">editor</sortitem>
+    <sortitem order="4">translator</sortitem>
+    <sortitem order="5">sorttitle</sortitem>
+    <sortitem order="6">title</sortitem>
+  </sort>
+  <sort order="4">
+    <sortitem order="1">sortyear</sortitem>
+    <sortitem order="2">year</sortitem>
+  </sort>
+  <sort order="5">
+    <sortitem order="1">sorttitle</sortitem>
+    <sortitem order="2">title</sortitem>
+  </sort>
+  <sort order="6">
+    <sortitem order="1" pad_side="left" pad_width="4" pad_char="0">volume</sortitem>
+    <sortitem order="2">0000</sortitem>
+  </sort>
+</sorting>
+\end{lstlisting}
+\bigskip
 \subsubsection{The \texttt{nosort} option}\label{nosort}
 
 The value of the \opt{nosort} option can only be set in the config file
@@ -1223,7 +1472,7 @@ type\_title & booktitle\\
 \label{tab:nst}
 \end{table}
 
-For example, this option can be used to ignore diacritic marks and prefices
+For example, this option can be used to ignore some diacritic marks and prefices
 in names which should not be considered when sorting. Given (the default):
 
 \begin{lstlisting}[language=xml]
@@ -1235,7 +1484,7 @@ in names which should not be considered when sorting. Given (the default):
 </nosort>
 \end{lstlisting}
 
-\noindent and the \BibTeX\ data source entry:
+\noindent and the \BibTeX\ datasource entry:
 
 \begin{verbatim}
 AUTHOR = {{al-Hasan}, ʿAlī},
@@ -1304,7 +1553,7 @@ priority:\\[2ex]
 
 \subsubsection{Data sources}
 
-Local data sources of type «file» are searched for in the following
+Local datasources of type «file» are searched for in the following
 locations, in decreasing order of priority:\\[2ex]
 
 \noindent Absolute filename $\rightarrow$\\
@@ -1313,7 +1562,7 @@ locations, in decreasing order of priority:\\[2ex]
 \hspace*{3em}In the same directory as the control file$\rightarrow$\\
 \hspace*{4em}Using \verb+kpsewhich+ for supported formats, if available\\[2ex]
 
-\noindent Remote file data sources (beginning with \verb+http://+ or
+\noindent Remote file datasources (beginning with \verb+http://+ or
 \verb+ftp://+) are retrieved to a temp file and processed as normal. Users
 do not specify explicitly the bibliography database files; they are passed
 in the \verb+.bcf+ control file, which is constructed from the
@@ -1460,7 +1709,7 @@ reverse order at UCA level 2.
 
 \subsection{Encoding of files}
 
-\biber\ takes care of re-encoding the data source data as
+\biber\ takes care of re-encoding the datasource data as
 necessary. In normal use, \biblatex\ passes its
 \opt{input\_encoding} option value to \biber\ via the \verb+.bcf+
 file. It also passes the value of its \opt{texencoding} option (which
@@ -1471,7 +1720,7 @@ using (see \biblatex\ manual for details).
 \noindent \biber\ performs the following tasks:
 
 \begin{enumerate}
-\item Decodes the data source into UTF-8 if it is not UTF-8 already
+\item Decodes the datasource into UTF-8 if it is not UTF-8 already
 \item Decodes \latex\ character macros into UTF-8 if \opt{--output\_encoding|-E}
   is UTF-8
 \item Encodes the output so that the \verb+.bbl+ is in
@@ -1514,7 +1763,7 @@ internal \latex\ character macro decoding break \verb+inputenc+. This is
 because \verb+inputenc+ does not implement all of UTF-8, only a
 commonly used subset.
 
-An example--if you had \verb+\DJ+ in your \verb+.bib+ data source,
+An example--if you had \verb+\DJ+ in your \verb+.bib+ datasource,
 \biber\ decodes this correctly to «Đ» and this breaks \verb+inputenc+
 because it doesn't understand that UTF-8 character. The real solution here
 is to switch to a \TeX\ engine with full UTF-8 support like \XeTeX\ or Lua\TeX\
@@ -1526,7 +1775,7 @@ option, see section \ref{lencode}.
 \minisec{Decoding for internal sorting}
 
 If your \opt{output\_encoding} is not UTF-8, and you are using some UTF-8
-equivalent \latex\ character macros in your \verb+.bib+ data source, then some
+equivalent \latex\ character macros in your \verb+.bib+ datasource, then some
 \verb+.bbl+ fields (currently only \verb+\sortinit{}+) might end up
 with invalid characters in them, according to the \verb+.bbl+
 encoding. This is because some fields must be generated from the final
@@ -1535,7 +1784,7 @@ decoding step.
 
 For example, suppose you are using PDF\latex\ with\\
 \verb+\usepackage[latin1]{inputenc}+ and the following \BibTeX\
-data source entry:
+datasource entry:
 
 \begin{verbatim}
 @BOOK{citekey1,
@@ -1565,7 +1814,7 @@ can't be handled by your main document. See section \ref{ldecode} above for
 an example such case.
 
 A common use case for \latex\ macro encoding is when the bibliography
-data source is not ASCII but the \verb+.tex+ file is and so this case
+datasource is not ASCII but the \verb+.tex+ file is and so this case
 is automated for you: if the \biblatex\ option «\opt{texencoding}»
 (which corresponds to the \biber\ option «\opt{--output\_encoding|-E}») is
 set to an ASCII encoding («\verb+ascii+» or «\verb+x-ascii+») and
@@ -1632,7 +1881,7 @@ to \latex\ macro conversion using the full set of conversions
 \noindent Set \opt{input\_encoding} and \opt{output\_encoding} from the
 config file or \verb+.bcf+. Use the full \latex\ macro to UTF-8
 conversion set because you have some more obscure character macros in
-your \verb+.bib+ data source which you want to sort correctly
+your \verb+.bib+ datasource which you want to sort correctly
 
 \biberex{biber --recodedata=/tmp/recode.xml --decodecharsset=special}
 
@@ -1688,7 +1937,7 @@ following features relevant to \biblatex/\biber:
 \begin{itemize}
 \item Adds font-lock support for most \biblatex\ macros
 \item Auto-detects whether you are using \biber\ with \biblatex\
-\item Can detect whether dependencies like data sources have changed without
+\item Can detect whether dependencies like datasources have changed without
   them being open in Emacs
 \item Understands \biblatex\ and \biber\ messages so that
   AUC\TeX\ will prompt you with the best default command to run next
@@ -1724,26 +1973,26 @@ source and if it's not a number as \biblatex\ expects (because it
 wasn't one of the macros as mentioned above or these macros were disabled
 by \opt{--nostdmacros}), it will try to turn it into the right number in
 the \verb+.bbl+. If you only use \biblatex\ with your \BibTeX\
-data source files, you should probably make any \bibfield{MONTH} fields be the
+datasource files, you should probably make any \bibfield{MONTH} fields be the
 numbers which \biblatex\ expects.
 
-\subsection{\biber\ data source drivers}\label{dsd}
+\subsection{\biber\ datasource drivers}\label{dsd}
 
-\biber\ uses a modular data source driver model to provide access
-to supported data sources. The drivers are responsible for mapping
+\biber\ uses a modular datasource driver model to provide access
+to supported datasources. The drivers are responsible for mapping
 driver entrytypes and fields to the \biblatex\ data model according to a
 data model specification in the \biblatex\ file \file{blx-dm.def}. The
 data model can be changed using \biblatex\ macros in case you would
 like to, for example, use your own entrytype or field names or perhaps
-have \biber\ do some validation on your data sources (see the \biblatex\
+have \biber\ do some validation on your datasources (see the \biblatex\
 manual). 
 
 Data model mapping is an imprecise art and the drivers are the
-necessarily the most messy parts of \biber. Most data source models are
+necessarily the most messy parts of \biber. Most datasource models are
 not designed with typesetting in mind and are usually not fine-grained
 enough to provide the sorts of information that \biblatex\
 needs. \biber\ does its best to obtain as much meaningful information
-from a data source as possible. Currently supported data sources
+from a datasource as possible. Currently supported datasources
 drivers are:
 
 \begin{itemize}
@@ -1851,16 +2100,20 @@ xref     & Show XREF relationships\\
 \bigskip
 \subsection{Tool Mode}\label{tool}
 \biber\ can run in «tool» mode which is enabled with the \opt{--tool}
-command-line only option. In this mode, \biber is called: \opt{biber --tool
-  <datasource>}. It does not read any \file{.bcf} and does not output
-any \file{.bbl}. Instead, it reads all entries from the file
+command-line only option. In this mode, \biber is called: \opt{biber
+  --tool <datasource>}. It does not read any \file{.bcf} and does not
+output any \file{.bbl}. Instead, it reads all entries from the file
 «datasource», applies any changes specified in the command-line
 options and \biber\ config file and writes the resulting datasource
-out to a new file, defaulting to «\file{<datasource>\_bibertool.bib}» if the
-option \opt{output\_file} is not specified. This is useful if you need to
-programatically change your datasource using the semantics provided by
-\biber. For example, you could choose to reencode your datasource by
-turning all UTF-8 characters into \latex\ macros:
+out to a new file, defaulting to a \bibtex file called
+«\file{<datasource>\_bibertool.bib}» if the options \opt{output\_file}
+and \opt{output\_format} are not specified.
+
+Tool mode is useful if you need to programatically change your
+datasource using the semantics provided by \biber or if you would like
+to convert your data to a different format. For example, you
+could choose to reencode your datasource by turning all UTF-8
+characters into \latex\ macros:
 
 \begin{verbatim}
 biber --tool --output_encoding=ascii file.bib
@@ -1876,6 +2129,35 @@ than just textual search/replace. You can also use the
 \opt{--tool\_resolve} option which will process any \bibfield{XDATA}
 fields/entries, entry aliases and inheritance rules mentioned in the config
 file (see below).
+
+Sometimes, you might wish to output fields which are \bibtex macros,
+that is, you might want this:
+
+\begin{lstlisting}[style=bibtex, columns=fixed]{}
+@Entrytype{key,
+    Field = something,
+}
+\end{lstlisting}
+%
+instead of this:
+\begin{lstlisting}[style=bibtex, columns=fixed]{}
+@Entrytype{key,
+    Field = {something},
+}
+\end{lstlisting}
+%
+That is, you might not want the output field in braces or quotes as
+this prevents \bibtex interpreting the field value as a macro. Use the
+\opt{--tool\_macro\_fields} option to specify a comma-separated list
+of fields whose values you wish to output without any \bibtex
+quoting. You can have spaces between the items in the field list but
+then you must enclose the whole option value in quotes. For example,
+these two will do the same thing:
+
+\begin{verbatim}
+biber --tool --tool_macro_fields=month,publisher
+biber --tool --tool_macro_fields='month, publisher'
+\end{verbatim}
 
 Tool mode also allows some reformatting of the \file{.bib} file. The
 option \opt{--tool\_fieldcase} can be used to force the entrytype and
@@ -1968,8 +2250,9 @@ The result will be in \file{test\_bibertool.bib} and will look like this:
 }
 \end{lstlisting}
 %
-Note how this is a very powerful way of performing many different
-operations on a \file{.bib} file. By using the config file and tool mode, we have:
+Tool mode is a versatile way of performing many different operations
+on a \file{.bib} file. By using the config file and tool mode, we
+have:
 
 \begin{itemize}
 \item Consistently indented and aligned the entry, normalising fields and
@@ -1985,7 +2268,7 @@ will by default look for a config file in the usual way (see section
 it will use the default \file{biber-tool.conf} which is located in the
 \biber install tree in the same location as the \file{Config.pm} file. This
 default config file contains the default \biblatex source mappings for
-\bibtex data sources and also the default inheritance rules for
+\bibtex datasources and also the default inheritance rules for
 \bibfield{CROSSREF} processing. This means that when you use the
 \opt{--tool\_resolve} option, inheritance processing is performed on the
 entries and the results of this are «materialised» in the output. For
@@ -2081,6 +2364,39 @@ Notice here that:
 \item Entry key aliases have been resolved as required in order to perform
   these tasks
 \end{itemize}
+
+Tool mode can also be used to convert between datasource
+formats\footnote{This is currently rather experimental}. For example,
+if you wish to covert a \bibtex format data file to the experimental
+\texttt{biblatexml} XML format, you can do:
+
+\begin{verbatim}
+biber --tool --output_format=biblatexml file.bib
+\end{verbatim}
+
+\noindent This will output a file \file{file\_bibertool.bltxml} by
+default. The applicability of the various tool mode options depend on
+the output format as shown in table \ref{tab:toolopts}.
+
+\begin{table}
+\begin{center}
+\small
+\begin{tabular}{lll}
+\toprule
+& \multicolumn{2}{c}{\emph{Output format}}\\
+\emph{Option} & bibtex & biblatexml\\
+\midrule
+tool\_align & \checkmark &  \\
+tool\_indent & \checkmark & \checkmark\\
+tool\_fieldcase & \checkmark & \\
+tool\_macro\_fields & \checkmark & \\
+tool\_resolve & \checkmark & \checkmark\\
+\bottomrule
+\end{tabular}
+\end{center}
+\caption{Applicability of the tool mode options}
+\label{tab:toolopts}
+\end{table}
 \bigskip
 \subsubsection{Customising Tool Mode Inheritance Resolution}
 The default \file{biber-tool.conf} contains, as mentioned above, the
@@ -2097,6 +2413,13 @@ it as your own \file{biber.conf} file or pass it explicitly using the
 \opt{--configfile|-g} option. You can determine the location of the default
 tool mode config file by using the \opt{--tool\_config} option which will
 show you the location of the config file and exit.
+
+\subsubsection{Customising Tool Mode Sorting}
+A global sorting scheme can be defined in the config file in order to
+sort the entries in tool mode output. See section \ref{sorting} for
+the format of the config file sorting specification. By default, if
+sorting is enabled in tool mode, the sorting scheme is the same as the
+\biblatex \texttt{none} scheme, that is, no sorting is performed.
 \bigskip%|<- stop confusing emacs highlighting
 \section{Binaries}\label{binaries}
 
@@ -2359,7 +2682,7 @@ of \biber\ version and locale of course but there should be no errors
 or warnings).
 
 \begin{verbatim}
-INFO - This is Biber 1.6
+INFO - This is Biber 1.7
 INFO - Logfile is 'test.blg'
 INFO - BibLaTeX control file 'test.bcf' validates
 INFO - Converted BibLaTeX control file 'test.bcf' to 'test.bcf.html'

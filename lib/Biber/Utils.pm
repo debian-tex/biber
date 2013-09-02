@@ -44,7 +44,7 @@ our @EXPORT = qw{ locate_biber_file driver_config makenamesid makenameid stringi
   is_def is_undef is_def_and_notnull is_def_and_null
   is_undef_or_null is_notnull is_null normalise_utf8 inits join_name latex_recode_output
   filter_entry_options biber_error biber_warn ireplace imatch validate_biber_xml
-  process_entry_options escape_label unescape_label biber_decode_utf8 out};
+  process_entry_options escape_label unescape_label biber_decode_utf8 out parse_date};
 
 =head1 FUNCTIONS
 
@@ -750,44 +750,47 @@ sub join_name {
 
 sub filter_entry_options {
   my $options = shift;
-  return '' unless $options;
-  my @entryoptions = split /\s*,\s*/, $options;
-  my @return_options;
-  foreach (@entryoptions) {
-    m/^([^=]+)=?(.+)?$/;
-    given ($CONFIG_BIBLATEX_PER_ENTRY_OPTIONS{lc($1)}{OUTPUT}) {
-      # Standard option
-      when (not defined($_) or $_ == 1) {
-        push @return_options, $1 . ($2 ? "=$2" : '') ;
+  return [] unless $options;
+  my $roptions = [];
+  foreach (@$options) {
+    m/^([^=\s]+)\s*=?\s*([^\s]+)?$/;
+    my $cfopt = $CONFIG_BIBLATEX_PER_ENTRY_OPTIONS{lc($1)}{OUTPUT};
+    # Standard option
+    if (not defined($cfopt) or $cfopt == 1) {
+      push @$roptions, $1 . ($2 ? "=$2" : '') ;
+    }
+    # Set all split options to same value as parent
+    elsif (ref($cfopt) eq 'ARRAY') {
+      foreach my $map (@$cfopt) {
+        push @$roptions, "$map=$2";
       }
-      # Set all split options to same value as parent
-      when (ref($_) eq 'ARRAY') {
-        foreach my $map (@$_) {
-          push @return_options, "$map=$2";
-        }
-      }
-      # Set all splits to specific values
-      when (ref($_) eq 'HASH') {
-        foreach my $map (keys %$_) {
-          push @return_options, "$map=" . $_->{$map};
-        }
+    }
+    # Set all splits to specific values
+    elsif (ref($cfopt) eq 'HASH') {
+      foreach my $map (keys %$cfopt) {
+        push @$roptions, "$map=" . $_->{$map};
       }
     }
   }
-  return join(',', @return_options);
+  return $roptions;
 }
 
 =head2 imatch
 
-    Do an interpolating match using a match RE and a string passed in as variables
+    Do an interpolating (neg)match using a match RE and a string passed in as variables
 
 =cut
 
 sub imatch {
-  my ($value, $val_match) = @_;
+  my ($value, $val_match, $negmatch) = @_;
   return 0 unless $val_match;
   $val_match = qr/$val_match/;
-  return $value =~ m/$val_match/xms;
+  if ($negmatch) {# "!~" doesn't work here as we need an array returned
+    return $value =~ m/$val_match/xms ? () : (1);
+  }
+  else {
+    return $value =~ m/$val_match/xms;
+  }
 }
 
 
@@ -884,22 +887,19 @@ sub process_entry_options {
   my $citekey = shift;
   my $options = shift;
   return unless $options;       # Just in case it's null
-  my @entryoptions = split /\s*,\s*/, $options;
-  foreach (@entryoptions) {
+  foreach (@$options) {
     s/\s+=\s+/=/g; # get rid of spaces around any "="
     m/^([^=]+)(=?)(.+)?$/;
     my $val;
     if ($2) {
-      given ($3) {
-        when ('true') {
-          $val = 1;
-        }
-        when ('false') {
-          $val = 0;
-        }
-        default {
-          $val = $3;
-        }
+      if ($3 eq 'true') {
+        $val = 1;
+      }
+      elsif ($3 eq 'false') {
+        $val = 0;
+      }
+      else {
+        $val = $3;
       }
       _expand_option($1, $val, $citekey);
     }
@@ -908,6 +908,23 @@ sub process_entry_options {
     }
   }
   return;
+}
+
+=head2 parse_date
+
+  Simple parse of ISO8601 dates because not decent module exists for this that
+  doesn't default the missing components
+
+=cut
+
+sub parse_date {
+  my $date = shift;
+  # We are not validating dates here, just syntax parsing
+  my $date_re = qr/(\d{4}) # year
+                   (?:-(\d{2}))? # month
+                   (?:-(\d{2}))? # day
+                  /xms;
+  return $date =~ m|\A$date_re(/)?(?:$date_re)?\z|xms;
 }
 
 =head2 biber_decode_utf8
@@ -934,22 +951,21 @@ sub out {
 
 sub _expand_option {
   my ($opt, $val, $citekey) = @_;
-  given ($CONFIG_BIBLATEX_PER_ENTRY_OPTIONS{lc($1)}{INPUT}) {
-    # Standard option
-    when (not defined($_)) {
-      Biber::Config->setblxoption($opt, $val, 'PER_ENTRY', $citekey);
+  my $cfopt = $CONFIG_BIBLATEX_PER_ENTRY_OPTIONS{lc($opt)}{INPUT};
+  # Standard option
+  if (not defined($cfopt)) {
+    Biber::Config->setblxoption($opt, $val, 'PER_ENTRY', $citekey);
+  }
+  # Set all split options to same value as parent
+  elsif (ref($cfopt) eq 'ARRAY') {
+    foreach my $k (@$cfopt) {
+      Biber::Config->setblxoption($k, $val, 'PER_ENTRY', $citekey);
     }
-    # Set all split options to same value as parent
-    when (ref($_) eq 'ARRAY') {
-      foreach my $k (@$_) {
-        Biber::Config->setblxoption($k, $val, 'PER_ENTRY', $citekey);
-      }
-    }
-    # Specify values per all splits
-    when (ref($_) eq 'HASH') {
-      foreach my $k (keys %$_) {
-        Biber::Config->setblxoption($k, $_->{$k}, 'PER_ENTRY', $citekey);
-      }
+  }
+  # Specify values per all splits
+  elsif (ref($cfopt) eq 'HASH') {
+    foreach my $k (keys %$cfopt) {
+      Biber::Config->setblxoption($k, $cfopt->{$k}, 'PER_ENTRY', $citekey);
     }
   }
   return;

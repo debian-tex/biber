@@ -12,7 +12,7 @@ Last-Update: 2013-08-29
 
 --- biber-norb.git.orig/lib/Biber/Config.pm
 +++ biber-norb.git/lib/Biber/Config.pm
-@@ -1149,7 +1149,7 @@
+@@ -1189,7 +1189,7 @@
  
      Increment the count of an labelname/labelyear combination for extrayear
  
@@ -21,7 +21,7 @@ Last-Update: 2013-08-29
      be careful and only increment this counter beyond 1 if there is
      a name component. Otherwise, extrayear gets defined for all
      entries with no name but the same year etc.
-@@ -1628,7 +1628,7 @@
+@@ -1668,7 +1668,7 @@
      setdisplaymode(['entrytype'], ['field'], ['citekey'], $value)
  
      This sets the desired displaymode to use for some data in the bib.
@@ -32,7 +32,7 @@ Last-Update: 2013-08-29
  
 --- biber-norb.git.orig/lib/Biber.pm
 +++ biber-norb.git/lib/Biber.pm
-@@ -2528,7 +2528,7 @@
+@@ -2530,7 +2530,7 @@
  
          Biber::Config->add_uniquelistcount($namelist);
        }
@@ -43,7 +43,7 @@ Last-Update: 2013-08-29
        # one count. We therefore need to distinguish counts which are of the final, complete
 --- biber-norb.git.orig/t/basic-misc.t
 +++ biber-norb.git/t/basic-misc.t
-@@ -367,7 +367,7 @@
+@@ -376,7 +376,7 @@
  
  is( $out->get_output_entry('murray', $main), $murray2, 'bbl with > maxcitenames, empty alphaothers' ) ;
  

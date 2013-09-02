@@ -1,6 +1,7 @@
 package Biber::Config;
 use v5.16;
 
+use Biber;
 use Biber::Constants;
 use IPC::Cmd qw( can_run );
 use IPC::Run3; # This works with PAR::Packer and Windows. IPC::Run doesn't
@@ -15,7 +16,7 @@ use Log::Log4perl::Appender::File;
 use Log::Log4perl::Layout::SimpleLayout;
 use Log::Log4perl::Layout::PatternLayout;
 
-our $VERSION = '1.6';
+our $VERSION = '1.7';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -195,6 +196,11 @@ sub _initopts {
                                                            qr/\Adatetype\z/,
                                                            qr/\Acondition\z/,
                                                            qr/\A(?:or)?filter\z/,
+                                                           qr/\Asortexclusion\z/,
+                                                           qr/\Aexclusion\z/,
+                                                           qr/\Asort\z/,
+                                                           qr/\Asortitem\z/,
+                                                           qr/\Apresort\z/,
                                                           ],
                                           'NsStrip' => 1,
                                           'KeyAttr' => []) or
@@ -255,8 +261,40 @@ sub _initopts {
       }
       Biber::Config->setconfigfileoption($k, $sms);
     }
-    elsif (lc($k) eq 'inheritance') {
-      Biber::Config->setconfigfileoption($k, $v);
+    elsif (lc($k) eq 'inheritance') {# This is a biblatex option
+      Biber::Config->setblxoption($k, $v);
+    }
+    elsif (lc($k) eq 'sorting') {# This is a biblatex option
+      # sorting excludes
+      foreach my $sex (@{$v->{sortexclusion}}) {
+        my $excludes;
+        foreach my $ex (@{$sex->{exclusion}}) {
+          $excludes->{$ex->{content}} = 1;
+        }
+        Biber::Config->setblxoption('sortexclusion',
+                                    $excludes,
+                                    'PER_TYPE',
+                                    $sex->{type});
+      }
+
+      # presort defaults
+      foreach my $presort (@{$v->{presort}}) {
+        # Global presort default
+        unless (exists($presort->{type})) {
+          Biber::Config->setblxoption('presort', $presort->{content});
+        }
+        # Per-type default
+        else {
+          Biber::Config->setblxoption('presort',
+                                      $presort->{content},
+                                      'PER_TYPE',
+                                      $presort->{type});
+        }
+      }
+      Biber::Config->setblxoption('sorting', Biber::_parse_sort($v));
+    }
+    elsif (lc($k) eq 'datamodel') {# This is a biblatex option
+      Biber::Config->setblxoption('datamodel', $v);
     }
   }
 
@@ -737,25 +775,27 @@ sub getblxoption {
 sub set_graph {
   shift; # class method so don't care about class name
   my $type = shift;
-  given ($type) {
-    when ('set') {
-      my ($source_key, $target_key) = @_;
-      $CONFIG->{state}{graph}{$type}{settomem}{$source_key}{$target_key} = 1;
-      $CONFIG->{state}{graph}{$type}{memtoset}{$target_key} = $source_key;
-    }
-    when ('xref') {
-      my ($source_key, $target_key) = @_;
-      $CONFIG->{state}{graph}{$type}{$source_key} = $target_key;
-    }
-    when ('related') {
-      my ($clone_key, $related_key, $target_key) = @_;
-      $CONFIG->{state}{graph}{$type}{reltoclone}{$related_key}{$clone_key} = 1;
-      $CONFIG->{state}{graph}{$type}{clonetotarget}{$clone_key}{$target_key} = 1;
-    }
-    default {
-      my ($source_key, $target_key, $source_field, $target_field) = @_;
-      $CONFIG->{state}{graph}{$type}{$source_key}{$source_field}{$target_key} = $target_field;
-    }
+  if ($type eq 'set') {
+    my ($source_key, $target_key) = @_;
+    $logger->debug("Saving DOT graph information type 'set' with SOURCEKEY=$source_key, TARGETKEY=$target_key");
+    $CONFIG->{state}{graph}{$type}{settomem}{$source_key}{$target_key} = 1;
+    $CONFIG->{state}{graph}{$type}{memtoset}{$target_key} = $source_key;
+  }
+  elsif ($type eq 'xref') {
+    my ($source_key, $target_key) = @_;
+    $logger->debug("Saving DOT graph information type 'xref' with SOURCEKEY=$source_key, TARGETKEY=$target_key");
+    $CONFIG->{state}{graph}{$type}{$source_key} = $target_key;
+  }
+  elsif ($type eq 'related') {
+    my ($clone_key, $related_key, $target_key) = @_;
+    $logger->debug("Saving DOT graph information type 'related' with CLONEKEY=$clone_key, RELATEDKEY=$related_key, TARGETKEY=$target_key");
+    $CONFIG->{state}{graph}{$type}{reltoclone}{$related_key}{$clone_key} = 1;
+    $CONFIG->{state}{graph}{$type}{clonetotarget}{$clone_key}{$target_key} = 1;
+  }
+  else {
+    my ($source_key, $target_key, $source_field, $target_field) = @_;
+    $logger->debug("Saving DOT graph information type '$type' with SOURCEKEY=$source_key, TARGETKEY=$target_key, SOURCEFIELD=$source_field, TARGETFIELD=$target_field");
+    $CONFIG->{state}{graph}{$type}{$source_key}{$source_field}{$target_key} = $target_field;
   }
   return;
 }

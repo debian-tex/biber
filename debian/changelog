@@ -1,4 +1,4 @@
-biber (1.6-1) UNRELEASED; urgency=low
+biber (1.7-1) unstable; urgency=low
 
   [ gregor herrmann ]
   * debian/control: update {versioned,alternative} (build) dependencies.
@@ -7,12 +7,11 @@ biber (1.6-1) UNRELEASED; urgency=low
   * Update debian/watch
 
   [ Danai SAE-HAN (韓達耐) ]
-  * New upstream release 1.5:
+  * New upstream release 1.7:
     - There are a lot of changes and updates since the last Debian
       package (v0.9.9).  I thoroughly recommend to have a look at
       the upstream changelog which you can find under
-      /usr/share/doc/biber/changelog.gz or online at
-      https://github.com/plk/biber/blob/8e3bebc6682f6360eb60f64f925d05f3ff9d793f/Changes .
+      /usr/share/doc/biber/changelog.gz
     - Some highlights are:
       + A number of options have changed names; ATM the old ones are
         still supported.
@@ -23,7 +22,11 @@ biber (1.6-1) UNRELEASED; urgency=low
       + Sorting per list enabled for biblatex v2.0.
   * [debian/gbp.conf] Use "upstream" as the upstream branch instead
      of "upstream/dev".
-  * [debian/control] Update the dependencies.
+  * [debian/control]
+      + Update the dependencies.
+      + Bump dependency to Perl 5.16+;
+  * [debian/patches/01_remove_dependency_mozilla_ca.patch]
+      + Refresh the patch.
 
   [ Axel Beckert ]
   * Fix Vcs-Browser header (Closes: #710246)
@@ -31,9 +34,17 @@ biber (1.6-1) UNRELEASED; urgency=low
   [ Norbert Preining ]
   * rebuild the git repository
   * update patches to current biber
-  * replace Data::Diver::Dive by our own implementation, drop dependency on libdata-diver-perl
+  * include a patch from upstream (to be in 1.8) to remove dependency
+    on Data::Diver and switch to autovivification module, edit control
+  * add more build-deps and (run) deps
+  * add myself to the uploaders
+  * add a patch taken from OpenSuSE to ensure tests succeed with perl 5.18
+    randomization of hash keys (thanks Werner Fink)
+  * bump standards version to 3.9.4, no changes necessary
+  * fix lintian warnings
+  * switch maintainers to the Debian TeX Group
 
- -- Norbert Preining <preining@debian.org>  Thu, 29 Aug 2013 13:46:46 +0900
+ -- Norbert Preining <preining@debian.org>  Sun, 01 Sep 2013 23:39:15 +0900
 
 biber (0.9.9+git2012426-3) unstable; urgency=low
 
