@@ -72,8 +72,7 @@ Depends: ${misc:Depends},
          libbusiness-issn-perl,
          liburi-perl,
          libunicode-linebreak-perl
-Recommends: biblatex,
-            libreadonly-xs-perl
+Recommends: texlive-bibtex-extra, libreadonly-xs-perl
 Description: Much-augmented BibTeX replacement for BibLaTeX users
  The biblatex package by Philipp Lehman is becoming the definitive
  citation management tool for LaTeX users. Biblatex has relied on the

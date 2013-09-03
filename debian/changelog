@@ -1,3 +1,10 @@
+biber (1.7-2) UNRELEASED; urgency=low
+
+  * replace recommends: biblatex -> texlive-bibtex-extra, biblatex* will
+    be removed from the archive
+
+ -- Norbert Preining <preining@debian.org>  Tue, 03 Sep 2013 14:17:22 +0900
+
 biber (1.7-1) unstable; urgency=low
 
   [ gregor herrmann ]
