@@ -1,3 +1,9 @@
+biber (1.7-3) UNRELEASED; urgency=low
+
+  * install documentation for biber (biber.pdf) (Closes: #689201)
+
+ -- Norbert Preining <preining@debian.org>  Wed, 16 Oct 2013 14:45:39 +0900
+
 biber (1.7-2) unstable; urgency=low
 
   * replace recommends: biblatex -> texlive-bibtex-extra, biblatex* will
