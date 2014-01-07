@@ -10,9 +10,9 @@ Last-Update: 2013-08-29
  t/basic-misc.t      |    2 +-
  3 files changed, 4 insertions(+), 4 deletions(-)
 
---- biber-norb.git.orig/lib/Biber/Config.pm
-+++ biber-norb.git/lib/Biber/Config.pm
-@@ -1189,7 +1189,7 @@
+--- biber.orig/lib/Biber/Config.pm
++++ biber/lib/Biber/Config.pm
+@@ -1196,7 +1196,7 @@
  
      Increment the count of an labelname/labelyear combination for extrayear
  
@@ -21,7 +21,7 @@ Last-Update: 2013-08-29
      be careful and only increment this counter beyond 1 if there is
      a name component. Otherwise, extrayear gets defined for all
      entries with no name but the same year etc.
-@@ -1668,7 +1668,7 @@
+@@ -1673,7 +1673,7 @@
      setdisplaymode(['entrytype'], ['field'], ['citekey'], $value)
  
      This sets the desired displaymode to use for some data in the bib.
@@ -30,9 +30,9 @@ Last-Update: 2013-08-29
      displaymodes *defined* in the bib which just tell you what to return
      for a particular displaymode request for some data.
  
---- biber-norb.git.orig/lib/Biber.pm
-+++ biber-norb.git/lib/Biber.pm
-@@ -2530,7 +2530,7 @@
+--- biber.orig/lib/Biber.pm
++++ biber/lib/Biber.pm
+@@ -2586,7 +2586,7 @@
  
          Biber::Config->add_uniquelistcount($namelist);
        }
@@ -41,8 +41,8 @@ Last-Update: 2013-08-29
        # we will falsely "disambiguate" identical name lists from each other by setting
        # uniquelist to the full list because every part of each list will have more than
        # one count. We therefore need to distinguish counts which are of the final, complete
---- biber-norb.git.orig/t/basic-misc.t
-+++ biber-norb.git/t/basic-misc.t
+--- biber.orig/t/basic-misc.t
++++ biber/t/basic-misc.t
 @@ -376,7 +376,7 @@
  
  is( $out->get_output_entry('murray', $main), $murray2, 'bbl with > maxcitenames, empty alphaothers' ) ;

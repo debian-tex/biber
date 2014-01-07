@@ -16,8 +16,8 @@ Last-Update: 2013-08-29
  lib/Biber/SortLists.pm   |    2 +-
  9 files changed, 9 insertions(+), 9 deletions(-)
 
---- biber-norb.git.orig/lib/Biber/Entries.pm
-+++ biber-norb.git/lib/Biber/Entries.pm
+--- biber.orig/lib/Biber/Entries.pm
++++ biber/lib/Biber/Entries.pm
 @@ -7,7 +7,7 @@
  
  =head1 NAME
@@ -27,9 +27,9 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- biber-norb.git.orig/lib/Biber/Entry.pm
-+++ biber-norb.git/lib/Biber/Entry.pm
-@@ -19,7 +19,7 @@
+--- biber.orig/lib/Biber/Entry.pm
++++ biber/lib/Biber/Entry.pm
+@@ -18,7 +18,7 @@
  
  =head1 NAME
  
@@ -38,8 +38,8 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- biber-norb.git.orig/lib/Biber/Entry/Name.pm
-+++ biber-norb.git/lib/Biber/Entry/Name.pm
+--- biber.orig/lib/Biber/Entry/Name.pm
++++ biber/lib/Biber/Entry/Name.pm
 @@ -15,7 +15,7 @@
  
  =head1 NAME
@@ -49,8 +49,8 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- biber-norb.git.orig/lib/Biber/Entry/Names.pm
-+++ biber-norb.git/lib/Biber/Entry/Names.pm
+--- biber.orig/lib/Biber/Entry/Names.pm
++++ biber/lib/Biber/Entry/Names.pm
 @@ -13,7 +13,7 @@
  
  =head1 NAME
@@ -60,8 +60,8 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- biber-norb.git.orig/lib/Biber/Section.pm
-+++ biber-norb.git/lib/Biber/Section.pm
+--- biber.orig/lib/Biber/Section.pm
++++ biber/lib/Biber/Section.pm
 @@ -11,7 +11,7 @@
  
  =head1 NAME
@@ -71,8 +71,8 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- biber-norb.git.orig/lib/Biber/Sections.pm
-+++ biber-norb.git/lib/Biber/Sections.pm
+--- biber.orig/lib/Biber/Sections.pm
++++ biber/lib/Biber/Sections.pm
 @@ -7,7 +7,7 @@
  
  =head1 NAME
@@ -82,8 +82,8 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- biber-norb.git.orig/lib/Biber/SortList.pm
-+++ biber-norb.git/lib/Biber/SortList.pm
+--- biber.orig/lib/Biber/SortList.pm
++++ biber/lib/Biber/SortList.pm
 @@ -11,7 +11,7 @@
  
  =head1 NAME
@@ -93,8 +93,8 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- biber-norb.git.orig/lib/Biber/SortLists.pm
-+++ biber-norb.git/lib/Biber/SortLists.pm
+--- biber.orig/lib/Biber/SortLists.pm
++++ biber/lib/Biber/SortLists.pm
 @@ -7,7 +7,7 @@
  
  =head1 NAME
@@ -104,8 +104,8 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- biber-norb.git.orig/lib/Biber/DataModel.pm
-+++ biber-norb.git/lib/Biber/DataModel.pm
+--- biber.orig/lib/Biber/DataModel.pm
++++ biber/lib/Biber/DataModel.pm
 @@ -14,7 +14,7 @@
  
  =head1 NAME
