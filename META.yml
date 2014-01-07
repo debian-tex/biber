@@ -7,7 +7,8 @@ build_requires:
   ExtUtils::LibBuilder: 0.02
 configure_requires:
   Module::Build: 0.38
-generated_by: 'Module::Build version 0.3607'
+dynamic_config: 1
+generated_by: 'Module::Build version 0.4007, CPAN::Meta::Converter version 2.120921'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -16,57 +17,82 @@ name: biblatex-biber
 provides:
   Biber:
     file: lib/Biber.pm
+    version: 0
   Biber::Config:
     file: lib/Biber/Config.pm
-    version: 1.7
+    version: 1.8
   Biber::Constants:
     file: lib/Biber/Constants.pm
+    version: 0
   Biber::DataModel:
     file: lib/Biber/DataModel.pm
+    version: 0
   Biber::Entries:
     file: lib/Biber/Entries.pm
+    version: 0
   Biber::Entry:
     file: lib/Biber/Entry.pm
+    version: 0
   Biber::Entry::Name:
     file: lib/Biber/Entry/Name.pm
+    version: 0
   Biber::Entry::Names:
     file: lib/Biber/Entry/Names.pm
+    version: 0
   Biber::Input::file::biblatexml:
     file: lib/Biber/Input/file/biblatexml.pm
+    version: 0
   Biber::Input::file::bibtex:
     file: lib/Biber/Input/file/bibtex.pm
+    version: 0
   Biber::Input::file::endnotexml:
     file: lib/Biber/Input/file/endnotexml.pm
+    version: 0
   Biber::Input::file::ris:
     file: lib/Biber/Input/file/ris.pm
+    version: 0
   Biber::Input::file::zoterordfxml:
     file: lib/Biber/Input/file/zoterordfxml.pm
+    version: 0
   Biber::Internals:
     file: lib/Biber/Internals.pm
+    version: 0
   Biber::LaTeX::Recode:
     file: lib/Biber/LaTeX/Recode.pm
+    version: 0
   Biber::Output::base:
     file: lib/Biber/Output/base.pm
+    version: 0
   Biber::Output::bbl:
     file: lib/Biber/Output/bbl.pm
+    version: 0
   Biber::Output::biblatexml:
     file: lib/Biber/Output/biblatexml.pm
+    version: 0
   Biber::Output::bibtex:
     file: lib/Biber/Output/bibtex.pm
+    version: 0
   Biber::Output::dot:
     file: lib/Biber/Output/dot.pm
+    version: 0
   Biber::Output::test:
     file: lib/Biber/Output/test.pm
+    version: 0
   Biber::Section:
     file: lib/Biber/Section.pm
+    version: 0
   Biber::Sections:
     file: lib/Biber/Sections.pm
+    version: 0
   Biber::SortList:
     file: lib/Biber/SortList.pm
+    version: 0
   Biber::SortLists:
     file: lib/Biber/SortLists.pm
+    version: 0
   Biber::Utils:
     file: lib/Biber/Utils.pm
+    version: 0
 recommends:
   Readonly::XS: 0
 requires:
@@ -74,7 +100,6 @@ requires:
   Business::ISMN: 0
   Business::ISSN: 0
   Data::Compare: 0
-  Data::Diver: 0
   Data::Dump: 0
   Date::Simple: 0
   Encode::EUCJPASCII: 0
@@ -97,7 +122,8 @@ requires:
   XML::LibXML::Simple: 0
   XML::LibXSLT: 0
   XML::Writer: 0
+  autovivification: 0
   perl: v5.16.0
 resources:
   license: http://dev.perl.org/licenses/
-version: 1.7
+version: 1.8

@@ -130,21 +130,21 @@ sub init_schemes {
 
       # Now populate the regexps
       if ($type eq 'accents') {
-        $remaps->{$set}{$type}{re} = '[' . join('', keys %{$remaps->{$set}{$type}{map}}) . ']';
+        $remaps->{$set}{$type}{re} = '[' . join('', sort keys %{$remaps->{$set}{$type}{map}}) . ']';
         $remaps->{$set}{$type}{re} = qr/$remaps->{$set}{$type}{re}/;
-        $r_remaps->{$set}{$type}{re} = '[' . join('', keys %{$r_remaps->{$set}{$type}{map}}) . ']';
+        $r_remaps->{$set}{$type}{re} = '[' . join('', sort keys %{$r_remaps->{$set}{$type}{map}}) . ']';
         $r_remaps->{$set}{$type}{re} = qr/$r_remaps->{$set}{$type}{re}/;
       }
       elsif ($type eq 'superscripts') {
-        $remaps->{$set}{$type}{re} = join('|', map { /[\+\-\)\(]/ ? '\\' . $_ : $_ } keys %{$remaps->{$set}{$type}{map}});
+        $remaps->{$set}{$type}{re} = join('|', map { /[\+\-\)\(]/ ? '\\' . $_ : $_ } sort keys %{$remaps->{$set}{$type}{map}});
         $remaps->{$set}{$type}{re} = qr|$remaps->{$set}{$type}{re}|;
-        $r_remaps->{$set}{$type}{re} = join('|', map { /[\+\-\)\(]/ ? '\\' . $_ : $_ } keys %{$r_remaps->{$set}{$type}{map}});
+        $r_remaps->{$set}{$type}{re} = join('|', map { /[\+\-\)\(]/ ? '\\' . $_ : $_ } sort keys %{$r_remaps->{$set}{$type}{map}});
         $r_remaps->{$set}{$type}{re} = qr|$r_remaps->{$set}{$type}{re}|;
       }
       else {
-        $remaps->{$set}{$type}{re} = join('|', keys %{$remaps->{$set}{$type}{map}});
+        $remaps->{$set}{$type}{re} = join('|', sort keys %{$remaps->{$set}{$type}{map}});
         $remaps->{$set}{$type}{re} = qr|$remaps->{$set}{$type}{re}|;
-        $r_remaps->{$set}{$type}{re} = join('|', keys %{$r_remaps->{$set}{$type}{map}});
+        $r_remaps->{$set}{$type}{re} = join('|', sort keys %{$r_remaps->{$set}{$type}{map}});
         $r_remaps->{$set}{$type}{re} = qr|$r_remaps->{$set}{$type}{re}|;
       }
     }
@@ -185,14 +185,13 @@ sub latex_decode {
       exists $opts{strip_outer_braces} ? $opts{strip_outer_braces} : 0;
 
     # Deal with raw TeX \char macros.
-    $text =~ s/\{(\\char['"]*[[:xdigit:]]+)\}/$1/g; # strip braces around \char
-    $text =~ s/\\char"([[:xdigit:]]+)/"chr(0x$1)"/gee; # hex chars
+    $text =~ s/\\char"(\p{ASCII_Hex_Digit}+)/"chr(0x$1)"/gee; # hex chars
     $text =~ s/\\char'(\d+)/"chr(0$1)"/gee;  # octal chars
     $text =~ s/\\char(\d+)/"chr($1)"/gee;    # decimal chars
 
     my $mainmap;
 
-    foreach my $type (keys %{$remaps->{$scheme_d}}) {
+    foreach my $type (sort keys %{$remaps->{$scheme_d}}) {
       my $map = $remaps->{$scheme_d}{$type}{map};
       my $re = $remaps->{$scheme_d}{$type}{re};
       if ($type eq 'negatedsymbols') {
@@ -217,7 +216,7 @@ sub latex_decode {
     # special cases such as '\={\i}' -> '\={i}' -> "i\x{304}"
     $text =~ s/(\\(?:$d_re|$a_re)){\\i}/$1\{i\}/g;
 
-    foreach my $type (keys %{$remaps->{$scheme_d}}) {
+    foreach my $type (sort keys %{$remaps->{$scheme_d}}) {
       my $map = $remaps->{$scheme_d}{$type}{map};
       my $re = $remaps->{$scheme_d}{$type}{re};
       next unless $re;
@@ -269,7 +268,7 @@ Converts UTF-8 to LaTeX
 sub latex_encode {
   my $text = shift;
 
-  foreach my $type (keys %{$r_remaps->{$scheme_e}}) {
+  foreach my $type (sort keys %{$r_remaps->{$scheme_e}}) {
     my $map = $r_remaps->{$scheme_e}{$type}{map};
     my $re = $r_remaps->{$scheme_e}{$type}{re};
       if ($type eq 'negatedsymbols') {
@@ -286,7 +285,7 @@ sub latex_encode {
     }
   }
 
-  foreach my $type (keys %{$r_remaps->{$scheme_e}}) {
+  foreach my $type (sort keys %{$r_remaps->{$scheme_e}}) {
     my $map = $r_remaps->{$scheme_e}{$type}{map};
     my $re = $r_remaps->{$scheme_e}{$type}{re};
     if ($type eq 'accents') {
@@ -318,7 +317,7 @@ sub latex_encode {
     }
   }
 
-  foreach my $type (keys %{$r_remaps->{$scheme_e}}) {
+  foreach my $type (sort keys %{$r_remaps->{$scheme_e}}) {
     my $map = $r_remaps->{$scheme_e}{$type}{map};
     my $re = $r_remaps->{$scheme_e}{$type}{re};
     if ($type eq 'wordmacros') {

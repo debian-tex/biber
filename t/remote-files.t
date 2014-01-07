@@ -4,15 +4,19 @@ use warnings;
 use utf8;
 no warnings 'utf8' ;
 
-use Test::More tests => 3;
+use Test::More;
+
+if ($ENV{BIBER_DEV_TESTS}) {
+  plan tests => 3;
+}
+else {
+  plan skip_all => 'BIBER_DEV_TESTS not set';
+}
 
 use Biber;
 use Biber::Output::bbl;
 use Log::Log4perl;
 chdir("t/tdata") ;
-
-SKIP: {
-        skip "BIBER_SKIP_DEV_TESTS env var is set, skipping remote tests", 3 if $ENV{BIBER_SKIP_DEV_TESTS};
 
 # Set up Biber object
 my $biber = Biber->new(noconf => 1);
@@ -65,6 +69,7 @@ my $cu1 = q|    \entry{citeulike:8283461}{article}{}
       \field{sortinit}{M}
       \field{labelyear}{1999}
       \field{labelmonth}{05}
+      \field{datelabelsource}{}
       \field{labeltitle}{Alteration of the platelet serotonin transporter in romantic love.}
       \field{abstract}{{BACKGROUND}: The evolutionary consequences of love are so important that there must be some long-established biological process regulating it. Recent findings suggest that the serotonin ({5-HT}) transporter might be linked to both neuroticism and sexual behaviour as well as to obsessive-compulsive disorder ({OCD}). The similarities between an overvalued idea, such as that typical of subjects in the early phase of a love relationship, and obsession, prompted us to explore the possibility that the two conditions might share alterations at the level of the {5-HT} transporter. {METHODS}: Twenty subjects who had recently (within the previous 6 months) fallen in love, 20 unmedicated {OCD} patients and 20 normal controls, were included in the study. The {5-HT} transporter was evaluated with the specific binding of {3H}-paroxetine ({3H}-Par) to platelet membranes. {RESULTS}: The results showed that the density of {3H}-Par binding sites was significantly lower in subjects who had recently fallen in love and in {OCD} patients than in controls. {DISCUSSION}: The main finding of the present study is that subjects who were in the early romantic phase of a love relationship were not different from {OCD} patients in terms of the density of the platelet {5-HT} transporter, which proved to be significantly lower than in the normal controls. This would suggest common neurochemical changes involving the {5-HT} system, linked to psychological dimensions shared by the two conditions, perhaps at an ideational level.}
       \field{issn}{0033-2917}
@@ -78,7 +83,7 @@ my $cu1 = q|    \entry{citeulike:8283461}{article}{}
       \verb{url}
       \verb http://www.biomedexperts.com/Abstract.bme/10405096
       \endverb
-      \keyw{love, romantic}
+      \keyw{love,romantic}
     \endentry
 |;
 
@@ -95,6 +100,7 @@ my $dl1 = q|    \entry{AbdelbarH98}{article}{}
       \strng{fullhash}{01599a4cb58316d64208b12a07741765}
       \field{sortinit}{A}
       \field{labelyear}{1998}
+      \field{datelabelsource}{}
       \field{labeltitle}{Approximating {MAP}s for belief networks is {NP}-hard and other theorems}
       \field{journaltitle}{Artificial Intelligence}
       \field{title}{Approximating {MAP}s for belief networks is {NP}-hard and other theorems}
@@ -104,41 +110,40 @@ my $dl1 = q|    \entry{AbdelbarH98}{article}{}
     \endentry
 |;
 
-my $ssl = q|    \entry{jung_alchemical_????}{book}{}
+my $ssl = q|    \entry{merleau-ponty_philosophe_2010}{incollection}{}
       \name{labelname}{1}{}{%
-        {{uniquename=0,hash=c6e712b3aef74e9dabcb8d7a074952ba}{Jung}{J\bibinitperiod}{Carl\bibnamedelima Gustav}{C\bibinitperiod\bibinitdelim G\bibinitperiod}{}{}{}{}}%
+        {{uniquename=0,hash=83d062f99d033839537243075d75bad2}{Merleau-Ponty}{M\bibinithyphendelim P\bibinitperiod}{Maurice}{M\bibinitperiod}{}{}{}{}}%
       }
       \name{author}{1}{}{%
-        {{uniquename=0,hash=c6e712b3aef74e9dabcb8d7a074952ba}{Jung}{J\bibinitperiod}{Carl\bibnamedelima Gustav}{C\bibinitperiod\bibinitdelim G\bibinitperiod}{}{}{}{}}%
+        {{uniquename=0,hash=83d062f99d033839537243075d75bad2}{Merleau-Ponty}{M\bibinithyphendelim P\bibinitperiod}{Maurice}{M\bibinitperiod}{}{}{}{}}%
       }
-      \name{editor}{4}{}{%
-        {{hash=78e9cfd427143d50e6fb3c72d6529fd4}{Read}{R\bibinitperiod}{Herbert}{H\bibinitperiod}{}{}{}{}}%
-        {{hash=47ed09185c6dabbd5a9868d756f5fe6d}{Fordham}{F\bibinitperiod}{Michael}{M\bibinitperiod}{}{}{}{}}%
-        {{hash=fe82f0d25dcaecad96556b92f0fa6c2e}{Adler}{A\bibinitperiod}{Gerhard}{G\bibinitperiod}{}{}{}{}}%
-        {{hash=6028fc97827ed51ce0fcb78439bd4d4b}{{McGuire}}{M\bibinitperiod}{William}{W\bibinitperiod}{}{}{}{}}%
+      \name{editor}{1}{}{%
+        {{hash=ff5f90046157eecef0c22da4dac6486e}{Lefort}{L\bibinitperiod}{Claude}{C\bibinitperiod}{}{}{}{}}%
       }
-      \name{translator}{1}{}{%
-        {{hash=79d3c54975451a4e16baf4ff6f7066f2}{Hull}{H\bibinitperiod}{R.\bibnamedelimi F.\bibnamedelimi C.}{R\bibinitperiod\bibinitdelim F\bibinitperiod\bibinitdelim C\bibinitperiod}{}{}{}{}}%
+      \list{language}{1}{%
+        {Fransk}%
       }
       \list{location}{1}{%
-        {Princeton, {NJ}}%
+        {Paris}%
       }
       \list{publisher}{1}{%
-        {Princeton University Press}%
+        {Éditions Gallimard}%
       }
-      \strng{namehash}{c6e712b3aef74e9dabcb8d7a074952ba}
-      \strng{fullhash}{c6e712b3aef74e9dabcb8d7a074952ba}
-      \field{sortinit}{J}
-      \field{labeltitle}{Alchemical Studies}
-      \field{series}{Bollingen Series {XX}}
-      \field{title}{Alchemical Studies}
-      \field{volume}{{XIII}}
+      \strng{namehash}{83d062f99d033839537243075d75bad2}
+      \strng{fullhash}{83d062f99d033839537243075d75bad2}
+      \field{sortinit}{M}
+      \field{labelyear}{2010}
+      \field{datelabelsource}{}
+      \field{labeltitle}{Le philosophe et son ombre}
+      \field{booktitle}{Œuvres}
+      \field{title}{Le philosophe et son ombre}
+      \field{year}{2010}
+      \field{pages}{1267\bibrangedash 1289}
+      \keyw{Husserl,Edmund,autrui,chair,constitution,intercorporéité,l'impensé,ouverture}
     \endentry
 |;
 
 
 is( $out->get_output_entry('citeulike:8283461', $main), $cu1, 'Fetch from citeulike') ;
 is( $out->get_output_entry('AbdelbarH98', $main), $dl1, 'Fetch from plain bib download') ;
-is( $out->get_output_entry('jung_alchemical_????', $main), $ssl, 'HTTPS test') ;
-
-}
+is( $out->get_output_entry('merleau-ponty_philosophe_2010', $main), $ssl, 'HTTPS test') ;
