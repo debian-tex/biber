@@ -1,12 +1,13 @@
-biber (1.8-1) unstable; urgency=low
+biber (1.8-1) UNRELEASED; urgency=low
 
+  * UNRELEASED - tests are failing
   * install documentation for biber (biber.pdf) (Closes: #689201)
   * Imported Upstream version 1.8 (Closes: #734413)
   * update mozilla patch, drop upstream included patches
   * bump standards version, no changes necessary
   * add libtest-pod-coverage-perl to build-deps
 
- -- Norbert Preining <preining@debian.org>  Tue, 07 Jan 2014 10:22:25 +0900
+ -- Norbert Preining <preining@debian.org>  Tue, 07 Jan 2014 12:10:46 +0900
 
 biber (1.7-2) unstable; urgency=low
 
