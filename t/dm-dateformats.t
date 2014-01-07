@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 31;
+use Test::More tests => 33;
 
 use Biber;
 use Biber::Output::bbl;
@@ -79,6 +79,7 @@ my $l13c = q|    \entry{L13}{book}{}
       \field{labelyear}{1996}
       \field{labelmonth}{01}
       \field{labelday}{01}
+      \field{datelabelsource}{}
       \field{labeltitle}{Title 2}
       \field{day}{01}
       \field{endyear}{}
@@ -107,6 +108,7 @@ my $l14 = q|    \entry{L14}{book}{}
       \field{labelyear}{1996}
       \field{labelmonth}{12}
       \field{labelday}{10\bibdatedash 12}
+      \field{datelabelsource}{}
       \field{labeltitle}{Title 2}
       \field{day}{10}
       \field{endday}{12}
@@ -159,6 +161,7 @@ my $l16 = q|    \entry{L16}{proceedings}{}
       \field{labelyear}{1996}
       \field{labelmonth}{01}
       \field{labelday}{01}
+      \field{datelabelsource}{event}
       \field{labeltitle}{Title 2}
       \field{eventday}{01}
       \field{eventmonth}{01}
@@ -187,6 +190,7 @@ my $l17 = q|    \entry{L17}{proceedings}{}
       \field{labelyear}{1996}
       \field{labelmonth}{12}
       \field{labelday}{10\bibdatedash 12}
+      \field{datelabelsource}{}
       \field{labeltitle}{Title 2}
       \field{day}{10}
       \field{endday}{12}
@@ -205,6 +209,7 @@ my $l17 = q|    \entry{L17}{proceedings}{}
       \field{origendyear}{1998}
       \field{origmonth}{12}
       \field{origyear}{1998}
+      \field{pubstate}{inpress}
       \field{title}{Title 2}
       \field{year}{1996}
     \endentry
@@ -228,6 +233,7 @@ my $l17c = q|    \entry{L17}{proceedings}{}
       \field{labelyear}{1998}
       \field{labelmonth}{12}
       \field{labelday}{10\bibdatedash 12}
+      \field{datelabelsource}{orig}
       \field{labeltitle}{Title 2}
       \field{day}{10}
       \field{endday}{12}
@@ -246,6 +252,7 @@ my $l17c = q|    \entry{L17}{proceedings}{}
       \field{origendyear}{1998}
       \field{origmonth}{12}
       \field{origyear}{1998}
+      \field{pubstate}{inpress}
       \field{title}{Title 2}
       \field{year}{1996}
     \endentry
@@ -269,6 +276,7 @@ my $l17e = q|    \entry{L17}{proceedings}{}
       \field{labelyear}{1998\bibdatedash 2004}
       \field{labelmonth}{12}
       \field{labelday}{10\bibdatedash 12}
+      \field{datelabelsource}{event}
       \field{labeltitle}{Title 2}
       \field{day}{10}
       \field{endday}{12}
@@ -287,6 +295,7 @@ my $l17e = q|    \entry{L17}{proceedings}{}
       \field{origendyear}{1998}
       \field{origmonth}{12}
       \field{origyear}{1998}
+      \field{pubstate}{inpress}
       \field{title}{Title 2}
       \field{year}{1996}
     \endentry
@@ -351,5 +360,13 @@ $biber->prepare;
 $out = $biber->get_output_obj;
 
 is($bibentries->entry('L17')->get_labeldate_info->{field}{year}, 'eventyear', 'Date values test 17d - labelyear = EVENTYEAR' ) ;
+is($bibentries->entry('L17')->get_labeldate_info->{field}{source}, 'event', 'Date values test 17d - source = event' ) ;
 is($out->get_output_entry('L17', $main), $l17e, 'Date values test 17e - labelyear = ORIGYEAR-ORIGENDYEAR' ) ;
 
+# reset options and regenerate information
+Biber::Config->setblxoption('labeldatespec', [ {content => 'pubstate', type => 'field'} ], 'PER_TYPE', 'proceedings');
+
+$bibentries->del_entry('L17');
+$biber->prepare;
+$out = $biber->get_output_obj;
+is($bibentries->entry('L17')->get_labeldate_info->{field}{source}, 'pubstate', 'Source is non-date field' );

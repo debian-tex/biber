@@ -238,7 +238,7 @@ sub tool_mode_setup {
   my $self = shift;
   my $bib_sections = new Biber::Sections;
   # There are no sections in tool mode so create a pseudo-section
-  my $bib_section = new Biber::Section('number' => 0);
+  my $bib_section = new Biber::Section('number' => 99999);
   $bib_section->set_datasources([{type => 'file',
                                   name => $ARGV[0],
                                   datatype => Biber::Config->getoption('input_format')}]);
@@ -249,10 +249,10 @@ sub tool_mode_setup {
   $self->add_sections($bib_sections);
 
   my $sortlists = new Biber::SortLists;
-  my $seclist = Biber::SortList->new(section => 0, label => 'tool');
+  my $seclist = Biber::SortList->new(section => 99999, label => Biber::Config->getblxoption('sortscheme'));
   $seclist->set_type('entry');
   $seclist->set_sortscheme(Biber::Config->getblxoption('sorting'));
-  $logger->debug("Adding 'entry' list 'tool' for pseudo-section 0");
+  $logger->debug("Adding 'entry' list 'tool' for pseudo-section 99999");
   $sortlists->add_list($seclist);
   $self->{sortlists} = $sortlists;
 
@@ -700,6 +700,40 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
   # We want the strict perl utf8 "UTF-8"
   normalise_utf8();
 
+  # bibtex output when not in tool mode, is essentially entering tool mode but
+  # without allkeys. We are not in tool mode if we are here. We fake tool mode
+  # and then add a special section which contains all cited keys from all sections
+  if (Biber::Config->getoption('output_format') eq 'bibtex') {
+    Biber::Config->setoption('tool' ,1);
+    Biber::Config->setoption('pseudo_tool' ,1);
+
+    my $bib_section = new Biber::Section('number' => 99999);
+
+    foreach my $section (@{$self->sections->get_sections}) {
+      $bib_section->add_citekeys($section->get_citekeys);
+      foreach my $ds (@{$section->get_datasources}) {
+        $bib_section->add_datasource($ds);
+      }
+    }
+
+    $self->sections->add_section($bib_section);
+
+    # Global sorting in non tool mode bibtex output is citeorder so override the .bcf here
+    Biber::Config->setblxoption('sortscheme', 'none');
+
+    my $seclist = Biber::SortList->new(section => 99999, label => Biber::Config->getblxoption('sortscheme'));
+    $seclist->set_type('entry');
+    # bibtex output in non-tool mode is just citeorder
+    $seclist->set_sortscheme([
+                              [
+                               {},
+                               {'citeorder'    => {}}
+                              ]
+                             ]);
+    $logger->debug("Adding 'entry' list 'none' for pseudo-section 99999");
+    $self->{sortlists}->add_list($seclist);
+  }
+
   return;
 }
 
@@ -730,7 +764,7 @@ sub process_setup {
   # Break data model information up into more processing-friendly formats
   # for use in verification checks later
   # This has to be here as opposed to in parse_control() so that it can pick
-  # up use config dm settings (for tool mode) in case there is nothing in the .bcf
+  # up user config dm settings
   Biber::Config->set_dm(Biber::DataModel->new(Biber::Config->getblxoption('datamodel')));
 
   # Force output_safechars flag if output to ASCII and input_encoding is not ASCII
@@ -1546,6 +1580,7 @@ sub process_labeldate {
       return;
     }
 
+    my $pseudodate;
     my $ldatespec = Biber::Config->getblxoption('labeldatespec', $bee);
     foreach my $h_ly (@$ldatespec) {
       my $ly = $h_ly->{content};
@@ -1553,19 +1588,23 @@ sub process_labeldate {
         my $ldy;
         my $ldm;
         my $ldd;
+        my $datetype;
         if ($dm->field_is_datatype('date', $ly)) { # resolve dates
-          my $datetype = $ly =~ s/date\z//xmsr;
+          $datetype = $ly =~ s/date\z//xmsr;
           $ldy = $datetype . 'year';
           $ldm = $datetype . 'month';
           $ldd = $datetype . 'day';
         }
         else {
           $ldy = $ly; # labelyear can be a non-date field so make a pseudo-year
+          $pseudodate = 1;
         }
         if ($be->get_field($ldy)) { # did we find a labeldate?
+          # set source to field or date field prefix for a real date field
           $be->set_labeldate_info({'field' => { 'year'  => $ldy,
                                                 'month' => $ldm,
-                                                'day'   => $ldd }});
+                                                'day'   => $ldd,
+                                                'source' => $pseudodate ? $ldy : $datetype }});
           last;
         }
       }
@@ -1582,6 +1621,7 @@ sub process_labeldate {
         $be->set_field('labelyear', $be->get_field($df->{year}));
         $be->set_field('labelmonth', $be->get_field($df->{month})) if $df->{month};
         $be->set_field('labelday', $be->get_field($df->{day})) if $df->{day};
+        $be->set_field('datelabelsource', $df->{source});
         # ignore endyear if it's the same as year
         my ($ytype) = $df->{year} =~ /\A(\X*)year\z/xms;
         $ytype = $ytype // ''; # Avoid undef warnings since no match above can make it undef
@@ -1591,12 +1631,16 @@ sub process_labeldate {
           $be->set_field('labelyear',
                          $be->get_field('labelyear') . '\bibdatedash ' . $be->get_field($ytype . 'endyear'));
         }
-        if ($be->get_field($ytype . 'endmonth')
+        # pseudodates (field which are not really dates per se) are just years
+        if (not $pseudodate and
+            $be->get_field($ytype . 'endmonth')
             and ($be->get_field($df->{month}) ne $be->get_field($ytype . 'endmonth'))) {
           $be->set_field('labelmonth',
                          $be->get_field('labelmonth') . '\bibdatedash ' . $be->get_field($ytype . 'endmonth'));
         }
-        if ($be->get_field($ytype . 'endday')
+        # pseudodates (field which are not really dates per se) are just years
+        if (not $pseudodate and
+            $be->get_field($ytype . 'endday')
             and ($be->get_field($df->{day}) ne $be->get_field($ytype . 'endday'))) {
           $be->set_field('labelday',
                          $be->get_field('labelday') . '\bibdatedash ' . $be->get_field($ytype . 'endday'));
@@ -2269,7 +2313,13 @@ sub create_uniquename_info {
       }
 
       foreach my $name (@$names) {
-        my $lastname       = $name->get_lastname;
+        # we have to differentiatite here between last names with and without
+        # prefices/suffices otherwise we end up falsely trying to disambiguate
+        # "X" and "von X" or "X" and "X Jr" using initials/first names when there is no need.
+        my $lastname = (Biber::Config->getblxoption('useprefix', $bee, $citekey) and
+                        $name->get_prefix ? $name->get_prefix : '') .
+                          $name->get_lastname .
+                            ($name->get_suffix ? $name->get_suffix : '');
         my $nameinitstring = $name->get_nameinitstring;
         my $namestring     = $name->get_namestring;
         my $namecontext;
@@ -2380,7 +2430,13 @@ sub generate_uniquename {
       }
 
       foreach my $name (@$names) {
-        my $lastname   = $name->get_lastname;
+        # we have to differentiatite here between last names with and without
+        # prefices/suffices otherwise we end up falsely trying to disambiguate
+        # "X" and "von X" or "X" and "X Jr" using initials/first names when there is no need.
+        my $lastname = (Biber::Config->getblxoption('useprefix', $bee, $citekey) and
+                        $name->get_prefix ? $name->get_prefix : '') .
+                          $name->get_lastname .
+                            ($name->get_suffix ? $name->get_suffix : '');
         my $nameinitstring = $name->get_nameinitstring;
         my $namestring = $name->get_namestring;
         my $namecontext = 'global'; # default
@@ -3035,8 +3091,8 @@ sub prepare_tool {
   # Place to put global pre-processing things
   $self->process_setup_tool;
 
-  # tool mode only has a section 0
-  my $secnum = 0;
+  # tool mode only has a section '99999'
+  my $secnum = 99999;
   my $section = $self->sections->get_section($secnum);
 
   $section->reset_caches; # Reset the the section caches (sorting, label etc.)
@@ -3044,13 +3100,13 @@ sub prepare_tool {
   $self->set_current_section($secnum); # Set the section number we are working on
   $self->fetch_data;      # Fetch cited key and dependent data from sources
 
-  if (Biber::Config->getoption('tool_resolve')) {
+  if (Biber::Config->getoption('output_resolve')) {
     $self->resolve_alias_refs; # Resolve xref/crossref/xdata aliases to real keys
     $self->resolve_xdata;      # Resolve xdata entries
     $self->process_interentry; # Process crossrefs/sets etc.
   }
 
-  $self->process_lists;                # process the output lists (sort and filtering)
+  $self->process_lists;        # process the output lists (sort and filtering)
   $out->create_output_section; # Generate and push the section output into the
                                # into the output object ready for writing
   return;
@@ -3145,8 +3201,12 @@ sub fetch_data {
     $section->add_undef_citekey($citekey);
   }
 
-  # Skip dependents detection if in tool mode
-  if (Biber::Config->getoption('tool')) {
+  # Don't need to do dependent detection if running in (real) tool mode since this is always
+  # allkeys=1 and we don't care about missing dependents which get_dependents() might prune
+  # pseudo_tool mode is bibtex output when not in tool mode. Internally, it's essentially
+  # the same but without allkeys.
+  if (Biber::Config->getoption('tool') and not
+      Biber::Config->getoption('pseudo_tool')) {
     return;
   }
 

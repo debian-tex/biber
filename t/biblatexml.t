@@ -42,7 +42,7 @@ my $section = $biber->sections->get_section(0);
 my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
 my $bibentries = $section->bibentries;
 
-my $l1 = q|    \entry{origmode}{book}{}
+my $l1 = q|    \entry{bltx1}{book}{}
       \true{morelabelname}
       \name{labelname}{3}{}{%
         {{hash=7b4da3df896da456361ae44dc651770a}{Булгаков}{Б\bibinitperiod}{Павел\bibnamedelima Георгиевич}{П\bibinitperiod\bibinitdelim Г\bibinitperiod}{}{}{}{}}%
@@ -68,6 +68,7 @@ my $l1 = q|    \entry{origmode}{book}{}
       \strng{fullhash}{afcf3a11058ba0a3fc7609c2a29ae6da}
       \field{sortinit}{Б}
       \field{labelyear}{1983}
+      \field{datelabelsource}{}
       \field{labeltitle}{Мухаммад ибн муса ал-Хорезми. Около 783 – около 850}
       \field{eventday}{16}
       \field{eventendday}{17}
@@ -91,6 +92,6 @@ my $l1 = q|    \entry{origmode}{book}{}
     \endentry
 |;
 
-is( $out->get_output_entry('origmode', $main), $l1, 'BibLaTeXML displaymode test - 1');
-is($section->get_citekey_alias('origmodea1'), 'origmode', 'Citekey aliases - 1');
-is($section->get_citekey_alias('origmodea2'), 'origmode', 'Citekey aliases - 2');
+is($out->get_output_entry('bltx1', $main), $l1, 'BibLaTeXML - 1');
+is($section->get_citekey_alias('bltx1a1'), 'bltx1', 'Citekey aliases - 1');
+is($section->get_citekey_alias('bltx1a2'), 'bltx1', 'Citekey aliases - 2');

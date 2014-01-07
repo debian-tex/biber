@@ -26,7 +26,7 @@ our @EXPORT = qw{
 # passed in control file. Used when checking the .bcf
 our $BCF_VERSION = '2.5';
 # Format version of the .bbl. Used when writing the .bbl
-our $BBL_VERSION = '2.2';
+our $BBL_VERSION = '2.3';
 
 # Global flags needed for sorting
 our $BIBER_SORT_FINAL = 0;
@@ -126,8 +126,12 @@ our $CONFIG_DEFAULT_BIBER = {
                                        { name => 'type_name', value => q/[\x{2bf}\x{2018}]/ } ] },
   onlylog             => { content => 0 },
   others_string       => { content => 'others' },
-  output_format       => { content => 'bbl' },
+  output_align        => { content => 1 },
   output_encoding     => { content => 'UTF-8' },
+  output_format       => { content => 'bbl' },
+  output_indent       => { content => '2' },
+  output_fieldcase    => { content => 'upper' },
+  output_resolve      => { content => 0 },
   output_safechars    => { content => 0 },
   output_safecharsset => { content => 'base' },
   quiet               => { content => 0 },
@@ -136,10 +140,6 @@ our $CONFIG_DEFAULT_BIBER = {
   sortlocale          => { content => $locale },
   sortupper           => { content => 1 },
   tool                => { content => 0 },
-  tool_align          => { content => 1 },
-  tool_fieldcase      => { content => 'upper' },
-  tool_indent         => { content => '2' },
-  tool_resolve        => { content => 0 },
   trace               => { content => 0 },
   validate_config     => { content => 0 },
   validate_control    => { content => 0 },
@@ -148,9 +148,12 @@ our $CONFIG_DEFAULT_BIBER = {
 };
 
 # default global options for biblatex
-# in practice these will be obtained from the control file,
-# but we need this for things not yet implemented by biblatex but expected by biber
-our %CONFIG_DEFAULT_BIBLATEX = ();
+# Used to set:
+# * Some tool-mode defaults (as there is no .bcf and some biblatex options
+#   cannot be set in a biber config file)
+our %CONFIG_DEFAULT_BIBLATEX = (
+  sortscheme => 'none',
+);
 
 # Set up some encoding aliases to map \inputen{c,x} encoding names to Encode
 # It seems that inputen{c,x} has a different idea of nextstep than Encode
