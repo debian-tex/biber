@@ -1,8 +1,10 @@
-biber (1.7-3) UNRELEASED; urgency=low
+biber (1.8-1) unstable; urgency=low
 
   * install documentation for biber (biber.pdf) (Closes: #689201)
+  * Imported Upstream version 1.8 (Closes: #734413)
+  * update mozilla patch, drop upstream included patches
 
- -- Norbert Preining <preining@debian.org>  Wed, 16 Oct 2013 14:45:39 +0900
+ -- Norbert Preining <preining@debian.org>  Tue, 07 Jan 2014 10:14:05 +0900
 
 biber (1.7-2) unstable; urgency=low
 
