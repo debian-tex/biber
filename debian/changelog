@@ -1,6 +1,5 @@
-biber (1.8-1) UNRELEASED; urgency=low
+biber (1.8-1) unstable; urgency=low
 
-  * UNRELEASED - tests are failing
   * install documentation for biber (biber.pdf) (Closes: #689201)
   * Imported Upstream version 1.8 (Closes: #734413)
   * update mozilla patch, drop upstream included patches
@@ -9,7 +8,7 @@ biber (1.8-1) UNRELEASED; urgency=low
   * update vcs fields to new location
   * new patch fix-xpathcontext - thanks to Don Armstrong
 
- -- Norbert Preining <preining@debian.org>  Wed, 08 Jan 2014 07:12:32 +0900
+ -- Norbert Preining <preining@debian.org>  Wed, 08 Jan 2014 07:14:18 +0900
 
 biber (1.7-2) unstable; urgency=low
 
