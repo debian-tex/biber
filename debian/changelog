@@ -7,8 +7,9 @@ biber (1.8-1) UNRELEASED; urgency=low
   * bump standards version, no changes necessary
   * add libtest-pod-coverage-perl to build-deps
   * update vcs fields to new location
+  * new patch fix-xpathcontext - thanks to Don Armstrong
 
- -- Norbert Preining <preining@debian.org>  Tue, 07 Jan 2014 12:24:24 +0900
+ -- Norbert Preining <preining@debian.org>  Wed, 08 Jan 2014 07:12:32 +0900
 
 biber (1.7-2) unstable; urgency=low
 

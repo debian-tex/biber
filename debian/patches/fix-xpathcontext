@@ -1,0 +1,20 @@
+fix a strange failure during testing where a call to registerNs
+gives an error about cannot *unregister*.
+
+Thanks to Don Armstrong for providing the idea
+---
+ lib/Biber/Input/file/biblatexml.pm |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- biber.orig/lib/Biber/Input/file/biblatexml.pm
++++ biber/lib/Biber/Input/file/biblatexml.pm
+@@ -156,7 +156,8 @@
+   $xml = NFD(decode('UTF-8', $xml));# Unicode NFD boundary
+   my $bltxml = $parser->parse_string($xml);
+   my $xpc = XML::LibXML::XPathContext->new($bltxml);
+-  $xpc->registerNs($NS, $BIBLATEXML_NAMESPACE_URI);
++  my $tmp = $BIBLATEXML_NAMESPACE_URI;
++  $xpc->registerNs($NS, $tmp);
+ 
+   if ($section->is_allkeys) {
+     $logger->debug("All citekeys will be used for section '$secnum'");
