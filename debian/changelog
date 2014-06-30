@@ -4,8 +4,11 @@ biber (1.9-1) unstable; urgency=medium
   * bump dependencies' version infor according to upstream
   * break against 2013's texlive-bibtex-extra
   * remove readonly-xs-perl recommends, following upstream
+  * completely remove the Mozilla-CA based code instead of patching it.
+    There is fallback code that already checks for the right place
+    of certificates.
 
- -- Norbert Preining <preining@debian.org>  Tue, 01 Jul 2014 08:42:08 +0900
+ -- Norbert Preining <preining@debian.org>  Tue, 01 Jul 2014 08:50:16 +0900
 
 biber (1.8-1) unstable; urgency=low
 
