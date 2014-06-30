@@ -201,7 +201,7 @@ sub set_output_entry {
                      @{$dm->get_fields_of_type('field', 'integer')},
                      @{$dm->get_fields_of_type('field', 'verbatim')},
                      @{$dm->get_fields_of_type('field', 'uri')}) {
-    next if $dm->get_fieldformat($field) eq 'csv';
+    next if $dm->get_fieldformat($field) eq 'xsv';
     if ( ($dm->field_is_nullok($field) and
           $be->field_exists($field)) or
          $be->get_field($field) ) {
@@ -225,14 +225,14 @@ sub set_output_entry {
     }
   }
 
-  # csv fields
-  foreach my $csvf (@{$dm->get_fields_of_type('field', 'csv')}) {
-    next if $csvf eq 'ids'; # IDS is special
-    next if $csvf eq 'xdata'; # XDATA is special
+  # xsv fields
+  foreach my $xsvf (@{$dm->get_fields_of_type('field', 'xsv')}) {
+    next if $xsvf eq 'ids'; # IDS is special
+    next if $xsvf eq 'xdata'; # XDATA is special
 
-    # csv fields don't have form/lang
-    if (my $f = $be->get_field($csvf)) {
-      $xml->dataElement([$xml_prefix, $csvf], NFC(join(',',@$f)));
+    # xsv fields don't have form/lang
+    if (my $f = $be->get_field($xsvf)) {
+      $xml->dataElement([$xml_prefix, $xsvf], NFC(join(',',@$f)));
     }
   }
 
@@ -380,12 +380,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

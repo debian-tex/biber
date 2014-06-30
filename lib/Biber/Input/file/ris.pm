@@ -21,7 +21,6 @@ use File::Temp;
 use Log::Log4perl qw(:no_extra_logdie_message);
 use List::AllUtils qw( :all );
 use XML::LibXML::Simple;
-use Readonly;
 use Data::Dump qw(dump);
 use Unicode::Normalize;
 use Unicode::GCString;
@@ -35,7 +34,6 @@ my $dm = Biber::Config->get_dm;
 my $handlers = {
                 'field' => {
                             'default' => {
-                                          'csv'      => \&_verbatim,
                                           'code'     => \&_literal,
                                           'date'     => \&_date,
                                           'datepart' => \&_verbatim,
@@ -47,10 +45,10 @@ my $handlers = {
                                           'verbatim' => \&_verbatim,
                                           'uri'      => \&_uri
                                          },
-                            'csv'     => {
-                                          'entrykey' => \&_csv,
-                                          'keyword'  => \&_csv,
-                                          'option'   => \&_csv,
+                            'xsv'     => {
+                                          'entrykey' => \&_xsv,
+                                          'keyword'  => \&_xsv,
+                                          'option'   => \&_xsv,
                                          }
                            },
                 'list' => {
@@ -105,57 +103,65 @@ sub extract_entries {
   # If it's a remote data file, fetch it first
   if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms) {
     $logger->info("Data source '$source' is a remote RIS data source - fetching ...");
-    if ($1) { # HTTPS
-      # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
-      # We have to explicitly set the cert path because otherwise the https module
-      # can't find the .pem when PAR::Packer'ed
-      # Have to explicitly try to require Mozilla::CA here to get it into %INC below
-      # It may, however, have been removed by some biber unpacked dists
-      if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
-          not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
-          not defined(Biber::Config->getoption('ssl-nointernalca')) and
-          eval {require Mozilla::CA}) {
-        # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
-        (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
-        $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
-        $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
-      }
+    if (my $cf = $REMOTE_MAP{$source}) {
+      $logger->info("Found '$source' in remote source cache");
+      $filename = $cf;
+    }
+    else {
+      if ($1) {                 # HTTPS
+        # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
+        # We have to explicitly set the cert path because otherwise the https module
+        # can't find the .pem when PAR::Packer'ed
+        # Have to explicitly try to require Mozilla::CA here to get it into %INC below
+        # It may, however, have been removed by some biber unpacked dists
+        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
+            not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
+            not defined(Biber::Config->getoption('ssl-nointernalca')) and
+            eval {require Mozilla::CA}) {
+          # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
+          (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
+          $dir =~ s/\/$//;      # splitpath sometimes leaves a trailing '/'
+          $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
+        }
 
-      # fallbacks for, e.g., linux
-      unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
-        foreach my $ca_bundle (qw{
-                                   /etc/ssl/certs/ca-certificates.crt
-                                   /etc/pki/tls/certs/ca-bundle.crt
-                                   /etc/ssl/ca-bundle.pem
+        # fallbacks for, e.g., linux
+        unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
+          foreach my $ca_bundle (qw{
+                                     /etc/ssl/certs/ca-certificates.crt
+                                     /etc/pki/tls/certs/ca-bundle.crt
+                                     /etc/ssl/ca-bundle.pem
+                                 }) {
+            next if ! -e $ca_bundle;
+            $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
+            last;
+          }
+          foreach my $ca_path (qw{
+                                   /etc/ssl/certs/
+                                   /etc/pki/tls/
                                }) {
-          next if ! -e $ca_bundle;
-          $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
-          last;
+            next if ! -d $ca_path;
+            $ENV{PERL_LWP_SSL_CA_PATH} = $ca_path;
+            last;
+          }
         }
-        foreach my $ca_path (qw{
-                                 /etc/ssl/certs/
-                                 /etc/pki/tls/
-                             }) {
-          next if ! -d $ca_path;
-          $ENV{PERL_LWP_SSL_CA_PATH} = $ca_path;
-          last;
-        }
-      }
 
-      if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
+        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
           $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
+        }
+        require LWP::Protocol::https;
       }
-      require LWP::Protocol::https;
-    }
-    require LWP::Simple;
+      require LWP::Simple;
 
-    $tf = File::Temp->new(TEMPLATE => 'biber_remote_data_source_XXXXX',
-                          DIR => $Biber::MASTER->biber_tempdir,
-                          SUFFIX => '.ris');
-    unless (LWP::Simple::is_success(LWP::Simple::getstore($source, $tf->filename))) {
-      biber_error("Could not fetch '$source'");
+      $tf = File::Temp->new(TEMPLATE => 'biber_remote_data_source_XXXXX',
+                            DIR => $Biber::MASTER->biber_tempdir,
+                            SUFFIX => '.ris');
+      unless (LWP::Simple::is_success(LWP::Simple::getstore($source, $tf->filename))) {
+        biber_error("Could not fetch '$source'");
+      }
+      $filename = $tf->filename;
+      # cache any remote so it persists and so we don't fetch it again
+      $REMOTE_MAP{$source} = $filename;
     }
-    $filename = $tf->filename;
   }
   else {
     unless ($filename = locate_biber_file($source)) {
@@ -505,10 +511,12 @@ sub _verbatim {
   return;
 }
 
-# CSV field forms
-sub _csv {
+# xSV field forms
+sub _xsv {
+  my $Srx = Biber::Config->getoption('xsvsep');
+  my $S = qr/$Srx/;
   my ($bibentry, $entry, $f) = @_;
-  $bibentry->set_datafield($f, [ split(/\s*,\s*/, $entry->{$f}) ]);
+  $bibentry->set_datafield($f, [ split(/$S/, $entry->{$f}) ]);
   return;
 }
 
@@ -730,12 +738,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

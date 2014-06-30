@@ -11,6 +11,7 @@ use Biber::Utils;
 use IO::File;
 use Log::Log4perl qw( :no_extra_logdie_message );
 my $logger = Log::Log4perl::get_logger('main');
+use Unicode::Normalize;
 
 =encoding utf-8
 
@@ -177,9 +178,10 @@ sub set_output_entry {
     }
   }
 
-  # This is special, we have to put a marker for sortinit and then replace this string
+  # This is special, we have to put a marker for sortinit{hash} and then replace this string
   # on output as it can vary between lists
   $acc .= "      <BDS>SORTINIT</BDS>\n";
+  $acc .= "      <BDS>SORTINITHASH</BDS>\n";
 
   # The labeldate option determines whether "extrayear" is output
   # Skip generating extrayear for entries with "skiplab" set
@@ -262,7 +264,7 @@ sub set_output_entry {
                           @{$dm->get_fields_of_type('field', 'literal')},
                           @{$dm->get_fields_of_type('field', 'code')}) {
     next if $dm->field_is_skipout($field);
-    next if $dm->get_fieldformat($field) eq 'csv';
+    next if $dm->get_fieldformat($field) eq 'xsv';
     if ( ($dm->field_is_nullok($field) and
           $be->field_exists($field)) or
          $be->get_field($field) ) {
@@ -281,7 +283,7 @@ sub set_output_entry {
     }
   }
 
-  foreach my $field (sort @{$dm->get_fields_of_fieldformat('csv')}) {
+  foreach my $field (sort @{$dm->get_fields_of_fieldformat('xsv')}) {
     next if $dm->field_is_skipout($field);
     next if $dm->get_datatype($field) eq 'keyword';# This is special in .bbl
     if (my $f = $be->get_field($field)) {
@@ -361,10 +363,11 @@ sub output {
 
   foreach my $secnum (sort keys %{$data->{ENTRIES}}) {
     my $section = $self->get_output_section($secnum);
-    foreach my $list (sort {$a->get_label cmp $b->get_label} @{$Biber::MASTER->sortlists->get_lists_for_section($secnum)}) {
+    foreach my $list (sort {$a->get_sortschemename cmp $b->get_sortschemename} @{$Biber::MASTER->sortlists->get_lists_for_section($secnum)}) {
       next unless $list->count_keys; # skip empty lists
-      my $listlabel = $list->get_label;
+      my $listssn = $list->get_sortschemename;
       my $listtype = $list->get_type;
+      my $listname = $list->get_name;
       foreach my $k ($list->get_keys) {
         if ($listtype eq 'entry') {
           my $entry = $data->{ENTRIES}{$secnum}{index}{$k};
@@ -379,7 +382,7 @@ sub output {
           out($target, $entry_string);
         }
         elsif ($listtype eq 'shorthand') {
-          next if Biber::Config->getblxoption('skiplos', $section->bibentry($k), $k);
+          next if Biber::Config->getblxoption('skipbiblist', $section->bibentry($k), $k);
           out($target, $k);
         }
       }
@@ -400,12 +403,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

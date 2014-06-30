@@ -585,7 +585,7 @@ sub name_to_bbl {
     $ln = Biber::Utils::add_outer($ln);
   }
   $lni = join('\bibinitperiod\bibinitdelim ', @{$self->get_lastname_i}) . '\bibinitperiod';
-  $lni =~ s/\-/\\bibinithyphendelim /gxms;
+  $lni =~ s/\p{Pd}/\\bibinithyphendelim /gxms;
 
   # firstname
   my $fn;
@@ -596,7 +596,7 @@ sub name_to_bbl {
       $fn = Biber::Utils::add_outer($fn);
     }
     $fni = join('\bibinitperiod\bibinitdelim ', @{$self->get_firstname_i}) . '\bibinitperiod';
-    $fni =~ s/\-/\\bibinithyphendelim /gxms;
+    $fni =~ s/\p{Pd}/\\bibinithyphendelim /gxms;
   }
   else {
     $fn = '';
@@ -609,7 +609,7 @@ sub name_to_bbl {
   if ($mn = $self->get_middlename) {
     $mn = Biber::Utils::join_name($mn);
     $mni = join('\bibinitperiod\bibinitdelim ', @{$self->get_middlename_i}) . '\bibinitperiod';
-    $mni =~ s/\-/\\bibinithyphendelim /gxms;
+    $mni =~ s/\p{Pd}/\\bibinithyphendelim /gxms;
   }
   else {
     $mn = '';
@@ -625,7 +625,7 @@ sub name_to_bbl {
       $pre = Biber::Utils::add_outer($pre);
     }
     $prei = join('\bibinitperiod\bibinitdelim ', @{$self->get_prefix_i}) . '\bibinitperiod';
-    $prei =~ s/\-/\\bibinithyphendelim /gxms;
+    $prei =~ s/\p{Pd}/\\bibinithyphendelim /gxms;
   }
   else {
     $pre = '';
@@ -641,7 +641,7 @@ sub name_to_bbl {
       $suf = Biber::Utils::add_outer($suf);
     }
     $sufi = join('\bibinitperiod\bibinitdelim ', @{$self->get_suffix_i}) . '\bibinitperiod';
-    $sufi =~ s/\-/\\bibinithyphendelim /gxms;
+    $sufi =~ s/\p{Pd}/\\bibinithyphendelim /gxms;
   }
   else {
     $suf = '';
@@ -686,12 +686,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

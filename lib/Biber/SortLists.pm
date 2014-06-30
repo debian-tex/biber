@@ -67,14 +67,15 @@ sub get_lists_for_section {
 
 =head2 get_list
 
-    Returns a specific list by section, type and label
+    Returns a specific list by section, name, type, sortscheme
 
 =cut
 
 sub get_list {
-  my ($self, $section, $type, $label) = @_;
+  my ($self, $section, $name, $type, $ssn) = @_;
   foreach my $list (@{$self->{lists}}) {
-    return $list if ($list->get_label eq $label and
+    return $list if ($list->get_name eq $name and
+                     $list->get_sortschemename eq $ssn and
                      $list->get_type eq $type and
                      $list->get_section == $section);
   }
@@ -111,12 +112,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

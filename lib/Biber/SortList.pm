@@ -50,29 +50,55 @@ sub get_section {
   return $self->{section};
 }
 
-=head2 set_label
 
-    Sets the label of a sort list
+=head2 set_sortschemename
+
+    Sets the sortscheme name of a sort list
 
 =cut
 
-sub set_label {
+sub set_sortschemename {
   my $self = shift;
-  my $label = shift;
-  $self->{label} = lc($label);
+  my $ssn = shift;
+  $self->{sortschemename} = lc($ssn);
   return;
 }
 
-=head2 get_label
+=head2 get_sortschemename
 
-    Gets the label of a sort list
+    Gets the sortschemename of a sort list
 
 =cut
 
-sub get_label {
+sub get_sortschemename {
   my $self = shift;
-  return $self->{label};
+  return $self->{sortschemename};
 }
+
+=head2 set_name
+
+    Sets the name of a sort list
+
+=cut
+
+sub set_name {
+  my $self = shift;
+  my $name = shift;
+  $self->{name} = lc($name);
+  return;
+}
+
+=head2 get_name
+
+    Gets the name of a sort list
+
+=cut
+
+sub get_name {
+  my $self = shift;
+  return $self->{name};
+}
+
 
 =head2 set_type
 
@@ -334,9 +360,10 @@ sub get_sortdata {
 =cut
 
 sub set_sortinitdata_for_key {
-  my ($self, $key, $sid) = @_;
+  my ($self, $key, $init, $inithash) = @_;
   return unless defined($key);
-  $self->{sortinitdata}{$key} = $sid;
+  $self->{sortinitdata}{$key} = {init     => $init,
+                                 inithash => $inithash};
   return;
 }
 
@@ -353,18 +380,29 @@ sub set_sortinitdata {
 }
 
 
-=head2 get_sortinitdata
+=head2 get_sortinit_for_key
 
-    Gets the sortinit data in a list for a key
+    Gets the sortinit in a list for a key
 
 =cut
 
-sub get_sortinitdata {
+sub get_sortinit_for_key {
   my ($self, $key) = @_;
   return unless defined($key);
-  return $self->{sortinitdata}{$key};
+  return $self->{sortinitdata}{$key}{init};
 }
 
+=head2 get_sortinithash_for_key
+
+    Gets the sortinit hash in a list for a key
+
+=cut
+
+sub get_sortinithash_for_key {
+  my ($self, $key) = @_;
+  return unless defined($key);
+  return $self->{sortinitdata}{$key}{inithash};
+}
 
 =head2 set_sortscheme
 
@@ -459,10 +497,17 @@ sub instantiate_entry {
   my $entry_string = $$entry;
 
   # sortinit
-  my $sid = $self->get_sortinitdata($key);
-  if (defined($sid)) {
-    my $si = "\\field{sortinit}{$sid}";
-    $entry_string =~ s|<BDS>SORTINIT</BDS>|$si|gxms;
+  my $sinit = $self->get_sortinit_for_key($key);
+  if (defined($sinit)) {
+    my $str = "\\field{sortinit}{$sinit}";
+    $entry_string =~ s|<BDS>SORTINIT</BDS>|$str|gxms;
+  }
+
+  # sortinithash
+  my $sinithash = $self->get_sortinithash_for_key($key);
+  if (defined($sinithash)) {
+    my $str = "\\field{sortinithash}{$sinithash}";
+    $entry_string =~ s|<BDS>SORTINITHASH</BDS>|$str|gxms;
   }
 
   # extrayear
@@ -507,12 +552,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

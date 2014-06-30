@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 55;
+use Test::More tests => 56;
 
 use Biber;
 use Biber::Utils;
@@ -27,6 +27,7 @@ my $l4pconf = qq|
 |;
 Log::Log4perl->init(\$l4pconf);
 
+# WARNING - the .bcf has special defs for URLS to test verbatim lists
 $biber->parse_ctrlfile('general2.bcf');
 $biber->set_output_obj(Biber::Output::bbl->new());
 
@@ -50,7 +51,7 @@ Biber::Config->setblxoption('minbibnames', 7);
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
+my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
 my @keys = sort $section->get_citekeys;
 my @citedkeys = sort qw{ alias1 alias2 alias5 anon1 anon2 murray t1 kant:ku kant:kpv t2 shore u1 u2 us1 list1 };
 
@@ -85,6 +86,7 @@ my $u1 = q|    \entry{u1}{misc}{}
       \strng{fullhash}{b78abdc838d79b6576f2ed0021642766}
       \field{labelalpha}{AAA\textbf{+}00}
       \field{sortinit}{A}
+      \field{sortinithash}{c8a29dea43e9d2645817723335a4dbe8}
       \field{labeltitle}{A title}
       \true{singletitle}
       \field{title}{A title}
@@ -95,7 +97,7 @@ my $u1 = q|    \entry{u1}{misc}{}
 is( $out->get_output_entry('u1', $main), $u1, 'uniquelist 1' ) ;
 
 is_deeply( \@keys, \@citedkeys, 'citekeys 1') ;
-is_deeply( [ $biber->sortlists->get_list(0, 'shorthand', 'shorthand')->get_keys ], [ 'kant:kpv', 'kant:ku' ], 'shorthands' ) ;
+is_deeply( [ $biber->sortlists->get_list(0, 'shorthands', 'list', 'shorthands')->get_keys ], [ 'kant:kpv', 'kant:ku' ], 'shorthands' ) ;
 
 # reset some options and re-generate information
 
@@ -154,12 +156,14 @@ my $murray1 = q|    \entry{murray}{article}{}
       \strng{fullhash}{61836f4684b2615842b68c26479f6ec2}
       \field{labelalpha}{Hos\textbf{+}98}
       \field{sortinit}{H}
+      \field{sortinithash}{95b2cb08933fe649b7e9f8beee2132b4}
       \field{labeltitle}{Alkanethiolate gold cluster molecules}
       \true{singletitle}
       \field{annotation}{An \texttt{article} entry with \arabic{author} authors. By default, long author and editor lists are automatically truncated. This is configurable}
-      \field{hyphenation}{american}
       \field{indextitle}{Alkanethiolate gold cluster molecules}
       \field{journaltitle}{Langmuir}
+      \field{langid}{english}
+      \field{langidopts}{variant=american}
       \field{number}{1}
       \field{shorttitle}{Alkanethiolate gold cluster molecules}
       \field{subtitle}{Core and monolayer properties as a function of core size}
@@ -208,12 +212,14 @@ my $murray2 = q|    \entry{murray}{article}{}
       \strng{fullhash}{61836f4684b2615842b68c26479f6ec2}
       \field{labelalpha}{Hos98}
       \field{sortinit}{H}
+      \field{sortinithash}{95b2cb08933fe649b7e9f8beee2132b4}
       \field{labeltitle}{Alkanethiolate gold cluster molecules}
       \true{singletitle}
       \field{annotation}{An \texttt{article} entry with \arabic{author} authors. By default, long author and editor lists are automatically truncated. This is configurable}
-      \field{hyphenation}{american}
       \field{indextitle}{Alkanethiolate gold cluster molecules}
       \field{journaltitle}{Langmuir}
+      \field{langid}{english}
+      \field{langidopts}{variant=american}
       \field{number}{1}
       \field{shorttitle}{Alkanethiolate gold cluster molecules}
       \field{subtitle}{Core and monolayer properties as a function of core size}
@@ -237,6 +243,7 @@ my $t1 = q+    \entry{t1}{misc}{}
       \strng{fullhash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \field{labelalpha}{Bro92}
       \field{sortinit}{B}
+      \field{sortinithash}{1a3a21dbed09540af12d49a0b14f4751}
       \field{labeltitle}{10\% of [100] and 90% of $Normal_2$ | \& # things {$^{3}$}}
       \field{title}{10\% of [100] and 90% of $Normal_2$ | \& # things {$^{3}$}}
       \field{year}{1992}
@@ -256,6 +263,7 @@ my $t2 = q|    \entry{t2}{misc}{}
       \strng{fullhash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \field{labelalpha}{Bro94}
       \field{sortinit}{B}
+      \field{sortinithash}{1a3a21dbed09540af12d49a0b14f4751}
       \field{labeltitle}{Signs of W$\frac{o}{a}$nder}
       \field{title}{Signs of W$\frac{o}{a}$nder}
       \field{year}{1994}
@@ -277,9 +285,11 @@ my $anon1 = q|    \entry{anon1}{unpublished}{}
       \strng{fullhash}{a66f357fe2fd356fe49959173522a651}
       \field{labelalpha}{XAn35}
       \field{sortinit}{A}
+      \field{sortinithash}{c8a29dea43e9d2645817723335a4dbe8}
       \field{labeltitle}{Shorttitle}
       \true{singletitle}
-      \field{hyphenation}{USenglish}
+      \field{langid}{english}
+      \field{langidopts}{variant=american}
       \field{note}{anon1}
       \field{shorttitle}{Shorttitle}
       \field{title}{Title1}
@@ -303,9 +313,11 @@ my $anon2 = q|    \entry{anon2}{unpublished}{}
       \strng{fullhash}{a0bccee4041bc840e14c06e5ba7f083c}
       \field{labelalpha}{YAn39}
       \field{sortinit}{A}
+      \field{sortinithash}{c8a29dea43e9d2645817723335a4dbe8}
       \field{labeltitle}{Shorttitle}
       \true{singletitle}
-      \field{hyphenation}{USenglish}
+      \field{langid}{english}
+      \field{langidopts}{variant=american}
       \field{note}{anon2}
       \field{shorttitle}{Shorttitle}
       \field{title}{Title2}
@@ -326,11 +338,16 @@ my $url1 = q|    \entry{url1}{misc}{}
       \strng{fullhash}{b2106a3dda6c5a4879a0cab37e9cca55}
       \field{labelalpha}{Ali05}
       \field{sortinit}{A}
+      \field{sortinithash}{c8a29dea43e9d2645817723335a4dbe8}
       \field{extraalpha}{4}
       \field{year}{2005}
       \verb{url}
       \verb http://www.something.com/q=%C3%A1%C3%A9%C3%A1%C5%A0
       \endverb
+      \lverb{urls}{2}
+      \lverb http://www.something.com/q=%C3%A1%C3%A9%C3%A1%C5%A0
+      \lverb http://www.sun.com
+      \endlverb
     \endentry
 |;
 
@@ -341,6 +358,7 @@ my $list1 = q|    \entry{list1}{book}{}
         {BBB}%
       }
       \field{sortinit}{0}
+      \field{sortinithash}{a08a9549c5c2429f8cec5d1a581b26ca}
     \endentry
 |;
 
@@ -371,7 +389,7 @@ $section->del_everykeys;
 Biber::Input::file::bibtex->init_cache;
 $biber->prepare ;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
 $out = $biber->get_output_obj;
 
 is( $out->get_output_entry('murray', $main), $murray2, 'bbl with > maxcitenames, empty alphaothers' ) ;
@@ -385,15 +403,17 @@ ok(is_undef($bibentries->entry('i1')->get_field('abstract')), 'map 1' );
 is($bibentries->entry('i1')->get_field('userd'), 'test', 'map 2' );
 ok(is_undef($bibentries->entry('i2')->get_field('userb')), 'map 3' );
 is(NFC($bibentries->entry('i2')->get_field('usere')), 'a Štring', 'map 4' );
+# Testing ot UTF8 match/replace
+is($biber->_liststring('i1', 'listd'), 'abc', 'map 5' );
 # Testing of user field map match/replace
-is($biber->_liststring('i1', 'listb'), 'REPlacedte!early', 'map 5');
-is($biber->_liststring('i1', 'institution'), 'REPlaCEDte!early', 'map 6');
+is($biber->_liststring('i1', 'listb'), 'REPlacedte!early', 'map 6');
+is($biber->_liststring('i1', 'institution'), 'REPlaCEDte!early', 'map 7');
 # Testing of pseudo-field "entrykey" handling
-is($bibentries->entry('i1')->get_field('note'), 'i1', 'map 3' );
+is($bibentries->entry('i1')->get_field('note'), 'i1', 'map 8' );
 # Checking deletion of alsosets with value BMAP_NULL
-ok(is_undef($bibentries->entry('i2')->get_field('userf')), 'map 7' );
+ok(is_undef($bibentries->entry('i2')->get_field('userf')), 'map 9' );
 # Checking that the "misc" type-specific mapping to null takes precedence over global userb->userc
-ok(is_undef($bibentries->entry('i2')->get_field('userc')), 'map 8' );
+ok(is_undef($bibentries->entry('i2')->get_field('userc')), 'map 10' );
 
 # Make sure visibility doesn't exceed number of names.
 is($bibentries->entry('i2')->get_field($bibentries->entry('i2')->get_labelname_info->{field})->get_visible_bib, '3', 'bib visibility - 1');
@@ -424,7 +444,7 @@ $section->del_everykeys;
 Biber::Input::file::bibtex->init_cache;
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
 
 is($bibentries->entry('tmn1')->get_field($bibentries->entry('tmn1')->get_labelname_info->{field})->get_visible_cite, '1', 'per_type maxcitenames - 1');
 is($bibentries->entry('tmn2')->get_field($bibentries->entry('tmn2')->get_labelname_info->{field})->get_visible_cite, '3', 'per_type maxcitenames - 2');

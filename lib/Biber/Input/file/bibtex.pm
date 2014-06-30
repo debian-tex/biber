@@ -53,7 +53,6 @@ my $dm = Biber::Config->get_dm;
 my $handlers = {
                 'field' => {
                             'default'  => {
-                                           'csv'      => \&_verbatim,
                                            'code'     => \&_literal,
                                            'date'     => \&_date,
                                            'datepart' => \&_literal,
@@ -65,17 +64,19 @@ my $handlers = {
                                            'verbatim' => \&_verbatim,
                                            'uri'      => \&_uri
                                           },
-                            'csv'      => {
-                                           'entrykey' => \&_csv,
-                                           'keyword'  => \&_csv,
-                                           'option'   => \&_csv,
+                            'xsv'      => {
+                                           'entrykey' => \&_xsv,
+                                           'keyword'  => \&_xsv,
+                                           'option'   => \&_xsv,
                                           }
                            },
                 'list' => {
                            'default'   => {
                                            'key'      => \&_list,
                                            'literal'  => \&_list,
-                                           'name'     => \&_name
+                                           'name'     => \&_name,
+                                           'verbatim' => \&_list,
+                                           'uri'      => \&_urilist
                                           }
                           }
 };
@@ -132,57 +133,65 @@ sub extract_entries {
   # If it's a remote data file, fetch it first
   if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms) {
     $logger->info("Data source '$source' is a remote BibTeX data source - fetching ...");
-    if ($1) { # HTTPS
-      # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
-      # We have to explicitly set the cert path because otherwise the https module
-      # can't find the .pem when PAR::Packer'ed
-      # Have to explicitly try to require Mozilla::CA here to get it into %INC below
-      # It may, however, have been removed by some biber unpacked dists
-      if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
-          not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
-          not defined(Biber::Config->getoption('ssl-nointernalca')) and
-          eval {require Mozilla::CA}) {
-        # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
-        (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
-        $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
-        $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
-      }
+    if (my $cf = $REMOTE_MAP{$source}) {
+      $logger->info("Found '$source' in remote source cache");
+      $filename = $cf;
+    }
+    else {
+      if ($1) {                 # HTTPS
+        # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
+        # We have to explicitly set the cert path because otherwise the https module
+        # can't find the .pem when PAR::Packer'ed
+        # Have to explicitly try to require Mozilla::CA here to get it into %INC below
+        # It may, however, have been removed by some biber unpacked dists
+        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
+            not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
+            not defined(Biber::Config->getoption('ssl-nointernalca')) and
+            eval {require Mozilla::CA}) {
+          # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
+          (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
+          $dir =~ s/\/$//;      # splitpath sometimes leaves a trailing '/'
+          $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
+        }
 
-      # fallbacks for, e.g., linux
-      unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
-        foreach my $ca_bundle (qw{
-                                   /etc/ssl/certs/ca-certificates.crt
-                                   /etc/pki/tls/certs/ca-bundle.crt
-                                   /etc/ssl/ca-bundle.pem
+        # fallbacks for, e.g., linux
+        unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
+          foreach my $ca_bundle (qw{
+                                     /etc/ssl/certs/ca-certificates.crt
+                                     /etc/pki/tls/certs/ca-bundle.crt
+                                     /etc/ssl/ca-bundle.pem
+                                 }) {
+            next if ! -e $ca_bundle;
+            $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
+            last;
+          }
+          foreach my $ca_path (qw{
+                                   /etc/ssl/certs/
+                                   /etc/pki/tls/
                                }) {
-          next if ! -e $ca_bundle;
-          $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
-          last;
+            next if ! -d $ca_path;
+            $ENV{PERL_LWP_SSL_CA_PATH} = $ca_path;
+            last;
+          }
         }
-        foreach my $ca_path (qw{
-                                 /etc/ssl/certs/
-                                 /etc/pki/tls/
-                             }) {
-          next if ! -d $ca_path;
-          $ENV{PERL_LWP_SSL_CA_PATH} = $ca_path;
-          last;
-        }
-      }
 
-      if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
+        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
           $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
-      }
+        }
 
-      require LWP::Protocol::https;
+        require LWP::Protocol::https;
+      }
+      require LWP::Simple;
+      $tf = File::Temp->new(TEMPLATE => 'biber_remote_data_source_XXXXX',
+                            DIR => $Biber::MASTER->biber_tempdir,
+                            SUFFIX => '.bib');
+      unless (LWP::Simple::is_success(LWP::Simple::getstore($source, $tf->filename))) {
+        biber_error("Could not fetch '$source'");
+      }
+      $filename = $tf->filename;
+      # cache any remote so it persists and so we don't fetch it again
+      $REMOTE_MAP{$source} = $filename;
     }
-    require LWP::Simple;
-    $tf = File::Temp->new(TEMPLATE => 'biber_remote_data_source_XXXXX',
-                          DIR => $Biber::MASTER->biber_tempdir,
-                          SUFFIX => '.bib');
-    unless (LWP::Simple::is_success(LWP::Simple::getstore($source, $tf->filename))) {
-      biber_error("Could not fetch '$source'");
-    }
-    $filename = $tf->filename;
   }
   else {
     # Need to get the filename even if using cache so we increment
@@ -249,6 +258,12 @@ sub extract_entries {
     # no explicitly cited keys
     $section->add_citekeys(@{$cache->{orig_key_order}{$filename}});
     $logger->debug("Added all citekeys to section '$secnum': " . join(', ', $section->get_citekeys));
+    # Special case when allkeys but also some dynamic set entries. These keys must also be
+    # in the section or they will be missed on output.
+    if ($section->has_dynamic_sets) {
+      $section->add_citekeys(@{$section->dynamic_set_keys});
+      $logger->debug("Added dynamic sets to section '$secnum': " . join(', ', @{$section->dynamic_set_keys}));
+    }
   }
   else {
     # loop over all keys we're looking for and create objects
@@ -326,6 +341,9 @@ sub extract_entries {
 =head2 create_entry
 
    Create a Biber::Entry object from a Text::BibTeX object
+   Be careful in here, all T::B set methods are UTF-8/NFC boundaries
+   so be careful to encode(NFC()) on calls. Windows won't handle UTF-8
+   in T::B btparse gracefully and will die.
 
 =cut
 
@@ -395,7 +413,7 @@ sub create_entry {
             # Change entrytype if requested
             $last_type = $entry->type;
             $logger->debug("Source mapping (type=$level, key=$key): Changing entry type from '$last_type' to " . lc($step->{map_type_target}));
-            $entry->set_type(lc($step->{map_type_target}));
+            $entry->set_type(encode('UTF-8', NFC(lc($step->{map_type_target}))));
           }
 
           # Field map
@@ -439,9 +457,13 @@ sub create_entry {
                 my $r = $step->{map_replace};
                 $logger->debug("Source mapping (type=$level, key=$key): Doing match/replace '$m' -> '$r' on field '" . lc($source) . "'");
                 $entry->set(lc($source),
-                            ireplace($last_fieldval, $m, $r));
+                            encode('UTF-8', NFC(ireplace($last_fieldval, $m, $r))));
               }
               else {
+                # Now re-instate any unescaped $1 .. $9 to get round these being
+                # dynamically scoped and being null when we get here from any
+                # previous map_match
+                $m =~ s/(?<!\\)\$(\d)/$imatches[$1-1]/ge;
                 unless (@imatches = imatch($last_fieldval, $m, $negmatch)) {
                   # Skip the rest of the map if this step doesn't match and match is final
                   if ($step->{map_final}) {
@@ -475,7 +497,7 @@ sub create_entry {
                   next;
                 }
               }
-              $entry->set(lc($target), biber_decode_utf8($entry->get(lc($source))));
+              $entry->set(lc($target), encode('UTF-8', NFC(biber_decode_utf8($entry->get(lc($source))))));
               $entry->delete(lc($source));
             }
           }
@@ -510,17 +532,17 @@ sub create_entry {
               if ($step->{map_origentrytype}) {
                 next unless $last_type;
                 $logger->debug("Source mapping (type=$level, key=$key): Setting field '" . lc($field) . "' to '${orig}${last_type}'");
-                $entry->set(lc($field), $orig . $last_type);
+                $entry->set(lc($field), encode('UTF-8', NFC($orig . $last_type)));
               }
               elsif ($step->{map_origfieldval}) {
                 next unless $last_fieldval;
                 $logger->debug("Source mapping (type=$level, key=$key): Setting field '" . lc($field) . "' to '${orig}${last_fieldval}'");
-                $entry->set(lc($field), $orig . $last_fieldval);
+                $entry->set(lc($field), encode('UTF-8', NFC($orig . $last_fieldval)));
               }
               elsif ($step->{map_origfield}) {
                 next unless $last_field;
                 $logger->debug("Source mapping (type=$level, key=$key): Setting field '" . lc($field) . "' to '${orig}${last_field}'");
-                $entry->set(lc($field), $orig . $last_field);
+                $entry->set(lc($field), encode('UTF-8', NFC($orig . $last_field)));
               }
               else {
                 my $fv = $step->{map_field_value};
@@ -529,7 +551,7 @@ sub create_entry {
                 # previous map_match
                 $fv =~ s/(?<!\\)\$(\d)/$imatches[$1-1]/ge;
                 $logger->debug("Source mapping (type=$level, key=$key): Setting field '" . lc($field) . "' to '${orig}${fv}'");
-                $entry->set(lc($field), $orig . $fv);
+                $entry->set(lc($field), encode('UTF-8', NFC($orig . $fv)));
               }
             }
           }
@@ -552,7 +574,9 @@ sub create_entry {
       # to make them available for things that need them like parsename()
       if ($f eq 'options') {
         my $value = biber_decode_utf8($entry->get($f));
-        process_entry_options($key, [ split(/\s*,\s*/, $value) ]);
+        my $Srx = Biber::Config->getoption('xsvsep');
+        my $S = qr/$Srx/;
+        process_entry_options($key, [ split(/$S/, $value) ]);
         # Save the raw options in case we are to output another input format like
         # biblatexml
         $bibentry->set_field('rawoptions', $value);
@@ -613,7 +637,6 @@ sub _uri {
     $value =~ s/\\%/%/g; # just in case someone BibTeX escaped the "%"
     # This is what uri_unescape() does but it's faster
     $value =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/eg;
-    $value = NFC(decode_utf8($value));# Unicode NFC boundary (before hex encoding)
   }
 
   $value = URI->new($value)->as_string;
@@ -622,10 +645,12 @@ sub _uri {
   return;
 }
 
-# CSV field form
-sub _csv {
+# xSV field form
+sub _xsv {
+  my $Srx = Biber::Config->getoption('xsvsep');
+  my $S = qr/$Srx/;
   my ($bibentry, $entry, $f) = @_;
-  $bibentry->set_datafield($f, [ split(/\s*,\s*/, biber_decode_utf8($entry->get($f))) ]);
+  $bibentry->set_datafield($f, [ split(/$S/, biber_decode_utf8($entry->get($f))) ]);
   return;
 }
 
@@ -640,19 +665,21 @@ sub _verbatim {
 
 # Range fields
 sub _range {
-  my ($bibentry, $entry, $f) = @_;
+  my ($bibentry, $entry, $f, $key) = @_;
   my $values_ref;
   my $value = biber_decode_utf8($entry->get($f));
-  my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
+  # Because there is another match below and we dont' want bleed of $1,$2 etc.
+  my $field;
+  my $form;
+  my $lang;
+  {($field, $form, $lang) = $f =~ m/$fl_re/xms;}
 
   my @values = split(/\s*[;,]\s*/, $value);
-  # Here the "-–" contains two different chars even though they might
-  # look the same in some fonts ...
   # If there is a range sep, then we set the end of the range even if it's null
   # If no  range sep, then the end of the range is undef
   foreach my $value (@values) {
-    $value =~ m/\A\s*([^\p{Pd}]+)\s*\z/xms ||# Simple value without range
-      $value =~ m/\A\s*(\{[^\}]+\}|[^\p{Pd} ]+)\s*([\p{Pd}]+)\s*(\{[^\}]+\}|[^\p{Pd}]*)\s*\z/xms;
+    $value =~ m/\A\s*(\P{Pd}+)\s*\z/xms ||# Simple value without range
+      $value =~ m/\A\s*(\{[^\}]+\}|[^\p{Pd} ]+)\s*(\p{Pd}+)\s*(\{[^\}]+\}|\P{Pd}*)\s*\z/xms;
     my $start = $1;
     my $end;
     if ($2) {
@@ -663,6 +690,7 @@ sub _range {
     }
     $start =~ s/\A\{([^\}]+)\}\z/$1/;
     $end =~ s/\A\{([^\}]+)\}\z/$1/;
+    biber_warn("Range field '$field' in entry '$key' is malformed, skipping", $bibentry) unless $start;
     push @$values_ref, [$start || '', $end];
   }
   $bibentry->set_datafield($field, $values_ref, $form, $lang);
@@ -678,6 +706,7 @@ sub _name {
   my $value = biber_decode_utf8($entry->get($f));
   my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
 
+  # @tmp is bytes again now
   my @tmp = Text::BibTeX::split_list($value, Biber::Config->getoption('namesep'));
 
   my $useprefix = Biber::Config->getblxoption('useprefix', $bibentry->get_field('entrytype'), $key);
@@ -787,6 +816,29 @@ sub _list {
   return;
 }
 
+# Bibtex uri lists
+sub _urilist {
+  my ($bibentry, $entry, $f) = @_;
+  my $value = NFC(decode_utf8($entry->get($f)));# Unicode NFC boundary (before hex encoding)
+  my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
+  my @tmp = Text::BibTeX::split_list($value, Biber::Config->getoption('listsep'));
+  @tmp = map {
+    # If there are some escapes in the URI, unescape them
+    if ($_ =~ /\%/) {
+      $_ =~ s/\\%/%/g; # just in case someone BibTeX escaped the "%"
+      # This is what uri_unescape() does but it's faster
+      $_ =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/eg;
+    }
+    $_;
+  } @tmp;
+
+  @tmp = map { URI->new($_)->as_string } @tmp;
+
+  $bibentry->set_datafield($field, [ @tmp ], $form, $lang);
+  return;
+}
+
+
 =head2 cache_data
 
    Caches file data into T::B objects indexed by the original
@@ -843,7 +895,9 @@ sub cache_data {
     # an entry object creating first and the whole point of aliases is that
     # there is no entry object
     if (my $ids = biber_decode_utf8($entry->get('ids'))) {
-      foreach my $id (split(/\s*,\s*/, $ids)) {
+      my $Srx = Biber::Config->getoption('xsvsep');
+      my $S = qr/$Srx/;
+      foreach my $id (split(/$S/, $ids)) {
 
         # Skip aliases which are also real entry keys
         if ($section->has_everykey($id)) {
@@ -926,22 +980,20 @@ sub preprocess_file {
   # strip UTF-8 BOM if it exists - this just makes T::B complain about junk characters
   $buf =~ s/\A\x{feff}//;
 
-  File::Slurp::write_file($ufilename, NFC(encode('UTF-8', $buf))) or
+  File::Slurp::write_file($ufilename, encode('UTF-8', NFC($buf))) or
       biber_error("Can't write $ufilename");# Unicode NFC boundary
 
-  # Decode LaTeX to UTF8 if output is UTF-8
-  if (Biber::Config->getoption('output_encoding') eq 'UTF-8') {
-    my $buf = File::Slurp::read_file($ufilename) or biber_error("Can't read $ufilename");
-    $buf = NFD(decode('UTF-8', $buf));# Unicode NFD boundary
+  # Always decode LaTeX to UTF8
+  my $lbuf = File::Slurp::read_file($ufilename) or biber_error("Can't read $ufilename");
+  $lbuf = NFD(decode('UTF-8', $lbuf));# Unicode NFD boundary
 
-    $logger->info('Decoding LaTeX character macros into UTF-8');
-    $logger->trace("Buffer before decoding -> '$buf'");
-    $buf = Biber::LaTeX::Recode::latex_decode($buf, strip_outer_braces => 1);
-    $logger->trace("Buffer after decoding -> '$buf'");
+  $logger->info('Decoding LaTeX character macros into UTF-8');
+  $logger->trace("Buffer before decoding -> '$lbuf'");
+  $lbuf = Biber::LaTeX::Recode::latex_decode($lbuf);
+  $logger->trace("Buffer after decoding -> '$lbuf'");
 
-    File::Slurp::write_file($ufilename, NFC(encode('UTF-8', $buf))) or
-        biber_error("Can't write $ufilename");# Unicode NFC boundary
-  }
+  File::Slurp::write_file($ufilename, encode('UTF-8', NFC($lbuf))) or
+      biber_error("Can't write $ufilename");# Unicode NFC boundary
 
   return $ufilename;
 }
@@ -986,7 +1038,8 @@ sub parsename {
   # btparse can't do this so we do it before name parsing
   $namestr =~ s/(\w)\.(\w)/$1. $2/g if Biber::Config->getoption('fixinits');
 
-  my $name = new Text::BibTeX::Name($namestr);
+  # We use NFC here as we are "outputting" to an external module
+  my $name = new Text::BibTeX::Name(NFC($namestr));
 
   # Formats so we can get BibTeX compatible nbsp inserted
   my $l_f = new Text::BibTeX::NameFormat('l', 0);
@@ -1024,7 +1077,7 @@ sub parsename {
 
   # Make initials with ties in between work. btparse doesn't understand this so replace with
   # spaces - this is fine as we are just generating initials
-  $nd_namestr =~ s/(\w)\.~(\w)/$1. $2/g;
+  $nd_namestr =~ s/\.~/. /g;
 
   # We use NFC here as we are "outputting" to an external module
   my $nd_name = new Text::BibTeX::Name(NFC($nd_namestr), $fieldname);
@@ -1217,12 +1270,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

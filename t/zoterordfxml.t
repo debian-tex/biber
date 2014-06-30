@@ -41,7 +41,7 @@ Biber::Config->setoption('sortlocale', 'C');
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
+my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
 my $bibentries = $section->bibentries;
 
 my $l1 = q|    \entry{http://0-muse.jhu.edu.pugwash.lib.warwick.ac.uk:80/journals/theory_and_event/v005/5.3ranciere.html}{article}{}
@@ -58,6 +58,7 @@ my $l1 = q|    \entry{http://0-muse.jhu.edu.pugwash.lib.warwick.ac.uk:80/journal
       \strng{namehash}{2d6c91380dc6798fd8219e73cf91f468}
       \strng{fullhash}{2d6c91380dc6798fd8219e73cf91f468}
       \field{sortinit}{R}
+      \field{sortinithash}{ff5a3533ecf9d5a03ff60b1e1389b63d}
       \field{labelyear}{2001}
       \field{datelabelsource}{}
       \field{labeltitle}{ten theses on politics}
@@ -90,6 +91,7 @@ my $l2 = q|    \entry{urn:isbn:0713990023}{book}{}
       \strng{namehash}{984e5967448051538555a64aac11ed21}
       \strng{fullhash}{984e5967448051538555a64aac11ed21}
       \field{sortinit}{F}
+      \field{sortinithash}{9661cce5f16ac30b6b0c804d4583ed99}
       \field{labelyear}{1988}
       \field{datelabelsource}{}
       \field{labeltitle}{The History of Sexuality volume 3: The Care of the Self}
@@ -124,6 +126,7 @@ my $l3 = q|    \entry{item_54}{inbook}{}
       \strng{namehash}{984e5967448051538555a64aac11ed21}
       \strng{fullhash}{984e5967448051538555a64aac11ed21}
       \field{sortinit}{F}
+      \field{sortinithash}{9661cce5f16ac30b6b0c804d4583ed99}
       \field{labelyear}{1996}
       \field{labelmonth}{03\bibdatedash 04}
       \field{labelday}{04\bibdatedash 07}

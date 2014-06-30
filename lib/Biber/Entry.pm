@@ -103,7 +103,7 @@ sub relclone {
           $relclone->set_datafield('options', $relopts);
         }
         else {
-          process_entry_options($clonekey, [ 'skiplab', 'skiplos', 'uniquename=0', 'uniquelist=0' ]);
+          process_entry_options($clonekey, [ 'skiplab', 'skipbiblist', 'uniquename=0', 'uniquelist=0' ]);
           $relclone->set_datafield('options', [ 'dataonly' ]);
         }
 
@@ -866,12 +866,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

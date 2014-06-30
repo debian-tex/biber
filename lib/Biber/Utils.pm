@@ -38,53 +38,23 @@ All functions are exported by default.
 
 =cut
 
-our @EXPORT = qw{ locate_biber_file driver_config makenamesid makenameid stringify_hash
+our @EXPORT = qw{ locate_biber_file makenamesid makenameid stringify_hash
   normalise_string normalise_string_hash normalise_string_underscore normalise_string_sort
   normalise_string_label reduce_array remove_outer add_outer ucinit strip_nosort strip_noinit
   is_def is_undef is_def_and_notnull is_def_and_null
   is_undef_or_null is_notnull is_null normalise_utf8 inits join_name latex_recode_output
   filter_entry_options biber_error biber_warn ireplace imatch validate_biber_xml
-  process_entry_options escape_label unescape_label biber_decode_utf8 out parse_date};
+  process_entry_options escape_label unescape_label biber_decode_utf8 out parse_date
+  locale2bcp47 bcp472locale};
 
 =head1 FUNCTIONS
-
-=head2 driver_config
-
-  Returns an XML::LibXML::Simple object for an input driver config file
-
-=cut
-
-sub driver_config {
-  my $driver_name = shift;
-  # we assume that the driver config file is in the same dir as the driver:
-  (my $vol, my $driver_path, undef) = File::Spec->splitpath( $INC{"Biber/Input/file/${driver_name}.pm"} );
-
-  # Deal with the strange world of Par::Packer paths, see similar code in Biber.pm
-  my $dcf;
-  if ($driver_path =~ m|/par\-| and $driver_path !~ m|/inc|) { # a mangled PAR @INC path
-    $dcf = File::Spec->catpath($vol, "$driver_path/inc/lib/Biber/Input/file", "${driver_name}.dcf");
-  }
-  else {
-    $dcf = File::Spec->catpath($vol, $driver_path, "${driver_name}.dcf");
-  }
-
-  # Read driver config file
-  my $dcfxml = XML::LibXML::Simple::XMLin($dcf,
-                                          'ForceContent' => 1,
-                                          'ForceArray' => [ qr/\Afield\z/,
-                                                            qr/\Aalias\z/,
-                                                            qr/\Aalsoset\z/],
-                                          'NsStrip' => 1);
-
-  return $dcfxml;
-}
-
 
 =head2 locate_biber_file
 
   Searches for a file by
 
-  For the exact path if the filename is absolute
+  The exact path if the filename is absolute
+  In the input_directory, if defined
   In the output_directory, if defined
   Relative to the current directory
   In the same directory as the control file
@@ -95,11 +65,16 @@ sub driver_config {
 sub locate_biber_file {
   my $filename = shift;
   my $filenamepath = $filename; # default if nothing else below applies
-  my $outfile;
+  my $foundfile;
+  # If input_directory is set, perhaps the file can be found there so
+  # construct a path to test later
+  if (my $indir = Biber::Config->getoption('input_directory')) {
+    $foundfile = File::Spec->catfile($indir, $filename);
+  }
   # If output_directory is set, perhaps the file can be found there so
   # construct a path to test later
-  if (my $outdir = Biber::Config->getoption('output_directory')) {
-    $outfile = File::Spec->catfile($outdir, $filename);
+  elsif (my $outdir = Biber::Config->getoption('output_directory')) {
+    $foundfile = File::Spec->catfile($outdir, $filename);
   }
 
   # Filename is absolute
@@ -107,9 +82,9 @@ sub locate_biber_file {
     return $filename;
   }
 
-  # File is output_directory
-  if (defined($outfile) and -e $outfile) {
-    return $outfile;
+  # File is input_directory or output_directory
+  if (defined($foundfile) and -e $foundfile) {
+    return $foundfile;
   }
 
   # File is relative to cwd
@@ -303,12 +278,6 @@ sub normalise_string_label {
   my $str = shift;
   my $fieldname = shift;
   return '' unless $str; # Sanitise missing data
-  # Replace LaTeX chars by Unicode for sorting
-  # Don't bother if output is UTF-8 as in this case, we've already decoded everthing
-  # before we read the file (see Biber.pm)
-  unless (Biber::Config->getoption('output_encoding') eq 'UTF-8') {
-    $str = latex_decode($str, strip_outer_braces => 1);
-  }
   return normalise_string_common($str);
 }
 
@@ -330,12 +299,6 @@ sub normalise_string_sort {
   $str = strip_nosort($str, $fieldname);
   # Then replace ties with spaces or they will be lost
   $str =~ s/([^\\])~/$1 /g; # Foo~Bar -> Foo Bar
-  # Replace LaTeX chars by Unicode for sorting
-  # Don't bother if output is UTF-8 as in this case, we've already decoded everthing
-  # before we read the file (see Biber.pm)
-  unless (Biber::Config->getoption('output_encoding') eq 'UTF-8') {
-    $str = latex_decode($str, strip_outer_braces => 1);
-  }
   return normalise_string_common($str);
 }
 
@@ -352,9 +315,6 @@ sub normalise_string {
   return '' unless $str; # Sanitise missing data
   # First replace ties with spaces or they will be lost
   $str =~ s/([^\\])~/$1 /g; # Foo~Bar -> Foo Bar
-  if (Biber::Config->getoption('output_encoding') eq 'UTF-8') {
-    $str = latex_decode($str, strip_outer_braces => 1);
-  }
   return normalise_string_common($str);
 }
 
@@ -971,6 +931,32 @@ sub _expand_option {
   return;
 }
 
+=head2 locale2bcp47
+
+  Map babel/polyglossia language options to a sensible CLDR (bcp47) locale default
+  Return input string if there is no mapping
+
+=cut
+
+sub locale2bcp47 {
+  my $localestr = shift;
+  return $localestr unless $localestr;
+  return $LOCALE_MAP{$localestr} || $localestr;
+}
+
+=head2 bcp472locale
+
+  Map CLDR (bcp47) locale to a babel/polyglossia locale
+  Return input string if there is no mapping
+
+=cut
+
+sub bcp472locale {
+  my $localestr = shift;
+  return $localestr unless $localestr;
+  return $LOCALE_MAP_R{$localestr} || $localestr;
+}
+
 
 1;
 
@@ -983,12 +969,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

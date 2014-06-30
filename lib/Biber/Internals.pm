@@ -13,6 +13,7 @@ use Log::Log4perl qw(:no_extra_logdie_message);
 use Digest::MD5 qw( md5_hex );
 use POSIX qw( locale_h ); # for lc()
 use Unicode::GCString;
+use Unicode::Collate::Locale;
 use Unicode::Normalize;
 use Encode;
 
@@ -444,7 +445,7 @@ sub _label_name {
     my $numnames  = $nameval->count_names;
     my $visibility = $nameval->get_visible_alpha;
 
-    my @lastnames = map { strip_nosort(normalise_string($_->get_lastname), $namename) } @{$nameval->names};
+    my @lastnames = map { normalise_string_sort($_->get_lastname, $namename) } @{$nameval->names};
     my @prefices  = map { $_->get_prefix } @{$nameval->names};
     my $loopnames;
 
@@ -514,7 +515,7 @@ sub _process_label_attributes {
               foreach my $n (@{$f->first_n_names($f->get_visible_alpha)}) {
                 # Do strip/nosort here as that's what we also do to the field contents
                 # we will use to look up in this hash later
-                $indices{strip_nosort(normalise_string($n->get_namepart($namepart)), $field)} = $n->get_index;
+                $indices{normalise_string_sort($n->get_namepart($namepart), $field)} = $n->get_index;
               }
             }
             else {
@@ -831,7 +832,7 @@ sub _gen_first_disambiguating_name_map {
 # Sorting
 #########
 
-our $sorting_sep = ',';
+my $sorting_sep = ',';
 
 # special sorting routines - not part of the dm but special fields for biblatex
 my %internal_dispatch_sorting = (
@@ -921,7 +922,7 @@ sub _generatesortinfo {
   my $sortobj;
   $BIBER_SORT_FINAL = 0;
   $BIBER_SORT_FINAL = '';
-  foreach my $sortset (@{$sortscheme}) {
+  foreach my $sortset (@{$sortscheme->{spec}}) {
     my $s = $self->_sortset($sortset, $citekey);
     # We have already found a "final" item so if this item returns null,
     # copy in the "final" item string as it's the master key for this entry now
@@ -940,8 +941,7 @@ sub _generatesortinfo {
   $list->set_sortdata($citekey, [$ss, $sortobj]);
   $logger->debug("Sorting object for key '$citekey' -> " . Data::Dump::pp($sortobj));
 
-  # Generate sortinit - the initial letter of the sortstring. Skip
-  # if there is no sortstring, which is possible in tests
+  # Generate sortinit. Skip if there is no sortstring, which is possible in tests
   if ($ss) {
   # This must ignore the presort characters, naturally
     my $pre = Biber::Config->getblxoption('presort', $be->get_field('entrytype'), $citekey);
@@ -950,23 +950,12 @@ sub _generatesortinfo {
     $ss =~ s/\A$pre$sorting_sep+//;
     my $init = Unicode::GCString->new(normalise_string($ss))->substr(0, 1)->as_string;
 
-    # Now check if this sortinit is valid in the output_encoding. If not, warn
-    # and replace with a suitable value
-    my $outenc = Biber::Config->getoption('output_encoding');
-    if ($outenc ne 'UTF-8') {
-      # Can this init be represented in the BBL encoding?
-      if (encode($outenc, NFC($init)) eq '?') { # Malformed data encoding char
-        # So convert to macro
-        my $initd = Biber::LaTeX::Recode::latex_encode($init);
-        # Don't warn if output is ascii as it's fairly pointless since this warning may be
-        # true of a lot of data and drawing attention to just sortinit might be confusing
-        unless ($outenc =~ /(?:x-)?ascii/xmsi) {
-          biber_warn("The character '$init' cannot be encoded in '$outenc'. sortinit will be set to macro '$initd' for entry '$citekey'", $be);
-        }
-        $init = $initd;
-      }
-    }
-    $list->set_sortinitdata_for_key($citekey, $init);
+    # Collator for determining primary weight hash for sortinit
+    # Using the global sort locale because we only want the sortinit of the first sorting field
+    # and if this was locally different to the global sorting, something would be very strange.
+    my $Collator = Unicode::Collate::Locale->new(locale => Biber::Config->getoption('sortlocale'), level => 1);
+    my $inithash = md5_hex($Collator->viewSortKey($init));
+    $list->set_sortinitdata_for_key($citekey, $init, $inithash);
   }
   return;
 }
@@ -1369,12 +1358,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

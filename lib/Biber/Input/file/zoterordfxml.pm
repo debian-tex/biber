@@ -54,10 +54,10 @@ my $handlers = {
                                           'verbatim' => \&_literal,
                                           'uri'      => \&_uri
                                          },
-                            'csv'     => {
-                                          'entrykey' => \&_csv,
-                                          'keyword'  => \&_csv,
-                                          'option'   => \&_csv,
+                            'xsv'     => {
+                                          'entrykey' => \&_xsv,
+                                          'keyword'  => \&_xsv,
+                                          'option'   => \&_xsv,
                                          }
                            },
                 'list' => {
@@ -508,7 +508,7 @@ sub _partof {
   my $cref = create_entry($crkey, $partof->findnodes('*')->get_node(1), $smaps);
   $cref->set_datafield('options', 'dataonly');
   Biber::Config->setblxoption('skiplab', 1, 'PER_ENTRY', $crkey);
-  Biber::Config->setblxoption('skiplos', 1, 'PER_ENTRY', $crkey);
+  Biber::Config->setblxoption('skipbiblist', 1, 'PER_ENTRY', $crkey);
   $bibentry->set_datafield('crossref', $crkey);
   return;
 }
@@ -828,12 +828,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

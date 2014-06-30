@@ -39,8 +39,8 @@ Biber::Config->setoption('fastsort', 1);
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $shs = $biber->sortlists->get_list(0, 'shorthand', 'shorthand');
-my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
+my $shs = $biber->sortlists->get_list(0, 'shorthands', 'list', 'shorthands');
+my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
 my $bibentries = $section->bibentries;
 
 my $set1 = q|    \entry{seta}{set}{}
@@ -55,6 +55,7 @@ my $set1 = q|    \entry{seta}{set}{}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe10}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{extrayear}{1}
       \field{labelyear}{2010}
       \field{datelabelsource}{}
@@ -77,6 +78,7 @@ my $set2 = q|    \entry{set:membera}{book}{}
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{labeltitle}{Set Member A}
       \field{title}{Set Member A}
       \field{year}{2010}
@@ -95,6 +97,7 @@ my $set3 = q|    \entry{set:memberb}{book}{}
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{labeltitle}{Set Member B}
       \field{title}{Set Member B}
       \field{year}{2010}
@@ -112,6 +115,7 @@ my $set4 = q|    \entry{set:memberc}{book}{}
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{labeltitle}{Set Member C}
       \field{title}{Set Member C}
       \field{year}{2010}
@@ -129,6 +133,7 @@ my $noset1 = q|    \entry{noseta}{book}{}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe10}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{extrayear}{2}
       \field{labelyear}{2010}
       \field{datelabelsource}{}
@@ -150,6 +155,7 @@ my $noset2 = q|    \entry{nosetb}{book}{}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe10}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{extrayear}{3}
       \field{labelyear}{2010}
       \field{datelabelsource}{}
@@ -171,6 +177,7 @@ my $noset3 = q|    \entry{nosetc}{book}{}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe10}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{extrayear}{4}
       \field{labelyear}{2010}
       \field{datelabelsource}{}
@@ -197,6 +204,7 @@ my $sk4 = q|    \entry{skip4}{article}{dataonly}
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{labeltitle}{Algorithms Which Sort}
       \field{shorthand}{AWS}
       \field{title}{Algorithms Which Sort}
@@ -204,7 +212,7 @@ my $sk4 = q|    \entry{skip4}{article}{dataonly}
     \endentry
 |;
 
-is_deeply([$shs->get_keys], ['skip1'], 'skiplos - not in LOS');
+is_deeply([$shs->get_keys], ['skip1'], 'skipbiblist - not in biblist for shorthands');
 is_deeply($bibentries->entry('skip1')->get_field('options'), ['skipbib'], 'Passing skipbib through');
 is($bibentries->entry('skip2')->get_field('labelalpha'), 'SA', 'Normal labelalpha');
 is($bibentries->entry('skip2')->get_field($bibentries->entry('skip2')->get_labeldate_info->{field}{year}), '1995', 'Normal labelyear');

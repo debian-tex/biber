@@ -8,6 +8,7 @@ use IPC::Run3; # This works with PAR::Packer and Windows. IPC::Run doesn't
 use Cwd qw( abs_path );
 use Data::Compare;
 use Data::Dump;
+use Encode;
 use Carp;
 use List::AllUtils qw(first max);
 use Log::Log4perl qw( :no_extra_logdie_message ); # To keep PAR::Packer happy, explicitly load these
@@ -15,8 +16,9 @@ use Log::Log4perl::Appender::Screen;
 use Log::Log4perl::Appender::File;
 use Log::Log4perl::Layout::SimpleLayout;
 use Log::Log4perl::Layout::PatternLayout;
+use Unicode::Normalize;
 
-our $VERSION = '1.8';
+our $VERSION = '1.9';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -336,7 +338,10 @@ sub _config_file_set {
   if (defined($conf)) {
     require XML::LibXML::Simple;
 
-    $userconf = XML::LibXML::Simple::XMLin($conf,
+    my $buf = File::Slurp::read_file($conf);
+    $buf = NFD(decode('UTF-8', $buf));# Unicode NFD boundary
+
+    $userconf = XML::LibXML::Simple::XMLin($buf,
                                            'ForceContent' => 1,
                                            'ForceArray' => [
                                                             qr/\Aoption\z/,
@@ -1767,12 +1772,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
