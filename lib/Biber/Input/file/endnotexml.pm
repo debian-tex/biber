@@ -41,7 +41,6 @@ my $dm = Biber::Config->get_dm;
 my $handlers = {
                 'field' => {
                             'default' => {
-                                          'csv'      => \&_csv,
                                           'code'     => \&_literal,
                                           'date'     => \&_date,
                                           'entrykey' => \&_literal,
@@ -52,10 +51,10 @@ my $handlers = {
                                           'verbatim' => \&_verbatim,
                                           'uri'      => \&_uri
                                          },
-                            'csv'     => {
-                                          'entrykey' => \&_csv,
-                                          'keyword'  => \&_csv,
-                                          'option'   => \&_csv,
+                            'xsv'     => {
+                                          'entrykey' => \&_xsv,
+                                          'keyword'  => \&_xsv,
+                                          'option'   => \&_xsv,
                                          }
                            },
                 'list' => {
@@ -595,7 +594,7 @@ sub _name {
   return;
 }
 
-sub _csv {
+sub _xsv {
   my ($bibentry, $entry, $f) = @_;
   # Keywords
   if (my @s = $entry->findnodes("./$f/keyword")) {
@@ -948,12 +947,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

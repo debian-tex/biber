@@ -38,15 +38,16 @@ $biber->set_output_obj(Biber::Output::bibtex->new());
 
 # Now generate the information
 $biber->prepare_tool;
-my $main = $biber->sortlists->get_list(99999, 'entry', Biber::Config->getblxoption('sortscheme'));
+my $main = $biber->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme'), 'entry', Biber::Config->getblxoption('sortscheme'));
 my $out = $biber->get_output_obj;
 
 my $b1 = q|@ARTICLE{murray,
   ANNOTATION   = {An \texttt{article} entry with \arabic{author} authors. By default, long author and editor lists are automatically truncated. This is configurable},
   AUTHOR       = {Hostetler, Michael J. and Wingate, Julia E. and Zhong, Chuan-Jian and Harris, Jay E. and Vachet, Richard W. and Clark, Michael R. and Londono, J. David and Green, Stephen J. and Stokes, Jennifer J. and Wignall, George D. and Glish, Gary L. and Porter, Marc D. and Evans, Neal D. and Murray, Royce W.},
-  HYPHENATION  = {american},
   INDEXTITLE   = {Alkanethiolate gold cluster molecules},
   JOURNALTITLE = {Langmuir},
+  LANGID       = {english},
+  LANGIDOPTS   = {variant=american},
   NUMBER       = {1},
   PAGES        = {17--30},
   SHORTTITLE   = {Alkanethiolate gold cluster molecules},

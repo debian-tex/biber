@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?oxygen RNGSchema="../../data/schemata/bcf.rnc" type="compact"?>
 <?xml-stylesheet type="text/xsl" href="../../data/bcf.xsl"?>
-<bcf:controlfile version="2.5" xmlns:bcf="https://sourceforge.net/projects/biblatex">
+<bcf:controlfile version="2.6" xmlns:bcf="https://sourceforge.net/projects/biblatex">
   <!-- OPTIONS -->
   <bcf:options component="biber" type="global">
     <bcf:option type="singlevalued">
@@ -112,6 +112,10 @@
       <bcf:value>+</bcf:value>
     </bcf:option>
     <bcf:option type="singlevalued">
+      <bcf:key>sortlocale</bcf:key>
+      <bcf:value>english</bcf:value>
+    </bcf:option>
+    <bcf:option type="singlevalued">
       <bcf:key>sortscheme</bcf:key>
       <bcf:value>nty</bcf:value>
     </bcf:option>
@@ -173,6 +177,7 @@
         <bcf:map_step map_field_set="type" map_field_value="techreport"/>
       </bcf:map>
       <bcf:map>
+        <bcf:map_step map_field_source="hyphenation" map_field_target="langid"/>
         <bcf:map_step map_field_source="address" map_field_target="location"/>
         <bcf:map_step map_field_source="school" map_field_target="institution"/>
         <bcf:map_step map_field_source="annote" map_field_target="annotation"/>
@@ -713,7 +718,8 @@
       <bcf:field fieldtype="field" datatype="literal">eventtitleaddon</bcf:field>
       <bcf:field fieldtype="field" datatype="literal">gender</bcf:field>
       <bcf:field fieldtype="field" datatype="literal">howpublished</bcf:field>
-      <bcf:field fieldtype="field" datatype="literal">hyphenation</bcf:field>
+      <bcf:field fieldtype="field" datatype="literal">langid</bcf:field>
+      <bcf:field fieldtype="field" datatype="literal">langidopts</bcf:field>
       <bcf:field fieldtype="field" datatype="literal">indexsorttitle</bcf:field>
       <bcf:field fieldtype="field" datatype="literal">indextitle</bcf:field>
       <bcf:field fieldtype="field" datatype="literal">isan</bcf:field>
@@ -742,11 +748,11 @@
       <bcf:field fieldtype="field" datatype="literal">relatedtype</bcf:field>
       <bcf:field fieldtype="field" datatype="literal">reprinttitle</bcf:field>
       <bcf:field fieldtype="field" datatype="literal">series</bcf:field>
-      <bcf:field fieldtype="field" datatype="literal">shorthand</bcf:field>
+      <bcf:field fieldtype="field" datatype="literal" label="true">shorthand</bcf:field>
       <bcf:field fieldtype="field" datatype="literal">shorthandintro</bcf:field>
-      <bcf:field fieldtype="field" datatype="literal">shortjournal</bcf:field>
-      <bcf:field fieldtype="field" datatype="literal">shortseries</bcf:field>
-      <bcf:field fieldtype="field" datatype="literal">shorttitle</bcf:field>
+      <bcf:field fieldtype="field" datatype="literal" label="true">shortjournal</bcf:field>
+      <bcf:field fieldtype="field" datatype="literal" label="true">shortseries</bcf:field>
+      <bcf:field fieldtype="field" datatype="literal" label="true">shorttitle</bcf:field>
       <bcf:field fieldtype="field" datatype="literal">subtitle</bcf:field>
       <bcf:field fieldtype="field" datatype="literal">title</bcf:field>
       <bcf:field fieldtype="field" datatype="literal">titleaddon</bcf:field>
@@ -771,7 +777,7 @@
       <bcf:field fieldtype="field" datatype="literal" skip_output="true">sortyear</bcf:field>
       <bcf:field fieldtype="field" datatype="literal" skip_output="true">sortkey</bcf:field>
       <bcf:field fieldtype="field" datatype="literal" skip_output="true">presort</bcf:field>
-      <bcf:field fieldtype="field" format="csv" datatype="entrykey" skip_output="true">entryset</bcf:field>
+      <bcf:field fieldtype="field" format="xsv" datatype="entrykey" skip_output="true">entryset</bcf:field>
       <bcf:field fieldtype="list" datatype="literal">institution</bcf:field>
       <bcf:field fieldtype="list" datatype="literal">lista</bcf:field>
       <bcf:field fieldtype="list" datatype="literal">listb</bcf:field>
@@ -799,8 +805,8 @@
       <bcf:field fieldtype="list" datatype="name">namea</bcf:field>
       <bcf:field fieldtype="list" datatype="name">nameb</bcf:field>
       <bcf:field fieldtype="list" datatype="name">namec</bcf:field>
-      <bcf:field fieldtype="list" datatype="name">shortauthor</bcf:field>
-      <bcf:field fieldtype="list" datatype="name">shorteditor</bcf:field>
+      <bcf:field fieldtype="list" datatype="name" label="true">shortauthor</bcf:field>
+      <bcf:field fieldtype="list" datatype="name" label="true">shorteditor</bcf:field>
       <bcf:field fieldtype="list" datatype="name">translator</bcf:field>
       <bcf:field fieldtype="list" datatype="name" skip_output="true">sortname</bcf:field>
       <bcf:field fieldtype="field" datatype="key">authortype</bcf:field>
@@ -819,8 +825,8 @@
       <bcf:field fieldtype="list" datatype="key">language</bcf:field>
       <bcf:field fieldtype="field" datatype="entrykey">crossref</bcf:field>
       <bcf:field fieldtype="field" datatype="entrykey">xref</bcf:field>
-      <bcf:field fieldtype="field" format="csv" datatype="entrykey" skip_output="true">xdata</bcf:field>
-      <bcf:field fieldtype="field" format="csv" datatype="entrykey" skip_output="true">ids</bcf:field>
+      <bcf:field fieldtype="field" format="xsv" datatype="entrykey" skip_output="true">xdata</bcf:field>
+      <bcf:field fieldtype="field" format="xsv" datatype="entrykey" skip_output="true">ids</bcf:field>
       <bcf:field fieldtype="field" datatype="date" skip_output="true">date</bcf:field>
       <bcf:field fieldtype="field" datatype="date" skip_output="true">eventdate</bcf:field>
       <bcf:field fieldtype="field" datatype="date" skip_output="true">origdate</bcf:field>
@@ -832,10 +838,10 @@
       <bcf:field fieldtype="field" datatype="verbatim">verbb</bcf:field>
       <bcf:field fieldtype="field" datatype="verbatim">verbc</bcf:field>
       <bcf:field fieldtype="field" datatype="uri">url</bcf:field>
-      <bcf:field fieldtype="field" format="csv" datatype="keyword">keywords</bcf:field>
-      <bcf:field fieldtype="field" format="csv" datatype="entrykey">related</bcf:field>
-      <bcf:field fieldtype="field" format="csv" datatype="option" skip_output="true">options</bcf:field>
-      <bcf:field fieldtype="field" format="csv" datatype="option" skip_output="true">relatedoptions</bcf:field>
+      <bcf:field fieldtype="field" format="xsv" datatype="keyword">keywords</bcf:field>
+      <bcf:field fieldtype="field" format="xsv" datatype="entrykey">related</bcf:field>
+      <bcf:field fieldtype="field" format="xsv" datatype="option" skip_output="true">options</bcf:field>
+      <bcf:field fieldtype="field" format="xsv" datatype="option" skip_output="true">relatedoptions</bcf:field>
       <bcf:field fieldtype="field" datatype="range">pages</bcf:field>
       <bcf:field fieldtype="field" datatype="code">execute</bcf:field>
       <bcf:field fieldtype="list" datatype="name">with</bcf:field>
@@ -862,7 +868,6 @@
       <bcf:field>execute</bcf:field>
       <bcf:field>file</bcf:field>
       <bcf:field>gender</bcf:field>
-      <bcf:field>hyphenation</bcf:field>
       <bcf:field>ids</bcf:field>
       <bcf:field>indextitle</bcf:field>
       <bcf:field>indexsorttitle</bcf:field>
@@ -871,6 +876,8 @@
       <bcf:field>iswc</bcf:field>
       <bcf:field>keywords</bcf:field>
       <bcf:field>label</bcf:field>
+      <bcf:field>langid</bcf:field>
+      <bcf:field>langidopts</bcf:field>
       <bcf:field>library</bcf:field>
       <bcf:field>lista</bcf:field>
       <bcf:field>listb</bcf:field>
@@ -1981,8 +1988,8 @@
     <bcf:citekey order="8">nosetc</bcf:citekey>
   </bcf:section>
   <!-- SORT LISTS -->
-  <bcf:sortlist section="0" label="nty" type="entry"/>
-  <bcf:sortlist section="0" label="shorthand" type="shorthand">
+  <bcf:sortlist section="0" name="nty" sortscheme="nty" type="entry"/>
+  <bcf:sortlist section="0" name="shorthands" sortscheme="shorthands" type="list">
     <bcf:filter type="field">shorthand</bcf:filter>
   </bcf:sortlist>
 </bcf:controlfile>

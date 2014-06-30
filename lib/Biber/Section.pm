@@ -599,6 +599,17 @@ sub dynamic_set_keys {
   return [keys %{$self->{dkeys}}];
 }
 
+=head2 has_dynamic_sets
+
+    Returns true of false depending on whether the section has any dynamic set keys
+
+=cut
+
+sub has_dynamic_sets {
+  my $self = shift;
+  return defined($self->{dkeys}) ? 1 : 0;
+}
+
 
 =head2 add_datasource
 
@@ -694,12 +705,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

@@ -23,7 +23,6 @@ use Log::Log4perl qw(:no_extra_logdie_message);
 use List::AllUtils qw( uniq );
 use XML::LibXML;
 use XML::LibXML::Simple;
-use Readonly;
 use Data::Dump qw(dump);
 use Unicode::Normalize;
 use Unicode::GCString;
@@ -32,8 +31,8 @@ use URI;
 my $logger = Log::Log4perl::get_logger('main');
 my $orig_key_order = {};
 
-Readonly::Scalar our $BIBLATEXML_NAMESPACE_URI => 'http://biblatex-biber.sourceforge.net/biblatexml';
-Readonly::Scalar our $NS => 'bltx';
+my $BIBLATEXML_NAMESPACE_URI = 'http://biblatex-biber.sourceforge.net/biblatexml';
+my $NS = 'bltx';
 
 # Determine handlers from data model
 my $dm = Biber::Config->get_dm;
@@ -41,7 +40,6 @@ my $handlers = {
                 'CUSTOM' => {'related' => \&_related},
                 'field' => {
                             'default' => {
-                                          'csv'      => \&_literal,
                                           'code'     => \&_literal,
                                           'date'     => \&_date,
                                           'entrykey' => \&_literal,
@@ -52,10 +50,10 @@ my $handlers = {
                                           'verbatim' => \&_literal,
                                           'uri'      => \&_uri
                                          },
-                            'csv'     => {
-                                           'entrykey' => \&_csv,
-                                           'keyword'  => \&_csv,
-                                           'option'   => \&_csv,
+                            'xsv'     => {
+                                           'entrykey' => \&_xsv,
+                                           'keyword'  => \&_xsv,
+                                           'option'   => \&_xsv,
                                          }
                            },
                 'list' => {
@@ -79,75 +77,84 @@ my $handlers = {
 =cut
 
 sub extract_entries {
-  my ($filename, $keys) = @_;
+  my ($source, $keys) = @_;
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
   my $bibentries = $section->bibentries;
+  my $filename;
   my @rkeys = @$keys;
   my $tf; # Up here so that the temp file has enough scope to survive until we've
           # used it
   $logger->trace("Entering extract_entries() in driver 'biblatexml'");
 
   # If it's a remote data file, fetch it first
-  if ($filename =~ m/\A(?:http|ftp)(s?):\/\//xms) {
-    $logger->info("Data source '$filename' is a remote .xml - fetching ...");
-    if ($1) { # HTTPS
-      # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
-      # We have to explicitly set the cert path because otherwise the https module
-      # can't find the .pem when PAR::Packer'ed
-      # Have to explicitly try to require Mozilla::CA here to get it into %INC below
-      # It may, however, have been removed by some biber unpacked dists
-      if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
-          not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
-          not defined(Biber::Config->getoption('ssl-nointernalca')) and
-          eval {require Mozilla::CA}) {
-        # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
-        (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
-        $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
-        $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
-      }
+  if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms) {
+    $logger->info("Data source '$source' is a remote .xml - fetching ...");
+    if (my $cf = $REMOTE_MAP{$source}) {
+      $logger->info("Found '$source' in remote source cache");
+      $filename = $cf;
+    }
+    else {
+      if ($1) {                 # HTTPS
+        # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
+        # We have to explicitly set the cert path because otherwise the https module
+        # can't find the .pem when PAR::Packer'ed
+        # Have to explicitly try to require Mozilla::CA here to get it into %INC below
+        # It may, however, have been removed by some biber unpacked dists
+        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
+            not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
+            not defined(Biber::Config->getoption('ssl-nointernalca')) and
+            eval {require Mozilla::CA}) {
+          # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
+          (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
+          $dir =~ s/\/$//;      # splitpath sometimes leaves a trailing '/'
+          $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
+        }
 
-      # fallbacks for, e.g., linux
-      unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
-        foreach my $ca_bundle (qw{
-                                   /etc/ssl/certs/ca-certificates.crt
-                                   /etc/pki/tls/certs/ca-bundle.crt
-                                   /etc/ssl/ca-bundle.pem
+        # fallbacks for, e.g., linux
+        unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
+          foreach my $ca_bundle (qw{
+                                     /etc/ssl/certs/ca-certificates.crt
+                                     /etc/pki/tls/certs/ca-bundle.crt
+                                     /etc/ssl/ca-bundle.pem
+                                 }) {
+            next if ! -e $ca_bundle;
+            $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
+            last;
+          }
+          foreach my $ca_path (qw{
+                                   /etc/ssl/certs/
+                                   /etc/pki/tls/
                                }) {
-          next if ! -e $ca_bundle;
-          $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
-          last;
+            next if ! -d $ca_path;
+            $ENV{PERL_LWP_SSL_CA_PATH} = $ca_path;
+            last;
+          }
         }
-        foreach my $ca_path (qw{
-                                 /etc/ssl/certs/
-                                 /etc/pki/tls/
-                             }) {
-          next if ! -d $ca_path;
-          $ENV{PERL_LWP_SSL_CA_PATH} = $ca_path;
-          last;
-        }
-      }
 
-      if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
+        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
           $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
+        }
+        require LWP::Protocol::https;
       }
-      require LWP::Protocol::https;
+      require LWP::Simple;
+      $tf = File::Temp->new(TEMPLATE => 'biber_remote_data_source_XXXXX',
+                            DIR => $Biber::MASTER->biber_tempdir,
+                            SUFFIX => '.xml');
+      unless (LWP::Simple::is_success(LWP::Simple::getstore($filename, $tf->filename))) {
+        biber_error("Could not fetch file '$filename'");
+      }
+      $filename = $tf->filename;
+      # cache any remote so it persists and so we don't fetch it again
+      $REMOTE_MAP{$source} = $filename;
     }
-    require LWP::Simple;
-    $tf = File::Temp->new(TEMPLATE => 'biber_remote_data_source_XXXXX',
-                          DIR => $Biber::MASTER->biber_tempdir,
-                          SUFFIX => '.xml');
-    unless (LWP::Simple::is_success(LWP::Simple::getstore($filename, $tf->filename))) {
-      biber_error("Could not fetch file '$filename'");
-    }
-    $filename = $tf->filename;
   }
   else {
     # Need to get the filename so we increment
     # the filename count for preambles at the bottom of this sub
-    my $trying_filename = $filename;
-    unless ($filename = locate_biber_file($filename)) {
-      biber_error("Cannot find file '$trying_filename'!")
+    my $trying_filename = $source;
+    unless ($filename = locate_biber_file($source)) {
+      biber_error("Cannot find file '$source'!")
     }
   }
 
@@ -373,7 +380,7 @@ sub _literal {
   # can be multiple nodes with different script forms
   foreach my $node ($entry->findnodes("./$f")) {
     my $form = $node->getAttribute('form') || 'original';
-    my $lang = $node->getAttribute('xml.lang');
+    my $lang = bcp472locale($node->getAttribute('xml:lang'));
     # eprint is special case
     if ($f eq "$NS:eprint") {
       $bibentry->set_datafield('eprinttype', $node->getAttribute('type'), $form, $lang);
@@ -388,8 +395,8 @@ sub _literal {
   return;
 }
 
-# CSV field form
-sub _csv {
+# xSV field form
+sub _xsv {
   my ($bibentry, $entry, $f) = @_;
   foreach my $node ($entry->findnodes("./$f")) {
     $bibentry->set_datafield(_norm($f), _split_list($node));
@@ -422,7 +429,7 @@ sub _list {
   # can be multiple nodes with different script forms
   foreach my $node ($entry->findnodes("./$f")) {
     my $form = $node->getAttribute('form') || 'original';
-    my $lang = $node->getAttribute('xml.lang');
+    my $lang = bcp472locale($node->getAttribute('xml:lang'));
     $bibentry->set_datafield(_norm($f), _split_list($node), $form, $lang);
   }
   return;
@@ -434,7 +441,7 @@ sub _range {
   # can be multiple nodes with different script forms
   foreach my $node ($entry->findnodes("./$f")) {
     my $form = $node->getAttribute('form') || 'original';
-    my $lang = $node->getAttribute('xml.lang');
+    my $lang = bcp472locale($node->getAttribute('xml:lang'));
 
     # List of ranges/values
     if (my @rangelist = $node->findnodes("./$NS:list/$NS:item")) {
@@ -542,7 +549,7 @@ sub _name {
   # can be multiple nodes with different script forms
   foreach my $node ($entry->findnodes("./$f")) {
     my $form = $node->getAttribute('form') || 'original';
-    my $lang = $node->getAttribute('xml.lang');
+    my $lang = bcp472locale($node->getAttribute('xml:lang'));
 
     my $useprefix = Biber::Config->getblxoption('useprefix', $bibentry->get_field('entrytype'), $key);
     my $names = new Biber::Entry::Names;
@@ -803,12 +810,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

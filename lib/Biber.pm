@@ -34,6 +34,7 @@ use Log::Log4perl qw( :no_extra_logdie_message );
 use Data::Dump;
 use Data::Compare;
 use Text::BibTeX qw(:macrosubs);
+use Unicode::Normalize;
 
 =encoding utf-8
 
@@ -76,8 +77,8 @@ sub new {
   $self->{TEMPDIR} = File::Temp->newdir();
 
   # Initialise recoding schemes
-  Biber::LaTeX::Recode->init_schemes(Biber::Config->getoption('decodecharsset'),
-                                     Biber::Config->getoption('output_safecharsset'));
+  Biber::LaTeX::Recode->init_sets(Biber::Config->getoption('decodecharsset'),
+                                  Biber::Config->getoption('output_safecharsset'));
 
   $MASTER = $self;
 
@@ -249,15 +250,17 @@ sub tool_mode_setup {
   $self->add_sections($bib_sections);
 
   my $sortlists = new Biber::SortLists;
-  my $seclist = Biber::SortList->new(section => 99999, label => Biber::Config->getblxoption('sortscheme'));
+  my $seclist = Biber::SortList->new(section => 99999, sortschemename => Biber::Config->getblxoption('sortscheme'), name => Biber::Config->getblxoption('sortscheme'));
   $seclist->set_type('entry');
   $seclist->set_sortscheme(Biber::Config->getblxoption('sorting'));
+  # Locale just needs a default here - there is no biblatex option to take it from
+  Biber::Config->setblxoption('sortlocale', 'en_US');
   $logger->debug("Adding 'entry' list 'tool' for pseudo-section 99999");
   $sortlists->add_list($seclist);
   $self->{sortlists} = $sortlists;
 
   # User maps are set in config file and need some massaging which normally
-  # happend in parse_ctrlfile
+  # happens in parse_ctrlfile
   if (my $usms = Biber::Config->getoption('sourcemap')) {
     # Force "user" level for the maps
     @$usms = map {$_->{level} = 'user';$_} @$usms;
@@ -327,15 +330,14 @@ sub parse_ctrlfile {
 
   # Open control file
  LOADCF:
-  my $ctrl = new IO::File "<$ctrl_file_path"
-    or biber_error("Cannot open $ctrl_file_path: $!");
-
   $logger->info("Reading '$ctrl_file_path'");
+  my $buf = File::Slurp::read_file($ctrl_file_path) or biber_error("Cannot open $ctrl_file_path: $!");
+  $buf = NFD(decode('UTF-8', $buf));# Unicode NFD boundary
 
   # Read control file
   require XML::LibXML::Simple;
 
-  my $bcfxml = XML::LibXML::Simple::XMLin($ctrl,
+  my $bcfxml = XML::LibXML::Simple::XMLin($buf,
                                           'ForceContent' => 1,
                                           'ForceArray' => [
                                                            qr/\Acitekey\z/,
@@ -595,28 +597,24 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
 
     my @keys = ();
     foreach my $keyc (@{$section->{citekey}}) {
-      my $key = biber_decode_utf8($keyc->{content});# Unicode NFD boundary
+      my $key = NFD($keyc->{content});# Key is already UTF-8 - it comes from UTF-8 XML
       # Stop reading citekeys if we encounter "*" as a citation as this means
       # "all keys"
       if ($key eq '*') {
         $bib_section->set_allkeys(1);
-        # Normalise - when allkeys is true don't need citekeys - just in case someone
-        # lists "*" and also some other citekeys
-        $bib_section->del_citekeys;
         $key_flag = 1; # There is at least one key, used for error reporting below
-        $logger->info("Using all citekeys in bib section " . $secnum);
-        $bib_sections->add_section($bib_section);
-        next SECTION;
       }
       elsif (not Biber::Config->get_seenkey($key, $secnum)) {
         # Dynamic set definition
         # Save dynamic key -> member keys mapping for set entry auto creation later
+        # We still need to find these even if allkeys is set
         if (exists($keyc->{type}) and $keyc->{type} eq 'set') {
           $bib_section->set_dynamic_set($key, split /\s*,\s*/, $keyc->{members});
           push @keys, $key;
           $key_flag = 1; # There is at least one key, used for error reporting below
         }
         else {
+          next if $bib_section->is_allkeys; # Skip if we have already encountered '*'
           # Set order information - there is no order on dynamic key defs above
           # as they are a definition, not a cite
           Biber::Config->set_keyorder($secnum, $key, $keyc->{order});
@@ -627,18 +625,23 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
       }
     }
 
-    unless ($bib_section->is_allkeys) {
-      $logger->info('Found ', $#keys+1 , " citekeys in bib section $secnum")
+    if ($bib_section->is_allkeys) {
+      # Normalise - when allkeys is true don't need citekeys - just in case someone
+      # lists "*" and also some other citekeys
+      $bib_section->del_citekeys;
+      $logger->info("Using all citekeys in bib section " . $secnum);
+    }
+    else {
+      $logger->info('Found ', $#keys+1 , " citekeys in bib section $secnum");
     }
 
     if (Biber::Config->getoption('debug')) {
-      my @debug_keys = sort @keys;
       unless ($bib_section->is_allkeys) {
-        $logger->debug("The citekeys for section $secnum are: ", join(', ', @debug_keys), "\n");
+        $logger->debug("The citekeys for section $secnum are: ", join(', ', sort @keys), "\n");
       }
     }
 
-    $bib_section->add_citekeys(@keys);
+    $bib_section->add_citekeys(@keys) unless $bib_section->is_allkeys;
     $bib_sections->add_section($bib_section);
   }
 
@@ -647,17 +650,21 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
 
   # Read sortlists
   my $sortlists = new Biber::SortLists;
+
   foreach my $list (@{$bcfxml->{sortlist}}) {
     my $ltype  = $list->{type};
-    my $llabel = $list->{label};
+    my $lssn = $list->{sortscheme};
+    my $lname = $list->{name};
+
     my $lsection = $list->{section}[0]; # because "section" needs to be a list elsewhere in XML
-    if (my $l = $sortlists->get_list($lsection, $ltype, $llabel)) {
-      $logger->debug("Section '$ltype' list '$llabel' is repeated for section $lsection - ignoring");
+    if (my $l = $sortlists->get_list($lsection, $lname, $ltype, $lssn)) {
+      $logger->debug("Section sortlist '$lname' of type '$ltype' with sortscheme '$lssn' is repeated for section $lsection - ignoring");
       next;
     }
 
-    my $seclist = Biber::SortList->new(section => $lsection, label => $llabel);
+    my $seclist = Biber::SortList->new(section => $lsection, sortschemename => $lssn, name => $lname);
     $seclist->set_type($ltype || 'entry'); # lists are entry lists by default
+    $seclist->set_name($lname || $lssn); # name is only relevelant for "list" type, default to ss
     foreach my $filter (@{$list->{filter}}) {
       $seclist->add_filter($filter->{type}, $filter->{content});
     }
@@ -672,7 +679,7 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
     else {
       $seclist->set_sortscheme(Biber::Config->getblxoption('sorting'));
     }
-    $logger->debug("Adding '$ltype' list '$llabel' for section $lsection");
+    $logger->debug("Adding sortlist of type '$ltype' with sortscheme '$lssn' and name '$lname' for section $lsection");
     $sortlists->add_list($seclist);
   }
 
@@ -681,8 +688,8 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
   foreach my $section (@{$bcfxml->{section}}) {
     my $globalss = Biber::Config->getblxoption('sortscheme');
     my $secnum = $section->{number};
-    unless ($sortlists->get_list($secnum, 'entry', $globalss)) {
-      my $seclist = Biber::SortList->new(section => $secnum, type => 'entry', label => $globalss);
+    unless ($sortlists->get_list($secnum, $globalss, 'entry', $globalss)) {
+      my $seclist = Biber::SortList->new(section => $secnum, type => 'entry', sortschemename => $globalss, name => $globalss);
       $seclist->set_sortscheme(Biber::Config->getblxoption('sorting'));
       $sortlists->add_list($seclist);
     }
@@ -710,7 +717,12 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
     my $bib_section = new Biber::Section('number' => 99999);
 
     foreach my $section (@{$self->sections->get_sections}) {
-      $bib_section->add_citekeys($section->get_citekeys);
+      if ($section->is_allkeys) {
+        $bib_section->set_allkeys(1);
+      }
+      else {
+        $bib_section->add_citekeys($section->get_citekeys);
+      }
       foreach my $ds (@{$section->get_datasources}) {
         $bib_section->add_datasource($ds);
       }
@@ -720,16 +732,20 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
 
     # Global sorting in non tool mode bibtex output is citeorder so override the .bcf here
     Biber::Config->setblxoption('sortscheme', 'none');
+    # Global locale in non tool mode bibtex output is default
+    Biber::Config->setblxoption('sortlocale', 'english');
 
-    my $seclist = Biber::SortList->new(section => 99999, label => Biber::Config->getblxoption('sortscheme'));
+    my $seclist = Biber::SortList->new(section => 99999, sortschemename => Biber::Config->getblxoption('sortscheme'), name => Biber::Config->getblxoption('sortscheme'));
     $seclist->set_type('entry');
     # bibtex output in non-tool mode is just citeorder
-    $seclist->set_sortscheme([
+    $seclist->set_sortscheme({locale => locale2bcp47(Biber::Config->getblxoption('sortlocale')),
+                              spec   =>
+                             [
                               [
                                {},
                                {'citeorder'    => {}}
                               ]
-                             ]);
+                             ]});
     $logger->debug("Adding 'entry' list 'none' for pseudo-section 99999");
     $self->{sortlists}->add_list($seclist);
   }
@@ -753,7 +769,7 @@ sub process_setup {
   foreach my $section (@{$self->sections->get_sections}) {
     my $secnum = $section->number;
     unless ($self->sortlists->has_lists_of_type_for_section($secnum, 'entry')) {
-      my $dlist = Biber::SortList->new(label => Biber::Config->getblxoption('sortscheme'));
+      my $dlist = Biber::SortList->new(sortschemename => Biber::Config->getblxoption('sortscheme'), name => Biber::Config->getblxoption('sortscheme'));
       $dlist->set_sortscheme(Biber::Config->getblxoption('sorting'));
       $dlist->set_type('entry');
       $dlist->set_section($secnum);
@@ -763,7 +779,7 @@ sub process_setup {
 
   # Break data model information up into more processing-friendly formats
   # for use in verification checks later
-  # This has to be here as opposed to in parse_control() so that it can pick
+  # This has to be here as opposed to in parse_ctrlfile() so that it can pick
   # up user config dm settings
   Biber::Config->set_dm(Biber::DataModel->new(Biber::Config->getblxoption('datamodel')));
 
@@ -1433,7 +1449,7 @@ sub process_sets {
     # Enforce Biber parts of virtual "dataonly" for set members
     # Also automatically create an "entryset" field for the members
     foreach my $member (@entrysetkeys) {
-      process_entry_options($member, [ 'skiplab', 'skiplos', 'uniquename=0', 'uniquelist=0' ]);
+      process_entry_options($member, [ 'skiplab', 'skipbiblist', 'uniquename=0', 'uniquelist=0' ]);
 
       my $me = $section->bibentry($member);
       if ($me->get_field('entryset')) {
@@ -1452,7 +1468,7 @@ sub process_sets {
   # had skips set by being seen as a member of that set yet
   else {
     if (Biber::Config->get_set_parents($citekey)) {
-      process_entry_options($citekey, [ 'skiplab', 'skiplos', 'uniquename=0', 'uniquelist=0' ]);
+      process_entry_options($citekey, [ 'skiplab', 'skipbiblist', 'uniquename=0', 'uniquelist=0' ]);
     }
   }
 }
@@ -1625,8 +1641,8 @@ sub process_labeldate {
         # ignore endyear if it's the same as year
         my ($ytype) = $df->{year} =~ /\A(\X*)year\z/xms;
         $ytype = $ytype // ''; # Avoid undef warnings since no match above can make it undef
-        # endyear can be null
-        if (is_def_and_notnull($be->get_field($ytype . 'endyear'))
+        # endyear can be null which makes labelyear different to plain year
+        if ($be->field_exists($ytype . 'endyear')
             and ($be->get_field($df->{year}) ne $be->get_field($ytype . 'endyear'))) {
           $be->set_field('labelyear',
                          $be->get_field('labelyear') . '\bibdatedash ' . $be->get_field($ytype . 'endyear'));
@@ -1961,13 +1977,14 @@ sub process_lists {
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   foreach my $list (@{$self->sortlists->get_lists_for_section($secnum)}) {
-    my $llabel = $list->get_label;
+    my $lssn = $list->get_sortschemename;
     my $ltype = $list->get_type;
+    my $lname = $list->get_name;
     # Last-ditch fallback in case we still don't have a sorting spec
     $list->set_sortscheme(Biber::Config->getblxoption('sorting')) unless $list->get_sortscheme;
 
     $list->set_keys([ $section->get_citekeys ]);
-    $logger->debug("Populated '$ltype' list '$llabel' in section $secnum with keys: " . join(', ', $list->get_keys));
+    $logger->debug("Populated sortlist '$lname' of type '$ltype' with sortscheme '$lssn' in section $secnum with keys: " . join(', ', $list->get_keys));
 
     # Now we check the sorting cache to see if we already have results
     # for this scheme since sorting is computationally expensive.
@@ -1981,11 +1998,11 @@ sub process_lists {
     # * extra* data
 
     my $cache_flag = 0;
-    $logger->debug("Checking sorting cache for list '$llabel'");
+    $logger->debug("Checking sorting cache for scheme '$lssn'");
     foreach my $cacheitem (@{$section->get_sort_cache}) {
       if (Compare($list->get_sortscheme, $cacheitem->[0])) {
-        $logger->debug("Found sorting cache entry for '$llabel'");
-        $logger->trace("Sorting list cache for list '$llabel':\n-------------------\n" . Data::Dump::pp($list->get_sortscheme) . "\n-------------------\n");
+        $logger->debug("Found sorting cache entry for scheme '$lssn'");
+        $logger->trace("Sorting list cache for scheme '$lssn':\n-------------------\n" . Data::Dump::pp($list->get_sortscheme) . "\n-------------------\n");
         $list->set_keys($cacheitem->[1]);
         $list->set_sortinitdata($cacheitem->[2]);
         $list->set_extrayeardata($cacheitem->[3]);
@@ -1996,30 +2013,30 @@ sub process_lists {
     }
 
     unless ($cache_flag) {
-      $logger->debug("No sorting cache entry for '$llabel'");
+      $logger->debug("No sorting cache entry for scheme '$lssn'");
       # Sorting
       $self->generate_sortinfo($list);       # generate the sort information
       $self->sort_list($list);               # sort the list
       $self->generate_extra($list) unless Biber::Config->getoption('tool'); # generate the extra* fields
 
       # Cache the results
-      $logger->debug("Adding sorting cache entry for '$llabel'");
+      $logger->debug("Adding sorting cache entry for scheme '$lssn'");
       $section->add_sort_cache($list->get_listdata);
     }
 
     # Filtering
     # This is not really used - filtering is more efficient to do on the biblatex
-    # side since we are filtering afer sorting anyway. It is used to provide
+    # side since we are filtering after sorting anyway. It is used to provide
     # a field=shorthand filter for type=shorthand lists though.
     if (my $filters = $list->get_filters) {
       my $flist = [];
 KEYLOOP: foreach my $k ($list->get_keys) {
-        # Filter out skiplos entries as a special case in 'shorthand' type lists
-        if ($list->get_type eq 'shorthand') {
-          next if Biber::Config->getblxoption('skiplos', $section->bibentry($k)->get_field('entrytype'), $k);
+        # Filter out skipbiblist entries as a special case in 'shorthand' type lists
+        if ($list->get_type eq 'list') {
+          next if Biber::Config->getblxoption('skipbiblist', $section->bibentry($k)->get_field('entrytype'), $k);
         }
 
-        $logger->debug("Checking key '$k' in list '$llabel' against list filters");
+        $logger->debug("Checking key '$k' in list '$lname' against list filters");
         my $be = $section->bibentry($k);
         foreach my $t (keys %$filters) {
           my $fs = $filters->{$t};
@@ -2033,7 +2050,7 @@ KEYLOOP: foreach my $k ($list->get_keys) {
         }
         push @$flist, $k;
       }
-      $logger->debug("Keys after filtering list '$llabel' in section $secnum: " . join(', ', @$flist));
+      $logger->debug("Keys after filtering list '$lname' in section $secnum: " . join(', ', @$flist));
       $list->set_keys($flist); # Now save the sorted list in the list object
     }
   }
@@ -2699,7 +2716,6 @@ LOOP: foreach my $citekey ( $section->get_citekeys ) {
 sub generate_extra {
   my $self = shift;
   my $list = shift;
-  my $sortscheme = $list->get_sortscheme;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
 
@@ -2795,8 +2811,10 @@ sub sort_list {
   my $list = shift;
   my $sortscheme = $list->get_sortscheme;
   my @keys = $list->get_keys;
-  my $llabel = $list->get_label;
+  my $lssn = $list->get_sortschemename;
   my $ltype = $list->get_type;
+  my $lname = $list->get_name;
+  my $llocale = locale2bcp47($sortscheme->{locale} || Biber::Config->getblxoption('sortlocale'));
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
 
@@ -2811,22 +2829,20 @@ sub sort_list {
     $logger->debug("$k => " . $list->get_sortdata($k)->[0]);
   }
 
-  $logger->trace("Sorting '$ltype' list '$llabel' with scheme\n-------------------\n" . Data::Dump::pp($sortscheme) . "\n-------------------\n");
+  $logger->trace("Sorting sortlist '$lname' of type '$ltype' with sortscheme '$lssn'. Scheme is\n-------------------\n" . Data::Dump::pp($sortscheme) . "\n-------------------\n");
 
   # Set up locale. Order of priority is:
   # 1. locale value passed to Unicode::Collate::Locale->new() (Unicode::Collate sorts only)
   # 2. Biber sortlocale option
-  # 3. LC_COLLATE env variable
-  # 4. LANG env variable
-  # 5. LC_ALL env variable
-  # 6. Built-in defaults
+  # 3. Sorting 'locale' option
+  # 4. Global biblatex 'sortlocale' option
 
-  my $thislocale = Biber::Config->getoption('sortlocale');
+  my $thislocale = Biber::Config->getoption('sortlocale') || $llocale;
   $logger->debug("Locale for sorting is '$thislocale'");
 
   if ( Biber::Config->getoption('fastsort') ) {
     use locale;
-    $logger->info("Sorting '$ltype' list '$llabel' keys");
+    $logger->info("Sorting list '$lname' of type '$ltype' with scheme '$lssn'");
     $logger->debug("Sorting with fastsort (locale $thislocale)");
     unless (setlocale(LC_ALL, $thislocale)) {
       biber_warn("Unavailable locale $thislocale");
@@ -2841,7 +2857,7 @@ sub sort_list {
     # Global lowercase setting
     my $glc = Biber::Config->getoption('sortcase') ? '' : 'lc ';
 
-    foreach my $sortset (@{$sortscheme}) {
+    foreach my $sortset (@{$sortscheme->{spec}}) {
       $data_extractor .= '$list->get_sortdata($_)->[1][' . $num_sorts . '],';
       $sorter .= ' || ' if $num_sorts; # don't add separator before first field
       my $lc = $glc; # Casing defaults to global default ...
@@ -2893,7 +2909,7 @@ sub sort_list {
             map  { eval $data_extractor } @keys;
   }
   else {
-    require Unicode::Collate::Locale;
+    require Biber::UCollate;
     my $collopts = Biber::Config->getoption('collate_options');
 
     # UCA level 2 if case insensitive sorting is requested
@@ -2904,45 +2920,12 @@ sub sort_list {
     # Add upper_before_lower option
     $collopts->{upper_before_lower} = Biber::Config->getoption('sortupper');
 
-    # Add tailoring locale for Unicode::Collate
-    if ($thislocale and not $collopts->{locale}) {
-      $collopts->{locale} = $thislocale;
-      if ($collopts->{table}) {
-        my $t = delete $collopts->{table};
-        $logger->info("Ignoring collation table '$t' as locale is set ($thislocale)");
-      }
-    }
+    # Create collation object
 
-    # Remove locale from options as we need this to make the object
-    my $coll_locale = delete $collopts->{locale};
-    # Now create the collator object
-    my $Collator = Unicode::Collate::Locale->new( locale => $coll_locale)
-      or $logger->logcarp("Problem creating Unicode::Collate::Locale object: $@");
-
-    # Fix the old "alternate" alias otherwise we have problems as U::C->change() always
-    # returns the new "variable" option and we get confused.
-    if (my $alt = delete $collopts->{alternate}) {
-      $collopts->{variable} = $alt;
-    }
-
-    #Show the collation options when debugging
-    $logger->debug('Collation options: ' . Data::Dump::pp($collopts));
-
-    # Tailor the collation object and report differences from defaults for locale
-    # Have to do this in ->change method as ->new can croak with conflicting tailoring
-    # for locales which enforce certain tailorings
-    my %coll_changed = $Collator->change( %{$collopts} );
-    while (my ($k, $v) = each %coll_changed) {
-      # If we changing something that has no override tailoring in the locale, it
-      # is undef in this hash and we don't care about such things
-      next unless defined($coll_changed{$k});
-      if ($coll_changed{$k} ne $collopts->{$k}) {
-        $logger->info("Overriding locale '$coll_locale' default tailoring '$k = $v' with '$k = " . $collopts->{$k} . "'");
-      }
-    }
+    my $Collator = Biber::UCollate->new($thislocale, %$collopts);
 
     my $UCAversion = $Collator->version();
-    $logger->info("Sorting '$ltype' list '$llabel' keys");
+    $logger->info("Sorting list '$lname' of type '$ltype' with scheme '$lssn' and locale '$thislocale'");
     $logger->debug("Sorting with Unicode::Collate (" . stringify_hash($collopts) . ", UCA version: $UCAversion, Locale: " . $Collator->getlocale . ")");
 
     # Log if U::C::L currently has no tailoring for used locale
@@ -2956,9 +2939,21 @@ sub sort_list {
     my $data_extractor = '[';
     my $sorter;
     my $sort_extractor;
-    foreach my $sortset (@{$sortscheme}) {
+    foreach my $sortset (@{$sortscheme->{spec}}) {
       my $fc = '';
       my @fc;
+
+      # Re-instantiate collation object if a different locale is required for this sort item.
+      # This can't be done in a ->change() method, has to be a new object.
+      my $cobj;
+      my $sl = locale2bcp47($sortset->[0]{locale});
+      if (defined($sl) and $sl ne $thislocale) {
+        $cobj = 'Biber::UCollate->new(' . "'$sl'" . ",'" . join("','", %$collopts) . "')";
+      }
+      else {
+        $cobj = '$Collator';
+      }
+
       # If the case or upper option on a field is not the global default
       # set it locally on the $Collator by constructing a change() method call
       my $sc = $sortset->[0]{sortcase};
@@ -2969,6 +2964,7 @@ sub sort_list {
       if (defined($su) and $su != Biber::Config->getoption('sortupper')) {
         push @fc, $su ? 'upper_before_lower => 1' : 'upper_before_lower => 0';
       }
+
       if (@fc) {
         # This field has custom collation options
         $fc = '->change(' . join(',', @fc) . ')';
@@ -2989,7 +2985,7 @@ sub sort_list {
       my $sd = $sortset->[0]{sort_direction};
       if (defined($sd) and $sd eq 'descending') {
         # descending field
-        $sorter .= '$Collator'
+        $sorter .= $cobj
           . $fc
             . '->cmp($b->['
               . $num_sorts
@@ -2999,7 +2995,7 @@ sub sort_list {
       }
       else {
         # ascending field
-        $sorter .= '$Collator'
+        $sorter .= $cobj
           . $fc
             . '->cmp($a->['
               . $num_sorts
@@ -3013,7 +3009,9 @@ sub sort_list {
     # Handily, $num_sorts is now one larger than the number of fields which is the
     # correct index for the actual data in the sort array
     $sort_extractor = '$_->[' . $num_sorts . ']';
+    $logger->trace("Sorting extractor is: $sort_extractor");
     $logger->trace("Sorting structure is: $sorter");
+    $logger->trace("Data extractor is: $data_extractor");
 
     # Schwartzian transform multi-field sort
     @keys = map  { eval $sort_extractor }
@@ -3106,6 +3104,7 @@ sub prepare_tool {
     $self->process_interentry; # Process crossrefs/sets etc.
   }
 
+  $self->validate_datamodel;   # Check against data model
   $self->process_lists;        # process the output lists (sort and filtering)
   $out->create_output_section; # Generate and push the section output into the
                                # into the output object ready for writing
@@ -3202,7 +3201,7 @@ sub fetch_data {
   }
 
   # Don't need to do dependent detection if running in (real) tool mode since this is always
-  # allkeys=1 and we don't care about missing dependents which get_dependents() might prune
+  # allkeys=1 and we don't care about missing dependents which get_dependents() might prune.
   # pseudo_tool mode is bibtex output when not in tool mode. Internally, it's essentially
   # the same but without allkeys.
   if (Biber::Config->getoption('tool') and not
@@ -3463,9 +3462,7 @@ sub _parse_sort {
       push @{$sortingitems}, {$sortitem->{content} => $sortitemattributes};
     }
 
-    # Only push a sortitem if defined. If the item has a conditional "pass"
-    # attribute, it may be ommitted in which case we don't want an empty array ref
-    # pushing
+    # Only push a sortitem if defined.
     # Also, we only push the sort attributes if there are any sortitems otherwise
     # we end up with a blank sort
     my $sopts;
@@ -3473,12 +3470,15 @@ sub _parse_sort {
     $sopts->{sort_direction} = $sort->{sort_direction} if defined($sort->{sort_direction});
     $sopts->{sortcase}       = $sort->{sortcase}       if defined($sort->{sortcase});
     $sopts->{sortupper}      = $sort->{sortupper}      if defined($sort->{sortupper});
+    $sopts->{locale}         = $sort->{locale}         if defined($sort->{locale});
     if (defined($sortingitems)) {
       unshift @{$sortingitems}, $sopts;
       push @{$sorting}, $sortingitems;
     }
   }
-  return $sorting;
+
+  return {locale => locale2bcp47($root_obj->{locale} || Biber::Config->getblxoption('sortlocale')),
+          spec   => $sorting};
 }
 
 =head2 _filedump and _stringdump
@@ -3511,12 +3511,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

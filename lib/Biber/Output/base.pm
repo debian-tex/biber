@@ -4,6 +4,8 @@ use strict;
 use warnings;
 
 use Biber::Entry;
+use Biber::Utils;
+use Encode;
 use IO::File;
 use Text::Wrap;
 $Text::Wrap::columns = 80;
@@ -234,6 +236,24 @@ sub get_output_entry {
             $self->{output_data}{MISSING_ENTRIES}{$section}{index}{$key} ||
             $self->{output_data}{ALIAS_ENTRIES}{$section}{index}{$key};
   my $out_string = $list ? $list->instantiate_entry($out, $key) : $out;
+
+  # If requested to convert UTF-8 to macros ...
+  if (Biber::Config->getoption('output_safechars')) {
+    $out_string = latex_recode_output($out_string);
+  }
+  else { # ... or, check for encoding problems and force macros
+    my $outenc = Biber::Config->getoption('output_encoding');
+    if ($outenc ne 'UTF-8') {
+      # Can this entry be represented in the output encoding?
+      if (encode($outenc, NFC($out_string)) =~ /\?/) { # Malformed data encoding char
+        # So convert to macro
+        $out_string = latex_recode_output($out_string);
+        biber_warn("The entry '$key' has characters which cannot be encoded in '$outenc'. Recoding problematic characters into macros.");
+      }
+    }
+  }
+
+
   # Sometimes $out_string might still be a scalar ref (tool mode, for example which doesn't use
   # sort lists)
   return $out ? (ref($out_string) eq 'SCALAR' ? NFC($$out_string) : NFC($out_string)) : undef;
@@ -387,7 +407,7 @@ sub output {
           out($target, $entry_string);
         }
         elsif ($listtype eq 'shorthand') {
-          next if Biber::Config->getblxoption('skiplos', $section->bibentry($k), $k);
+          next if Biber::Config->getblxoption('skipbiblist', $section->bibentry($k), $k);
           out($target, $k);
         }
       }
@@ -412,12 +432,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

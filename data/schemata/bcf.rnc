@@ -17,7 +17,6 @@ start =
       mincrossrefs,
       sortcase,
       sortfirstinits,
-      sortlocale?,
       sortupper
     },
 
@@ -44,6 +43,7 @@ start =
       minitems,
       singletitle,
       sortalphaothers?,
+      sortlocale,
       sortscheme,
       uniquelist,
       uniquename,
@@ -194,13 +194,15 @@ start =
           attribute fieldtype { "field" | "list" },
           # format is a specification of the format of the field. If not specified, field contents
           # are just as is. 
-          attribute format { "csv" }?,
+          attribute format { "xsv" }?,
           # datatype of field content
-          attribute datatype { "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "csv" | "code" | "uri" | "datepart" | "keyword" | "option" },
+          attribute datatype { "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "code" | "uri" | "datepart" | "keyword" | "option" },
           # Are we allowed to output a null field value to the .bbl for this field?
           attribute nullok { "true" }?,
           # Should this field be skipped and not output to the .bbl?
           attribute skip_output { "true" }?,
+          # Field can be used as a label? This auto-generates some defaults in biblatex
+          attribute label { "true" }?,
           text
         }+
       },
@@ -276,10 +278,14 @@ start =
 listspec = 
     element bcf:sortlist {
       attribute section { xsd:integer },
-      attribute type { "entry" | "key" | "shorthand" },
-      attribute label { xsd:string {minLength="1"}},
+      attribute type { "entry" | "list" },
+      attribute sortscheme { xsd:string {minLength="1"}},
+      # name is only needed for list types
+      attribute name { xsd:string {minLength="1"}},
       (filter | orfilter )*,
       element bcf:sorting {
+        # locale for entire sorting specification
+        attribute locale { xsd:string {minLength="1"}}?,
         sort+
       }?
     }*
@@ -287,6 +293,8 @@ listspec =
 
 sorting = 
   element bcf:sorting {
+    # locale for entire sorting specification
+    attribute locale { xsd:string {minLength="1"}}?,
     # presort default strings for different entry types
     element bcf:presort {
       attribute type { text }?,
@@ -313,6 +321,8 @@ sort =
     attribute sortcase { "0" | "1" }?,
     # Sort upper before lower?
     attribute sortupper { "0" | "1" }?,
+    # sortset specific override for locale
+    attribute locale { xsd:string {minLength="1"}}?,
     # A sort item specification - a field or pseudo-field to get sort information from
     element bcf:sortitem {
       # order of this item in the set of all other item specifications
@@ -527,6 +537,12 @@ mincitenames =
     element bcf:key { "mincitenames" },
     element bcf:value { xsd:integer }
   }
+sortlocale =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "sortlocale" },
+    element bcf:value { text }
+  }
 sortscheme =
   element bcf:option {
     attribute type { "singlevalued" },
@@ -594,16 +610,6 @@ alphaothers =
       xsd:normalizedString { pattern = "\S+" }
     }
   }
-# This is xsd:language but also allows underscore separators
-sortlocale = 
-  element bcf:option {
-    attribute type { "singlevalued" },
-    element bcf:key { "sortlocale" },
-    element bcf:value {
-      xsd:normalizedString { pattern = "([a-zA-Z]{2}|[iI][\-_][a-zA-Z]+|[xX][\-_][a-zA-Z]{1,10})([\-_][a-zA-Z]{1,10})*"
-      }
-    }
-  }
 sortupper = 
   element bcf:option {
     attribute type { "singlevalued" },
@@ -656,3 +662,11 @@ map =
       empty
     }+
   }
+# Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
+
+# This code is free software.  You can redistribute it and/or
+# modify it under the terms of the Artistic License 2.0.
+
+# This program is distributed in the hope that it will be useful,
+# but without any warranty; without even the implied warranty of
+# merchantability or fitness for a particular purpose.

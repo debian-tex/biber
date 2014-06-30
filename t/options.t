@@ -34,6 +34,8 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 # Biber options
 Biber::Config->setoption('fastsort', 1);
 Biber::Config->setoption('sortlocale', 'C');
+# Testing customg xsv format sep
+Biber::Config->setoption('xsvsep', '\s*\|\s*');
 
 # Biblatex options
 Biber::Config->setblxoption('labeldatespec', [ {content => 'date', type => 'field'} ]);
@@ -42,7 +44,7 @@ Biber::Config->setblxoption('labeldatespec', [ {content => 'date', type => 'fiel
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
+my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
 my $bibentries = $section->bibentries;
 
 my $dmv =  [
@@ -90,6 +92,7 @@ my $l1 = q|    \entry{L1}{book}{}
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{labelyear}{1998}
       \field{labelmonth}{04}
       \field{labelday}{05}
@@ -102,6 +105,7 @@ my $l1 = q|    \entry{L1}{book}{}
       \field{origyear}{1985}
       \field{title}{Title 1}
       \field{year}{1998}
+      \keyw{one,two,three}
     \endentry
 |;
 
@@ -118,6 +122,7 @@ my $l2 = q|    \entry{L2}{book}{maxcitenames=3,maxbibnames=3,maxitems=2}
       \strng{namehash}{19eec87c959944d6d9c72434a42856ba}
       \strng{fullhash}{19eec87c959944d6d9c72434a42856ba}
       \field{sortinit}{E}
+      \field{sortinithash}{655e26c7438ff123e5c69c6c3f702107}
       \field{labelyear}{1998}
       \field{labelmonth}{04}
       \field{labelday}{05}
@@ -143,6 +148,7 @@ my $l3 = q|    \entry{L3}{book}{blah=10}
       \strng{namehash}{490250da1f3b92580d97563dc96c6c84}
       \strng{fullhash}{490250da1f3b92580d97563dc96c6c84}
       \field{sortinit}{B}
+      \field{sortinithash}{1a3a21dbed09540af12d49a0b14f4751}
       \field{labelyear}{1999}
       \field{labelmonth}{04}
       \field{labelday}{05}

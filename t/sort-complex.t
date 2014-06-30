@@ -52,11 +52,12 @@ Biber::Config->setblxoption('labeldate', undef);
 $biber->prepare;
 my $section = $biber->sections->get_section(0);
 my $bibentries = $section->bibentries;
-my $main = $biber->sortlists->get_list(0, 'entry', 'nty');
-my $shs = $biber->sortlists->get_list(0, 'shorthand', 'shorthand');
+my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+my $shs = $biber->sortlists->get_list(0, 'shorthands', 'list', 'shorthands');
 my $out = $biber->get_output_obj;
 
-my $ss = [
+my $ss = { locale => 'en-US',
+           spec => [
            [
             {},
             {'presort'    => {}}
@@ -95,7 +96,7 @@ my $ss = [
                               pad_width => '4'}},
             {'0000'       => {}}
            ],
-          ];
+          ]};
 
 my $l4 = q|    \entry{L4}{book}{}
       \true{morelabelname}
@@ -116,6 +117,7 @@ my $l4 = q|    \entry{L4}{book}{}
       \strng{fullhash}{6eb389989020e8246fee90ac93fcecbe}
       \field{labelalpha}{Doe\textbf{+}95}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{labeltitle}{Some title about sorting}
       \field{extraalpha}{2}
       \field{title}{Some title about sorting}
@@ -140,6 +142,7 @@ my $l1 = q|    \entry{L1}{book}{}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe95}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{labeltitle}{Algorithms For Sorting}
       \field{extraalpha}{1}
       \field{title}{Algorithms For Sorting}
@@ -164,6 +167,7 @@ my $l2 = q|    \entry{L2}{book}{}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe95}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{labeltitle}{Sorting Algorithms}
       \field{extraalpha}{3}
       \field{title}{Sorting Algorithms}
@@ -188,6 +192,7 @@ my $l3 = q|    \entry{L3}{book}{}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe95}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{labeltitle}{More and More Algorithms}
       \field{extraalpha}{2}
       \field{title}{More and More Algorithms}
@@ -214,6 +219,7 @@ my $l5 = q|    \entry{L5}{book}{}
       \strng{fullhash}{6eb389989020e8246fee90ac93fcecbe}
       \field{labelalpha}{Doe\textbf{+}95}
       \field{sortinit}{D}
+      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
       \field{labeltitle}{Some other title about sorting}
       \field{extraalpha}{1}
       \field{title}{Some other title about sorting}
@@ -237,18 +243,6 @@ is_deeply([ $shs->get_keys ], [], 'sortorder - 2');
 
 # reset options and regenerate information
 Biber::Config->setoption('sourcemap', undef); # no longer ignore shorthand*
-# Have to set the sortscheme for the shorthand list explicitly as the sortlos option is processed
-# during control file parsing so it won't be done automatically here. This is only a problem
-# in tests where we want to change sortlos and re-run
-$shs->set_sortscheme([
-                      [ {'final' => 1},
-                        {'sortshorthand'    => {}}
-                      ],
-                      [ {}, {'shorthand'     => {}} ] ]);
-$main->set_sortscheme([
-                       [ {'final' => 1},
-                         {'shorthand'    => {}}
-                       ]]);
 
 # Need to reset all entries due to "skip if already in Entries"
 # clause in bibtex.pm. Need to clear the cache as we've modified the T::B objects
@@ -258,7 +252,7 @@ $section->del_everykeys;
 Biber::Input::file::bibtex->init_cache;
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$shs = $biber->sortlists->get_list(0, 'shorthand', 'shorthand');
+$shs = $biber->sortlists->get_list(0, 'shorthands', 'list', 'shorthands');
 
 # Sort by shorthand
 is_deeply([ $shs->get_keys ], ['L1', 'L2', 'L3', 'L4', 'L5'], 'sortorder - 3');

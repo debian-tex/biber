@@ -14,6 +14,7 @@ use IO::File;
 use Log::Log4perl qw( :no_extra_logdie_message );
 use Text::Wrap;
 $Text::Wrap::columns = 80;
+use Unicode::Normalize;
 my $logger = Log::Log4perl::get_logger('main');
 
 =encoding utf-8
@@ -100,7 +101,7 @@ sub set_output_entry {
       next if first {lc($f) eq $_}  ('xdata', 'crossref');
     }
 
-    my $value = decode_utf8($be->get_rawfield($f));
+    my $value = $be->get_rawfield($f);
     $acc .= ' ' x Biber::Config->getoption('output_indent');
     $acc .= $casing->($f);
     $acc .= ' ' x ($max_field_len - Unicode::GCString->new($f)->length) if Biber::Config->getoption('output_align');
@@ -121,6 +122,17 @@ sub set_output_entry {
   # If requested to convert UTF-8 to macros ...
   if (Biber::Config->getoption('output_safechars')) {
     $acc = latex_recode_output($acc);
+  }
+  else {             # ... or, check for encoding problems and force macros
+    my $outenc = Biber::Config->getoption('output_encoding');
+    if ($outenc ne 'UTF-8') {
+      # Can this entry be represented in the output encoding?
+      if (encode($outenc, NFC($acc)) =~ /\?/) { # Malformed data encoding char
+        # So convert to macro
+        $acc = latex_recode_output($acc);
+        biber_warn("The entry '$key' has characters which cannot be encoded in '$outenc'. Recoding problematic characters into macros.");
+      }
+    }
   }
 
   # Create an index by keyname for easy retrieval
@@ -160,7 +172,7 @@ sub output {
   $logger->debug("Writing entries in bibtex format");
 
   # Bibtex output uses just one special section, always sorted by global sorting spec
-  foreach my $key ($Biber::MASTER->sortlists->get_list(99999, 'entry', Biber::Config->getblxoption('sortscheme'))->get_keys) {
+  foreach my $key ($Biber::MASTER->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme'), 'entry', Biber::Config->getblxoption('sortscheme'))->get_keys) {
     out($target, ${$data->{ENTRIES}{99999}{index}{$key}});
   }
 
@@ -209,12 +221,12 @@ Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests on our sourceforge tracker at
-L<https://sourceforge.net/tracker2/?func=browse&group_id=228270>.
+Please report any bugs or feature requests on our Github tracker at
+L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

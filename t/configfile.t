@@ -8,6 +8,8 @@ use Biber;
 use Cwd qw(getcwd);
 use File::Spec;
 use Log::Log4perl;
+use Unicode::Normalize;
+
 my $LEVEL = 'ERROR';
 my $l4pconf = qq|
     log4perl.category.main                             = $LEVEL, Screen
@@ -25,6 +27,7 @@ chdir('t/tdata');
 
 my $collopts = { level => 3,
                  variable => 'non-ignorable',
+                 normalization => 'prenormalized',
                  table => '/home/user/data/otherkeys.txt' };
 
 my $noinit = [ {value => q/\b\p{Ll}{2}\p{Pd}/}, {value => q/[\x{2bf}\x{2018}]/} ];
@@ -81,7 +84,7 @@ my $sourcemap = [
         map_step       => [
                             { map_field_source => "USERB", map_final => 1 },
                             { map_field_set => "USERB", map_null => 1 },
-                            { map_field_set => "USERE", map_field_value => "a \x{160}tring" },
+                            { map_field_set => "USERE", map_field_value => NFD("a \x{160}tring") },
                             { map_field_set => "USERF", map_null => 1 },
                           ],
         per_datasource => [{ content => "examples.bib" }],
@@ -133,6 +136,11 @@ my $sourcemap = [
                         map_field_target => "INSTITUTION",
                         map_match        => "\\A(\\S{2})",
                         map_replace      => "REP\$1CED",
+                      },
+                      {
+                        map_field_source => "LISTD",
+                        map_match        => NFD("æøå"),
+                        map_replace      => "abc",
                       },
                       {
                         map_field_set => "entrykey",
@@ -298,6 +306,7 @@ my $sourcemap = [
       },
       {
         map_step => [
+          { map_field_source => "hyphenation", map_field_target => "langid" },
           { map_field_source => "address", map_field_target => "location" },
           { map_field_source => "school", map_field_target => "institution" },
           { map_field_source => "annote", map_field_target => "annotation" },
