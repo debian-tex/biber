@@ -7,8 +7,9 @@ biber (1.9-1) unstable; urgency=medium
   * completely remove the Mozilla-CA based code instead of patching it.
     There is fallback code that already checks for the right place
     of certificates.
+  * add a patch to add missing use File::Slurp;
 
- -- Norbert Preining <preining@debian.org>  Tue, 01 Jul 2014 08:50:16 +0900
+ -- Norbert Preining <preining@debian.org>  Tue, 01 Jul 2014 09:00:56 +0900
 
 biber (1.8-1) unstable; urgency=low
 

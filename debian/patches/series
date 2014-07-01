@@ -2,3 +2,4 @@
 02_spelling.patch
 03_whatis.patch
 fix-xpathcontext
+fix-slurp-unknown
