@@ -1,3 +1,9 @@
+biber (1.9-2) UNRELEASED; urgency=medium
+
+  * fix precedence warning (Closes: #764592)
+
+ -- Norbert Preining <preining@debian.org>  Thu, 09 Oct 2014 21:44:41 +0900
+
 biber (1.9-1) unstable; urgency=medium
 
   * Imported Upstream version 1.9 (Closes: #753331)
