@@ -4,7 +4,7 @@ Uploaders: Danai SAE-HAN (韓達耐) <danai@debian.org>, Norbert Preining <prein
 Section: perl
 Priority: optional
 Build-Depends: debhelper (>= 9),
-               perl (>= 5.14.0),
+               perl (>= 5.16),
 	       libautovivification-perl,
                libconfig-autoconf-perl (>= 0.15),
                libdata-compare-perl,
@@ -37,7 +37,7 @@ Build-Depends: debhelper (>= 9),
                liburi-perl,
 	       libtest-pod-coverage-perl (>= 1.08),
 	       tex-common
-Standards-Version: 3.9.5
+Standards-Version: 3.9.6
 Vcs-Git: git://anonscm.debian.org/debian-tex/biber.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=debian-tex/biber.git
 Homepage: http://biblatex-biber.sourceforge.net/
@@ -46,6 +46,7 @@ Package: biber
 Architecture: all
 Depends: ${misc:Depends},
          ${perl:Depends},
+	 perl (>= 5.16),
 	 libautovivification-perl,
          libdata-compare-perl,
          libdata-dump-perl,
