@@ -3,8 +3,9 @@ biber (1.9-2) unstable; urgency=medium
   * fix precedence warning (Closes: #764592)
   * tighten build/run deps on perl to 5.16 (Closes: #744275)
   * bump standards version, no changes necessary
+  * lintian warning: perl also provides libunicode-collate-perl
 
- -- Norbert Preining <preining@debian.org>  Tue, 21 Oct 2014 08:59:12 +0900
+ -- Norbert Preining <preining@debian.org>  Tue, 21 Oct 2014 09:03:38 +0900
 
 biber (1.9-1) unstable; urgency=medium
 
