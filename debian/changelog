@@ -1,3 +1,9 @@
+biber (1.9-3) unstable; urgency=medium
+
+  * cherry pick upstream fix for hyphenation fixes (Closes: #773872)
+
+ -- Norbert Preining <preining@debian.org>  Thu, 25 Dec 2014 08:43:59 +0900
+
 biber (1.9-2) unstable; urgency=medium
 
   * fix precedence warning (Closes: #764592)
