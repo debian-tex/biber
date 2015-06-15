@@ -5,6 +5,8 @@ use utf8;
 no warnings 'utf8';
 
 use Test::More tests => 3;
+use Test::Differences;
+unified_diff;
 
 use Biber;
 use Biber::Output::bbl;
@@ -45,9 +47,6 @@ my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
 my $bibentries = $section->bibentries;
 
 my $l1 = q|    \entry{http://0-muse.jhu.edu.pugwash.lib.warwick.ac.uk:80/journals/theory_and_event/v005/5.3ranciere.html}{article}{}
-      \name{labelname}{1}{}{%
-        {{hash=2d6c91380dc6798fd8219e73cf91f468}{Rancière}{R\bibinitperiod}{Jacques}{J\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=2d6c91380dc6798fd8219e73cf91f468}{Rancière}{R\bibinitperiod}{Jacques}{J\bibinitperiod}{}{}{}{}}%
       }
@@ -58,10 +57,11 @@ my $l1 = q|    \entry{http://0-muse.jhu.edu.pugwash.lib.warwick.ac.uk:80/journal
       \strng{namehash}{2d6c91380dc6798fd8219e73cf91f468}
       \strng{fullhash}{2d6c91380dc6798fd8219e73cf91f468}
       \field{sortinit}{R}
-      \field{sortinithash}{ff5a3533ecf9d5a03ff60b1e1389b63d}
+      \field{sortinithash}{c7387613477035a752d935acfc3e3ea2}
       \field{labelyear}{2001}
       \field{datelabelsource}{}
-      \field{labeltitle}{ten theses on politics}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{journaltitle}{Theory \& Event}
       \field{library}{Project MUSE}
       \field{note}{Volume 5, Issue 3, 2001}
@@ -76,9 +76,6 @@ my $l1 = q|    \entry{http://0-muse.jhu.edu.pugwash.lib.warwick.ac.uk:80/journal
 |;
 
 my $l2 = q|    \entry{urn:isbn:0713990023}{book}{}
-      \name{labelname}{1}{}{%
-        {{hash=984e5967448051538555a64aac11ed21}{Foucault}{F\bibinitperiod}{Michel}{M\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=984e5967448051538555a64aac11ed21}{Foucault}{F\bibinitperiod}{Michel}{M\bibinitperiod}{}{}{}{}}%
       }
@@ -91,10 +88,11 @@ my $l2 = q|    \entry{urn:isbn:0713990023}{book}{}
       \strng{namehash}{984e5967448051538555a64aac11ed21}
       \strng{fullhash}{984e5967448051538555a64aac11ed21}
       \field{sortinit}{F}
-      \field{sortinithash}{9661cce5f16ac30b6b0c804d4583ed99}
+      \field{sortinithash}{c6a7d9913bbd7b20ea954441c0460b78}
       \field{labelyear}{1988}
       \field{datelabelsource}{}
-      \field{labeltitle}{The History of Sexuality volume 3: The Care of the Self}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{isbn}{0713990023}
       \field{library}{webcat.warwick.ac.uk Library Catalog}
       \field{pagetotal}{279}
@@ -104,9 +102,6 @@ my $l2 = q|    \entry{urn:isbn:0713990023}{book}{}
 |;
 
 my $l3 = q|    \entry{item_54}{inbook}{}
-      \name{labelname}{1}{}{%
-        {{hash=984e5967448051538555a64aac11ed21}{Foucault}{F\bibinitperiod}{Michel}{M\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=984e5967448051538555a64aac11ed21}{Foucault}{F\bibinitperiod}{Michel}{M\bibinitperiod}{}{}{}{}}%
       }
@@ -126,12 +121,13 @@ my $l3 = q|    \entry{item_54}{inbook}{}
       \strng{namehash}{984e5967448051538555a64aac11ed21}
       \strng{fullhash}{984e5967448051538555a64aac11ed21}
       \field{sortinit}{F}
-      \field{sortinithash}{9661cce5f16ac30b6b0c804d4583ed99}
+      \field{sortinithash}{c6a7d9913bbd7b20ea954441c0460b78}
       \field{labelyear}{1996}
       \field{labelmonth}{03\bibdatedash 04}
       \field{labelday}{04\bibdatedash 07}
       \field{datelabelsource}{}
-      \field{labeltitle}{The Ethics of the Concern for Self as a Practice of Freedom}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{booktitle}{Foucault Live: Interviews, 1961-1984}
       \field{day}{04}
       \field{endday}{07}
@@ -141,9 +137,10 @@ my $l3 = q|    \entry{item_54}{inbook}{}
       \field{title}{The Ethics of the Concern for Self as a Practice of Freedom}
       \field{year}{1996}
       \field{pages}{432\bibrangedash 449}
+      \range{pages}{18}
     \endentry
 |;
 
-is( $out->get_output_entry('http://0-muse.jhu.edu.pugwash.lib.warwick.ac.uk:80/journals/theory_and_event/v005/5.3ranciere.html', $main), $l1, 'Basic Zotero RDF/XML test - 1') ;
-is( $out->get_output_entry('urn:isbn:0713990023', $main), $l2, 'Basic Zotero RDF/XML test - 2') ;
-is( $out->get_output_entry('item_54', $main), $l3, 'Basic Zotero RDF/XML test - 3') ;
+eq_or_diff( $out->get_output_entry('http://0-muse.jhu.edu.pugwash.lib.warwick.ac.uk:80/journals/theory_and_event/v005/5.3ranciere.html', $main), $l1, 'Basic Zotero RDF/XML test - 1') ;
+eq_or_diff( $out->get_output_entry('urn:isbn:0713990023', $main), $l2, 'Basic Zotero RDF/XML test - 2') ;
+eq_or_diff( $out->get_output_entry('item_54', $main), $l3, 'Basic Zotero RDF/XML test - 3') ;

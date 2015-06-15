@@ -46,7 +46,6 @@ GetOptions(
            'listsep=s',
            'logfile=s',
            'mincrossrefs|m=s',
-           'mssplit=s',
            'namesep=s',
            'noconf',
            'nodieonerror',
@@ -347,7 +346,7 @@ else {
 # Get reference to output object
 my $biberoutput = $biber->get_output_obj;
 
-# Set the output target
+# Set the output target file name
 $biberoutput->set_output_target_file($outfile);
 
 # Do all the real work
@@ -509,11 +508,6 @@ Use F<sep> as the separator for BibTeX data source list fields. Defaults to BibT
 =item B<--mincrossrefs|-m [number]>
 
 Set threshold for crossrefs.
-
-=item B<--mssplit=[string]>
-
-Character used to split bibtex data source field names into field/form/language subfields when
-using multiscript features. Defaults to underscore (ASCII 95).
 
 =item B<--namesep=[sep]>
 
@@ -742,7 +736,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

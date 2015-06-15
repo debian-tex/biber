@@ -5,6 +5,8 @@ use utf8;
 no warnings 'utf8';
 
 use Test::More tests => 3;
+use Test::Differences;
+unified_diff;
 
 use Biber;
 use Biber::Output::bbl;
@@ -43,20 +45,18 @@ my $out = $biber->get_output_obj;
 
 my $string1 = q|    \entry{Elias1955}{set}{}
       \set{Elias1955a,Elias1955b}
-      \name{labelname}{1}{}{%
-        {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{Elias}{E\bibinitperiod}{P.}{P\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{Elias}{E\bibinitperiod}{P.}{P\bibinitperiod}{}{}{}{}}%
       }
       \strng{namehash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \strng{fullhash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \field{sortinit}{0}
-      \field{sortinithash}{a08a9549c5c2429f8cec5d1a581b26ca}
+      \field{sortinithash}{990108227b3316c02842d895999a0165}
       \field{labelyear}{1955}
       \field{labelmonth}{03}
       \field{datelabelsource}{}
-      \field{labeltitle}{Predictive coding--I}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{issn}{0096-1000}
       \field{journaltitle}{IRE Transactions on Information Theory}
       \field{month}{03}
@@ -65,6 +65,7 @@ my $string1 = q|    \entry{Elias1955}{set}{}
       \field{volume}{1}
       \field{year}{1955}
       \field{pages}{16\bibrangedash 24}
+      \range{pages}{9}
       \verb{doi}
       \verb 10.1109/TIT.1955.1055126
       \endverb
@@ -74,17 +75,15 @@ my $string1 = q|    \entry{Elias1955}{set}{}
 
 my $string2 = q|    \entry{Elias1955a}{article}{}
       \inset{Elias1955}
-      \name{labelname}{1}{}{%
-        {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{Elias}{E\bibinitperiod}{P.}{P\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{Elias}{E\bibinitperiod}{P.}{P\bibinitperiod}{}{}{}{}}%
       }
       \strng{namehash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \strng{fullhash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \field{sortinit}{0}
-      \field{sortinithash}{a08a9549c5c2429f8cec5d1a581b26ca}
-      \field{labeltitle}{Predictive coding--I}
+      \field{sortinithash}{990108227b3316c02842d895999a0165}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{issn}{0096-1000}
       \field{journaltitle}{IRE Transactions on Information Theory}
       \field{month}{03}
@@ -93,6 +92,7 @@ my $string2 = q|    \entry{Elias1955a}{article}{}
       \field{volume}{1}
       \field{year}{1955}
       \field{pages}{16\bibrangedash 24}
+      \range{pages}{9}
       \verb{doi}
       \verb 10.1109/TIT.1955.1055126
       \endverb
@@ -102,17 +102,15 @@ my $string2 = q|    \entry{Elias1955a}{article}{}
 
 my $string3 = q|    \entry{Elias1955b}{article}{}
       \inset{Elias1955}
-      \name{labelname}{1}{}{%
-        {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{Elias}{E\bibinitperiod}{P.}{P\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{Elias}{E\bibinitperiod}{P.}{P\bibinitperiod}{}{}{}{}}%
       }
       \strng{namehash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \strng{fullhash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \field{sortinit}{0}
-      \field{sortinithash}{a08a9549c5c2429f8cec5d1a581b26ca}
-      \field{labeltitle}{Predictive coding--II}
+      \field{sortinithash}{990108227b3316c02842d895999a0165}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{issn}{0096-1000}
       \field{journaltitle}{IRE Transactions on Information Theory}
       \field{month}{03}
@@ -121,6 +119,7 @@ my $string3 = q|    \entry{Elias1955b}{article}{}
       \field{volume}{1}
       \field{year}{1955}
       \field{pages}{24\bibrangedash 33}
+      \range{pages}{10}
       \verb{doi}
       \verb 10.1109/TIT.1955.1055116
       \endverb
@@ -128,7 +127,7 @@ my $string3 = q|    \entry{Elias1955b}{article}{}
     \endentry
 |;
 
-is($out->get_output_entry('Elias1955', $main), $string1, 'Legacy set test 1');
-is($out->get_output_entry('Elias1955a', $main), $string2, 'Legacy set test 2');
-is($out->get_output_entry('Elias1955b', $main), $string3, 'Legacy set test 3');
+eq_or_diff($out->get_output_entry('Elias1955', $main), $string1, 'Legacy set test 1');
+eq_or_diff($out->get_output_entry('Elias1955a', $main), $string2, 'Legacy set test 2');
+eq_or_diff($out->get_output_entry('Elias1955b', $main), $string3, 'Legacy set test 3');
 

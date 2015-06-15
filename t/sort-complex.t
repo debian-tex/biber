@@ -5,6 +5,8 @@ use utf8;
 no warnings 'utf8';
 
 use Test::More tests => 9;
+use Test::Differences;
+unified_diff;
 
 use Biber;
 use Biber::Output::bbl;
@@ -99,10 +101,6 @@ my $ss = { locale => 'en-US',
           ]};
 
 my $l4 = q|    \entry{L4}{book}{}
-      \true{morelabelname}
-      \name{labelname}{1}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-      }
       \true{moreauthor}
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
@@ -117,18 +115,16 @@ my $l4 = q|    \entry{L4}{book}{}
       \strng{fullhash}{6eb389989020e8246fee90ac93fcecbe}
       \field{labelalpha}{Doe\textbf{+}95}
       \field{sortinit}{D}
-      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
-      \field{labeltitle}{Some title about sorting}
+      \field{sortinithash}{78f7c4753a2004675f316a80bdb31742}
       \field{extraalpha}{2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{title}{Some title about sorting}
       \field{year}{1995}
     \endentry
 |;
 
 my $l1 = q|    \entry{L1}{book}{}
-      \name{labelname}{1}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
       }
@@ -142,18 +138,16 @@ my $l1 = q|    \entry{L1}{book}{}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe95}
       \field{sortinit}{D}
-      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
-      \field{labeltitle}{Algorithms For Sorting}
+      \field{sortinithash}{78f7c4753a2004675f316a80bdb31742}
       \field{extraalpha}{1}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{title}{Algorithms For Sorting}
       \field{year}{1995}
     \endentry
 |;
 
 my $l2 = q|    \entry{L2}{book}{}
-      \name{labelname}{1}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
       }
@@ -167,18 +161,16 @@ my $l2 = q|    \entry{L2}{book}{}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe95}
       \field{sortinit}{D}
-      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
-      \field{labeltitle}{Sorting Algorithms}
+      \field{sortinithash}{78f7c4753a2004675f316a80bdb31742}
       \field{extraalpha}{3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{title}{Sorting Algorithms}
       \field{year}{1995}
     \endentry
 |;
 
 my $l3 = q|    \entry{L3}{book}{}
-      \name{labelname}{1}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
       }
@@ -192,19 +184,16 @@ my $l3 = q|    \entry{L3}{book}{}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe95}
       \field{sortinit}{D}
-      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
-      \field{labeltitle}{More and More Algorithms}
+      \field{sortinithash}{78f7c4753a2004675f316a80bdb31742}
       \field{extraalpha}{2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{title}{More and More Algorithms}
       \field{year}{1995}
     \endentry
 |;
 
 my $l5 = q|    \entry{L5}{book}{}
-      \true{morelabelname}
-      \name{labelname}{1}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-      }
       \true{moreauthor}
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
@@ -219,9 +208,10 @@ my $l5 = q|    \entry{L5}{book}{}
       \strng{fullhash}{6eb389989020e8246fee90ac93fcecbe}
       \field{labelalpha}{Doe\textbf{+}95}
       \field{sortinit}{D}
-      \field{sortinithash}{a01c54d1737685bc6dbf0ea0673fa44c}
-      \field{labeltitle}{Some other title about sorting}
+      \field{sortinithash}{78f7c4753a2004675f316a80bdb31742}
       \field{extraalpha}{1}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{title}{Some other title about sorting}
       \field{year}{1995}
     \endentry
@@ -229,11 +219,11 @@ my $l5 = q|    \entry{L5}{book}{}
 
 
 is_deeply( $main->get_sortscheme , $ss, 'sort scheme');
-is( $out->get_output_entry('L4', $main), $l4, '\alphaothers set by "and others"');
-is( $out->get_output_entry('L1', $main), $l1, 'bbl test 1');
-is( $out->get_output_entry('L2', $main), $l2, 'bbl test 2');
-is( $out->get_output_entry('L3', $main), $l3, 'bbl test 3');
-is( $out->get_output_entry('L5', $main), $l5, 'bbl test 4');
+eq_or_diff( $out->get_output_entry('L4', $main), $l4, '\alphaothers set by "and others"');
+eq_or_diff( $out->get_output_entry('L1', $main), $l1, 'bbl test 1');
+eq_or_diff( $out->get_output_entry('L2', $main), $l2, 'bbl test 2');
+eq_or_diff( $out->get_output_entry('L3', $main), $l3, 'bbl test 3');
+eq_or_diff( $out->get_output_entry('L5', $main), $l5, 'bbl test 4');
 is_deeply([ $main->get_keys ], ['L5', 'L4', 'L1', 'L3', 'L2'], 'sortorder - 1');
 
 # This would be the same as $main citeorder as both $main and $shs use same

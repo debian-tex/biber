@@ -82,7 +82,7 @@ sub create_output_misc {
       my $outenc = Biber::Config->getoption('output_encoding');
       if ($outenc ne 'UTF-8') {
         # Can this entry be represented in the output encoding?
-        if (encode($outenc, NFC($pa)) =~ /\?/) { # Malformed data encoding char
+        if (encode($outenc, NFC($pa), sub {"\0"}) =~ /\0/) { # Malformed data encoding char
           # So convert to macro
           $pa = latex_recode_output($pa);
         }
@@ -231,38 +231,10 @@ sub set_output_entry {
   }
 
   # Output name fields
-
-  # first output copy in labelname
-  # This is essentially doing the same thing twice but in the future,
-  # labelname may have different things attached than the raw name
-  my $lni = $be->get_labelname_info;
-  my $plo = ''; # per-list options
-
-  if (my $ln = $be->get_field('labelname')) {
-    my @plo;
-    # Add uniquelist, if defined
-    if (my $ul = $ln->get_uniquelist){
-      push @plo, "uniquelist=$ul";
-    }
-    $plo = join(',', @plo);
-
-    # Did we have "and others" in the data?
-    if ( $ln->get_morenames ) {
-      $acc .= "      \\true{morelabelname}\n";
-    }
-
-    my $total = $ln->count_names;
-    $acc .= "      \\name{labelname}{$total}{$plo}{%\n";
-    foreach my $n (@{$ln->names}) {
-      $acc .= $n->name_to_bbl;
-    }
-    $acc .= "      }\n";
-  }
-
-  # then names themselves
   foreach my $namefield (@{$dm->get_fields_of_type('list', 'name')}) {
     next if $dm->field_is_skipout($namefield);
     if ( my $nf = $be->get_field($namefield) ) {
+      my $plo = '';
 
       # Did we have "and others" in the data?
       if ( $nf->get_morenames ) {
@@ -270,8 +242,18 @@ sub set_output_entry {
       }
 
       my $total = $nf->count_names;
-      # Copy per-list options to the actual labelname too
-      $plo = '' unless (defined($lni) and $namefield eq $lni->{field});
+
+      # Add per-list options, if any
+      my $lni = $be->get_labelname_info;
+      if (defined($lni) and
+          $lni eq $namefield) {
+        # Add uniquelist, if defined
+        my @plo;
+        if (my $ul = $nf->get_uniquelist){
+          push @plo, "uniquelist=$ul";
+        }
+        $plo = join(',', @plo);
+      }
       $acc .= "      \\name{$namefield}{$total}{$plo}{%\n";
       foreach my $n (@{$nf->names}) {
         $acc .= $n->name_to_bbl;
@@ -359,11 +341,6 @@ sub set_output_entry {
     }
   }
 
-  # labeltitle is always output
-  if (my $lt = $be->get_field('labeltitle')) {
-    $acc .= "      \\field{labeltitle}{$lt}\n";
-  }
-
   # The labelalpha option determines whether "extraalpha" is output
   if ( Biber::Config->getblxoption('labelalpha', $bee)) {
     # Might not have been set due to skiplab/dataonly
@@ -385,6 +362,16 @@ sub set_output_entry {
 
   if (defined($be->get_field('singletitle'))) {
     $acc .= "      \\true{singletitle}\n";
+  }
+
+  # The source field for labelname
+  if (my $lni = $be->get_labelname_info) {
+    $acc .= "      \\field{labelnamesource}{$lni}\n";
+  }
+
+  # The source field for labeltitle
+  if (my $lti = $be->get_labeltitle_info) {
+    $acc .= "      \\field{labeltitlesource}{$lti}\n";
   }
 
   if (my $ck = $be->get_field('clonesourcekey')) {
@@ -440,6 +427,7 @@ sub set_output_entry {
       }
       my $bbl_rf = join('\bibrangessep ', @pr);
       $acc .= "      \\field{$rfield}{$bbl_rf}\n";
+      $acc .= "      \\range{$rfield}{" . rangelen($rf) . "}\n";
     }
   }
 
@@ -476,7 +464,7 @@ sub set_output_entry {
   }
 
   # Append any warnings to the entry, if any
-  if ( my $w = $be->get_field('warnings')) {
+  if (my $w = $be->get_field('warnings')) {
     foreach my $warning (@$w) {
       $acc .= "      \\warn{\\item $warning}\n";
     }
@@ -568,7 +556,9 @@ sub output {
             my $outenc = Biber::Config->getoption('output_encoding');
             if ($outenc ne 'UTF-8') {
               # Can this entry be represented in the output encoding?
-              if (encode($outenc, NFC($entry_string)) =~ /\?/) { # Malformed data encoding char
+              # We must have an ASCII-safe replacement string for encode whic is unlikely to be
+              # in the string. Default is "?" which could easily be in URLS so we choose ASCII null
+              if (encode($outenc, NFC($entry_string), sub {"\0"})  =~ /\0/) { # Malformed data encoding char
                 # So convert to macro
                 $entry_string = latex_recode_output($entry_string);
                 biber_warn("The entry '$k' has characters which cannot be encoded in '$outenc'. Recoding problematic characters into macros.");
@@ -624,7 +614,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

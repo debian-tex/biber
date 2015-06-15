@@ -29,10 +29,13 @@ my $builder = $class->new(
     dist_author         => 'Philip Kime <Philip@kime.org.uk>',
     dist_abstract       => 'Biber is a much-augmented bibtex replacement for biblatex users',
     dist_version_from   => 'lib/Biber/Config.pm',
-    build_recommends => {
-       'Test::More'   => 0,
-       'File::Which'  => 0,
-    },
+    test_requires => {
+                      'Test::More'   => 0,
+                      'Test::Pod'   => 0,
+                      'Test::Pod::Coverage'   => 0,
+                      'Test::Differences' => 0,
+                      'File::Which'  => 0
+                        },
     add_to_cleanup      => [ 'biber-*' ],
     configure_requires => { 'Module::Build' => 0.38 },
     build_requires => {
@@ -49,10 +52,12 @@ my $builder = $class->new(
         'IPC::Run3' => 0,
         'List::AllUtils' => 0,
         'List::MoreUtils' => 0,
-        'Mozilla::CA' =>  '20130114',
+        'List::MoreUtils::XS' => 0,
+        'Mozilla::CA' =>  '20141217',
         'Regexp::Common' => 0,
         'Log::Log4perl' => 0,
-        'Unicode::Collate' => '1.04',
+        'Unicode::Collate' => '1.12',
+        'Unicode::Normalize' => '<= 1.17',# 1.18 removes XS and is too slow
         'Unicode::GCString' => 0,
         'Encode::EUCJPASCII' => 0,
         'Encode::JIS2K' => 0,
@@ -60,8 +65,9 @@ my $builder = $class->new(
         'XML::LibXML::Simple' => 0,
         'XML::LibXSLT' => 0,
         'XML::Writer' => 0,
+        'Text::Roman' => 0,
         'URI' => 0,
-        'Text::BibTeX' => '0.69',
+        'Text::BibTeX' => '0.70',
         'LWP::Simple' => 0,
         'LWP::Protocol::https' => 0,
         'Business::ISBN' => 0,

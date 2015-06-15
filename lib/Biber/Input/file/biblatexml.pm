@@ -641,6 +641,10 @@ sub parsename {
 
   my $namestring = '';
 
+  # Don't add suffix to namestring or nameinitstring as these are used for uniquename disambiguation
+  # which should only care about lastname + any prefix (if useprefix=true). See biblatex github
+  # tracker #306.
+
   # prefix
   if (my $p = $namec{prefix}) {
     $namestring .= "$p ";
@@ -651,19 +655,9 @@ sub parsename {
     $namestring .= "$l, ";
   }
 
-  # suffix
-  if (my $s = $namec{suffix}) {
-    $namestring .= "$s, ";
-  }
-
   # firstname
   if (my $f = $namec{first}) {
     $namestring .= "$f";
-  }
-
-  # middlename
-  if (my $m = $namec{middle}) {
-    $namestring .= "$m, ";
   }
 
   # Remove any trailing comma and space if, e.g. missing firstname
@@ -673,9 +667,7 @@ sub parsename {
   my $nameinitstr = '';
   $nameinitstr .= join('', @{$namec{prefix_i}}) . '_' if ( $usepre and exists($namec{prefix}) );
   $nameinitstr .= $namec{last} if exists($namec{last});
-  $nameinitstr .= '_' . join('', @{$namec{suffix_i}}) if exists($namec{suffix});
   $nameinitstr .= '_' . join('', @{$namec{first_i}}) if exists($namec{first});
-  $nameinitstr .= '_' . join('', @{$namec{middle_i}}) if exists($namec{middle});
   $nameinitstr =~ s/\s+/_/g;
 
   return Biber::Entry::Name->new(
@@ -815,7 +807,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
