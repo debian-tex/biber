@@ -1,7 +1,6 @@
 ---
- lib/Biber.pm        |    1 +
- lib/Biber/Config.pm |    1 +
- 2 files changed, 2 insertions(+)
+ lib/Biber.pm |    1 +
+ 1 file changed, 1 insertion(+)
 
 --- biber.orig/lib/Biber.pm
 +++ biber/lib/Biber.pm
@@ -13,13 +12,3 @@
  use File::Spec;
  use File::Temp;
  use IO::File;
---- biber.orig/lib/Biber/Config.pm
-+++ biber/lib/Biber/Config.pm
-@@ -9,6 +9,7 @@
- use Data::Compare;
- use Data::Dump;
- use Encode;
-+use File::Slurp;
- use Carp;
- use List::AllUtils qw(first max);
- use Log::Log4perl qw( :no_extra_logdie_message ); # To keep PAR::Packer happy, explicitly load these

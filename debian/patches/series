@@ -3,5 +3,4 @@
 03_whatis.patch
 fix-xpathcontext
 fix-slurp-unknown
-fix-perl-warning
-biber-fix-hyphenation
+#fix-perl-warning
