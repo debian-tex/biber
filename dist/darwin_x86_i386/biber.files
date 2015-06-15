@@ -1,0 +1,16 @@
+../../data/biber-tool.conf;lib/Biber/biber-tool.conf
+../../data/schemata/config.rnc;lib/Biber/config.rnc
+../../data/schemata/config.rng;lib/Biber/config.rng
+../../data/schemata/bcf.rnc;lib/Biber/bcf.rnc
+../../data/schemata/bcf.rng;lib/Biber/bcf.rng
+../../data/schemata/biblatexml.rnc;lib/Biber/biblatexml.rnc
+../../data/schemata/biblatexml.rng;lib/Biber/biblatexml.rng
+../../lib/Biber/LaTeX/recode_data.xml;lib/Biber/LaTeX/recode_data.xml
+../../data/bcf.xsl;lib/Biber/bcf.xsl
+../../data/latinkeys.txt;lib/Unicode/Collate/latinkeys.txt
+/opt/local/lib/perl5/site_perl/5.20/darwin-thread-multi-2level/Unicode/Collate/Locale;lib/Unicode/Collate/Locale
+/opt/local/lib/perl5/site_perl/5.20/darwin-thread-multi-2level/Unicode/Collate/CJK;lib/Unicode/Collate/CJK
+/opt/local/lib/perl5/site_perl/5.20/darwin-thread-multi-2level/Unicode/Collate/allkeys.txt;lib/Unicode/Collate/allkeys.txt
+/opt/local/lib/perl5/site_perl/5.20/darwin-thread-multi-2level/Unicode/Collate/keys.txt;lib/Unicode/Collate/keys.txt
+/opt/local/lib/perl5/site_perl/5.20/Mozilla/CA/cacert.pem;lib/Mozilla/CA/cacert.pem
+/opt/local/lib/perl5/site_perl/5.20/Business/ISBN/RangeMessage.xml;lib/Business/ISBN/RangeMessage.xml

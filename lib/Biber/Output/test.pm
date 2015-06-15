@@ -98,41 +98,12 @@ sub set_output_entry {
     }
   }
 
+
   # Output name fields
-
-  # first output copy in labelname
-  # This is essentially doing the same thing twice but in the future,
-  # labelname may have different things attached than the raw name
-  my $lni = $be->get_labelname_info;
-  my $name_others_deleted = '';
-  my $plo; # per-list options
-
-  if (my $ln = $be->get_field('labelname')) {
-    my @plo;
-
-    # Add uniquelist, if defined
-    if (my $ul = $ln->get_uniquelist){
-      push @plo, "uniquelist=$ul";
-    }
-    $plo =join(',', @plo);
-
-    # Did we have "and others" in the data?
-    if ( $ln->get_morenames ) {
-      $acc .= "      \\true{morelabelname}\n";
-    }
-
-    my $total = $ln->count_names;
-    $acc .= "      \\name{labelname}{$total}{$plo}{%\n";
-    foreach my $n (@{$ln->names}) {
-      $acc .= $n->name_to_bbl;
-    }
-    $acc .= "      }\n";
-  }
-
-  # then names themselves
   foreach my $namefield (@{$dm->get_fields_of_type('list', 'name')}) {
     next if $dm->field_is_skipout($namefield);
     if ( my $nf = $be->get_field($namefield) ) {
+      my $plo = '';
 
       # Did we have "and others" in the data?
       if ( $nf->get_morenames ) {
@@ -140,9 +111,19 @@ sub set_output_entry {
       }
 
       my $total = $nf->count_names;
-      # Copy perl-list options to the actual labelname too
-      $plo = '' unless (defined($lni) and $namefield eq $lni->{field});
-      $acc .= "      \\name{$namefield}{$total}{}{%\n";
+
+      # Add per-list options, if any
+      my $lni = $be->get_labelname_info;
+      if (defined($lni) and
+          $lni eq $namefield) {
+        # Add uniquelist, if defined
+        my @plo;
+        if (my $ul = $nf->get_uniquelist){
+          push @plo, "uniquelist=$ul";
+        }
+        $plo = join(',', @plo);
+      }
+      $acc .= "      \\name{$namefield}{$total}{$plo}{%\n";
       foreach my $n (@{$nf->names}) {
         $acc .= $n->name_to_bbl;
       }
@@ -227,10 +208,6 @@ sub set_output_entry {
     }
   }
 
-  # labeltitle is always output
-  if (my $lt = $be->get_field('labeltitle')) {
-    $acc .= "      \\field{labeltitle}{$lt}\n";
-  }
 
   # The labelalpha option determines whether "extraalpha" is output
   # Skip generating extraalpha for entries with "skiplab" set
@@ -255,6 +232,16 @@ sub set_output_entry {
 
   if (defined($be->get_field('singletitle'))) {
     $acc .= "      \\true{singletitle}\n";
+  }
+
+  # The source field for labelname
+  if (my $lni = $be->get_labelname_info) {
+    $acc .= "      \\field{labelnamesource}{$lni}\n";
+  }
+
+  # The source field for labeltitle
+  if (my $lti = $be->get_labeltitle_info) {
+    $acc .= "      \\field{labeltitlesource}{$lti}\n";
   }
 
   foreach my $field (sort @{$dm->get_fields_of_type('field', 'entrykey')},
@@ -295,6 +282,7 @@ sub set_output_entry {
     if ( my $rf = $be->get_field($rfield)) {
       $rf =~ s/[-–]+/\\bibrangedash /g;
       $acc .= "      \\field{$rfield}{$rf}\n";
+      $acc .= "      \\range{$rfield}{" . rangelen($rf) . "}\n";
     }
   }
 
@@ -408,7 +396,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

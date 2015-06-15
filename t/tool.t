@@ -2,6 +2,9 @@
 use strict;
 use warnings;
 use Test::More tests => 5;
+use Test::Differences;
+unified_diff;
+
 use Encode;
 use Biber;
 use Biber::Utils;
@@ -47,20 +50,17 @@ my $main = $biber->sortlists->get_list(99999, Biber::Config->getblxoption('sorts
 my $out = $biber->get_output_obj;
 
 my $t1 = q|@UNPUBLISHED{i3Š,
-  ABSTRACT                   = {Some abstract %50 of which is useless},
-  AUTHOR                     = {AAA and BBB and CCC and DDD and EEE},
-  AUTHOR_uniform_lang        = {aaa and bbb and ccc and ddd and eee},
-  DATE                       = {2003},
-  INSTITUTION                = {REPlaCEDte and early},
-  KEYWORDS                   = {keyword},
-  LISTA                      = {list test},
-  LISTB                      = {late and early},
-  LOCATION                   = {one and two},
-  LOCATION_translated_french = {un and deux},
-  NOTE                       = {i3Š},
-  TITLE                      = {Š title},
-  TITLE_translated_french    = {Le title},
-  USERB                      = {test},
+  ABSTRACT    = {Some abstract %50 of which is useless},
+  AUTHOR      = {AAA and BBB and CCC and DDD and EEE},
+  DATE        = {2003},
+  INSTITUTION = {REPlaCEDte and early},
+  KEYWORDS    = {keyword},
+  LISTA       = {list test},
+  LISTB       = {late and early},
+  LOCATION    = {one and two},
+  NOTE        = {i3Š},
+  TITLE       = {Š title},
+  USERB       = {test},
 }
 
 |;
@@ -86,8 +86,8 @@ my $t3 = q|@BOOK{b1,
 |;
 
 # NFD here because we are testing internals here and all internals expect NFD
-is($out->get_output_entry(NFD('i3Š')), $t1, 'tool mode 1');
+eq_or_diff($out->get_output_entry(NFD('i3Š')), $t1, 'tool mode 1');
 ok(is_undef($out->get_output_entry('loh')), 'tool mode 2');
-is($out->get_output_entry('xd1',), $t2, 'tool mode 3');
-is($out->get_output_entry('b1',), $t3, 'tool mode 4');
+eq_or_diff($out->get_output_entry('xd1',), $t2, 'tool mode 3');
+eq_or_diff($out->get_output_entry('b1',), $t3, 'tool mode 4');
 is_deeply([$main->get_keys], ['macmillan:pub', 'macmillan:loc', 'mv1', 'b1', 'xd1', 'macmillan', NFD('i3Š')], 'tool mode sorting');

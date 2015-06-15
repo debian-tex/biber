@@ -5,6 +5,8 @@ use warnings;
 use base qw(Exporter);
 use Biber::Config;
 use Encode;
+use File::Slurp;
+use File::Spec;
 use IPC::Cmd qw( can_run );
 use IPC::Run3; # This works with PAR::Packer and Windows. IPC::Run doesn't
 use Unicode::Normalize;
@@ -12,6 +14,7 @@ use List::AllUtils qw (first);
 use Log::Log4perl qw(:no_extra_logdie_message);
 use XML::LibXML::Simple;
 use Carp;
+use utf8;
 
 our @EXPORT  = qw(latex_encode latex_decode);
 
@@ -113,7 +116,7 @@ sub init_sets {
   my $recodexml = $parser->parse_string(decode('UTF-8', $xml));
   my $xpc = XML::LibXML::XPathContext->new($recodexml);
 
-  my @types = qw(accents letters diacritics punctuation symbols negatedsymbols superscripts cmdsuperscripts dings greek);
+  my @types = qw(letters diacritics punctuation symbols negatedsymbols superscripts cmdsuperscripts dings greek);
 
   # Have to have separate loops for decode/recode or you can't have independent decode/recode
   # sets
@@ -128,6 +131,10 @@ sub init_sets {
         my $to = $map->findnodes('to')->shift();
         $remap_d->{$type}{map}{NFD($from->textContent())} = NFD($to->textContent());
       }
+    }
+    # Things we don't want to change when decoding as this breaks some things
+    foreach my $d ($xpc->findnodes('/texmap/decode_exclude/char')) {
+      delete($remap_d->{$type}{map}{NFD($d->textContent())});
     }
   }
 
@@ -147,7 +154,7 @@ sub init_sets {
         my $to = $map->findnodes('to')->shift();
         $remap_e->{$type}{map}{NFD($to->textContent())} = NFD($from->textContent());
       }
-      # Some things might need to be inserted as is rather than wrappen in some macro/braces
+      # Some things might need to be inserted as is rather than wrapped in some macro/braces
       foreach my $map ($maps->findnodes('map[from[@raw]]')) {
         my $from = $map->findnodes('from')->shift();
         my $to = $map->findnodes('to')->shift();
@@ -162,37 +169,19 @@ sub init_sets {
   }
 
   # Populate the decode regexps
+  # sort by descending length of macro name to avoid shorter macros which are substrings
+  # of longer ones damaging the longer ones
   foreach my $type (@types) {
     next unless exists $remap_d->{$type};
-    if ($type eq 'accents') {
-      $remap_d->{$type}{re} = '[' . join('', sort keys %{$remap_d->{$type}{map}}) . ']';
-      $remap_d->{$type}{re} = qr/$remap_d->{$type}{re}/;
-    }
-    elsif ($type eq 'superscripts') {
-      $remap_d->{$type}{re} = join('|', map { /[\+\-\)\(]/ ? '\\' . $_ : $_ } sort keys %{$remap_d->{$type}{map}});
-      $remap_d->{$type}{re} = qr|$remap_d->{$type}{re}|;
-    }
-    else {
-      $remap_d->{$type}{re} = join('|', sort keys %{$remap_d->{$type}{map}});
-      $remap_d->{$type}{re} = qr|$remap_d->{$type}{re}|;
-    }
+    $remap_d->{$type}{re} = join('|', map { /[\.\^\|\+\-\)\(]/ ? '\\' . $_ : $_ } sort {length($b) <=> length($a)} keys %{$remap_d->{$type}{map}});
+    $remap_d->{$type}{re} = qr|$remap_d->{$type}{re}|;
   }
 
   # Populate the encode regexps
   foreach my $type (@types) {
     next unless exists $remap_e->{$type};
-    if ($type eq 'accents') {
-      $remap_e->{$type}{re} = '[' . join('', sort keys %{$remap_e->{$type}{map}}) . ']';
-      $remap_e->{$type}{re} = qr/$remap_e->{$type}{re}/;
-    }
-    elsif ($type eq 'superscripts') {
-      $remap_e->{$type}{re} = join('|', map { /[\+\-\)\(]/ ? '\\' . $_ : $_ } sort keys %{$remap_e->{$type}{map}});
-      $remap_e->{$type}{re} = qr|$remap_e->{$type}{re}|;
-    }
-    else {
-      $remap_e->{$type}{re} = join('|', sort keys %{$remap_e->{$type}{map}});
-      $remap_e->{$type}{re} = qr|$remap_e->{$type}{re}|;
-    }
+    $remap_e->{$type}{re} = join('|', map { /[\.\^\|\+\-\)\(]/ ? '\\' . $_ : $_ } sort keys %{$remap_e->{$type}{map}});
+    $remap_e->{$type}{re} = qr|$remap_e->{$type}{re}|;
   }
 }
 
@@ -207,12 +196,6 @@ The function accepts a number of options:
 
     * normalization => <normalization form> (default 'NFD')
         and if yes, the normalization form to use (see the Unicode::Normalize documentation)
-
-    * strip_outer_braces => $bool (default 0)
-        whether the outer curly braces around letters+combining marks should be
-        stripped off. By default "fut{\\'e}" becomes fut{é}, to prevent something
-        like '\\textuppercase{\\'e}' from becoming '\\textuppercaseé'. Setting this option to
-        TRUE can be useful for instance when converting BibTeX files.
 
 =cut
 
@@ -229,81 +212,96 @@ sub latex_decode {
     my %opts      = @_;
     my $norm      = exists $opts{normalize} ? $opts{normalize} : 1;
     my $norm_form = exists $opts{normalization} ? $opts{normalization} : 'NFD';
-    my $strip_outer_braces =
-      exists $opts{strip_outer_braces} ? $opts{strip_outer_braces} : 0;
 
     # Deal with raw TeX \char macros.
     $text =~ s/\\char"(\p{ASCII_Hex_Digit}+)/"chr(0x$1)"/gee; # hex chars
     $text =~ s/\\char'(\d+)/"chr(0$1)"/gee;  # octal chars
     $text =~ s/\\char(\d+)/"chr($1)"/gee;    # decimal chars
 
-    # Some tricky cases
-    my $d_re = $remap_d->{diacritics}{re} || '';
-    my $a_re = $remap_d->{accents}{re} || '';
-    # Change dotless i/j to normal i/j when applying accents
-    $text =~ s/(\\(?:$d_re|$a_re)){\\(i|j)}/$1$2/g;     # \={\i}    -> \=i
-    $text =~ s/(\\(?:$d_re|$a_re))\\(i|j)/$1$2/g;       # \=\i      -> \=i
-
     $text =~ s/(\\[a-zA-Z]+)\\(\s+)/$1\{\}$2/g;    # \foo\ bar -> \foo{} bar
     $text =~ s/([^{]\\\w)([;,.:%])/$1\{\}$2/g;     #} Aaaa\o,  -> Aaaa\o{},
 
-
-    foreach my $type (sort keys %$remap_d) {
+    foreach my $type ('greek', 'dings', 'punctuation', 'symbols', 'negatedsymbols', 'superscripts', 'cmdsuperscripts', 'letters', 'diacritics') {
       my $map = $remap_d->{$type}{map};
       my $re = $remap_d->{$type}{re};
+      next unless $re; # Might not be present depending on set
+
       if ($type eq 'negatedsymbols') {
-        $text =~ s/\\not\\($re)/$map->{$1}/ge if $re;
+        $text =~ s/\\not\\($re)/$map->{$1}/ge;
       }
       elsif ($type eq 'superscripts') {
-        $text =~ s/\\textsuperscript{($re)}/$map->{$1}/ge if $re;
+        $text =~ s/\\textsuperscript{($re)}/$map->{$1}/ge;
       }
       elsif ($type eq 'cmdsuperscripts') {
-        $text =~ s/\\textsuperscript{\\($re)}/$map->{$1}/ge if $re;
+        $text =~ s/\\textsuperscript{\\($re)}/$map->{$1}/ge;
       }
       elsif ($type eq 'dings') {
         $text =~ s/\\ding{([2-9AF][0-9A-F])}/$map->{$1}/ge;
       }
       elsif ($type eq 'letters') {
-        $text =~ s/\\($re)(?: \{\}|\s+|\b)/$map->{$1}/gxe;
+        $text =~ s/\\($re)(?:\{\}|\s+|\b)/$map->{$1}/ge;
       }
-    }
-
-    # Things that don't begin with backslash are ignored for decoding, which is good (like '--')
-    foreach my $type (sort keys %$remap_d) {
-      my $map = $remap_d->{$type}{map};
-      my $re = $remap_d->{$type}{re};
-
-      if (first {$type eq $_} ('punctuation', 'symbols', 'greek')) {
-        ## remove {} around macros that print one character
-        ## by default we skip that, as it would break constructions like \foo{\i}
-        if ($strip_outer_braces) {
-          $text =~ s/\{\\($re)\}/$map->{$1}/gxe;
-        }
-        $text =~ s/\\($re)(?: \{\}|\s+|\b)/$map->{$1}/gxe;
+      elsif (first {$type eq $_} ('punctuation', 'symbols', 'greek')) {
+        $text =~ s/\\($re)(?: \{\}|\s+|\b)/$map->{$1}/ge;
       }
-      if ($type eq 'accents') {
+      elsif ($type eq 'diacritics') {
         $text =~ s/\\($re)\s*\{(\pL\pM*)\}/$2 . $map->{$1}/ge;
-        $text =~ s/\\($re)\s*(\pL\pM*)/$2 . $map->{$1}/ge;
-      }
-      if ($type eq 'diacritics') {
-        $text =~ s/\\($re)\s*\{(\pL\pM*)\}/$2 . $map->{$1}/ge;
-        $text =~ s/\\($re)\s+(\pL\pM*)/$2 . $map->{$1}/ge;
+        # Conditional regexp with code-block condition
+        # non letter macros for diacritics (e.g. \=) can be followed by any letter
+        # but letter diacritic macros (e.g \c) can't (\cS) horribly Broken
+        #
+        # If the RE for the macro doesn't end with a basic LaTeX macro letter (\=), then
+        #   next char can be any letter (\=d)
+        # Else if it did end with a normal LaTeX macro letter (\c), then
+        #   If this was followed by a space (\c )
+        #     Any letter is allowed after the space (\c S)
+        #   Else
+        #     Only a non basic LaTeX letter is allowed (\c-)
+        $text =~ s/\\# slash
+                   ($re)# the diacritic
+                   (\s*)# optional space
+                   (# capture paren
+                     (?(?{$1 !~ m:[A-Za-z]$:})# code block condition (is not a letter?)
+                       \pL # yes pattern
+                     | # no pattern
+                       (?(?{$2}) # code block condition (space matched earlier after diacritic?)
+                         \pL # yes pattern
+                       | # no pattern
+                         [^A-Za-z]
+                       ) # close conditional
+                     ) # close conditional
+                     \pM* # optional marks
+                   ) # capture paren
+                   /$3 . $map->{$1}/gxe;
       }
     }
 
-    ## remove {} around letter+combining mark(s)
-    ## by default we skip that, as it would destroy constructions like \foo{\`e}
-    if ($strip_outer_braces) {
-        $text =~ s/{(\PM\pM+)}/$1/g;
-    }
-
+    # Now remove braces around single letters with diacritics (which the replace above
+    # can result in). Things like '{á}'. Such things can break kerning. We can't do this in
+    # the RE above as we can't determine if the braces are wrapping a phrase because this
+    # match is on an entire file string. So we can't in one step tell the difference between:
+    #
+    # author = {Andr\'e}
+    # and
+    # author = {Andr\'{e}}
+    #
+    # when this is part of a (much) larger string
+    #
+    # We don't want to do this if it would result in a broken macro name like with
+    # \textupper{é}
+    #
+    # Workaround perl's lack of variable-width negative look-behind -
+    # Reverse string (and therefore some of the Re) and use variable width negative look-ahead
+    $text = reverse $text;
+    $text =~ s/}(\pM+\pL){(?!\pL+\\)/$1/g;
+    $text = reverse $text;
     $logger->trace("String in latex_decode() now -> '$text'");
 
     if ($norm) {
       return Unicode::Normalize::normalize( $norm_form, $text );
     }
     else {
-        return $text;
+      return $text;
     }
 }
 
@@ -319,12 +317,14 @@ sub latex_encode {
   # Optimisation - if virtual null set was specified, do nothing
   return $text if $set_e eq 'null';
 
-  foreach my $type (sort keys %$remap_e) {
+  foreach my $type ('greek', 'dings', 'negatedsymbols', 'superscripts', 'cmdsuperscripts', 'diacritics', 'letters', 'punctuation', 'symbols') {
     my $map = $remap_e->{$type}{map};
     my $re = $remap_e->{$type}{re};
-      if ($type eq 'negatedsymbols') {
-        $text =~ s/($re)/"{\$\\not\\" . $map->{$1} . '$}'/ge;
-      }
+    next unless $re; # Might not be present depending on set
+
+    if ($type eq 'negatedsymbols') {
+      $text =~ s/($re)/"{\$\\not\\" . $map->{$1} . '$}'/ge;
+    }
     elsif ($type eq 'superscripts') {
       $text =~ s/($re)/'\textsuperscript{' . $map->{$1} . '}'/ge;
     }
@@ -334,69 +334,39 @@ sub latex_encode {
     elsif ($type eq 'dings') {
       $text =~ s/($re)/'\ding{' . $map->{$1} . '}'/ge;
     }
-  }
-
-  foreach my $type (sort keys %$remap_e) {
-    my $map = $remap_e->{$type}{map};
-    my $re = $remap_e->{$type}{re};
-    if ($type eq 'accents') {
-      # Accents
-      # special case such as "i\x{304}" -> '\={\i}' -> "i" needs the dot removing for accents
-      $text =~ s/i($re)/"\\" . $map->{$1} . '{\i}'/ge;
-
-      $text =~ s/\{(\p{L}\p{M}*)\}($re)/"\\" . $map->{$2} . "{$1}"/ge;
-      $text =~ s/(\p{L}\p{M}*)($re)/"\\" . $map->{$2} . "{$1}"/ge;
-
-    }
-    if ($type eq 'diacritics') {
-      # Diacritics
-      $text =~ s{
-                  (\P{M})($re)($re)($re)
-              }{
-                "\\" . $map->{$4} . "{\\" . $map->{$3} . "{\\" . $map->{$2} . _get_diac_last_r($1,$2) . '}}'
-              }gex;
-      $text =~ s{
-                  (\P{M})($re)($re)
-              }{
-                "\\" . $map->{$3} . "{\\" . $map->{$2} . _get_diac_last_r($1,$2) . '}'
-              }gex;
-      $text =~ s{
-                  (\P{M})($re)
-              }{
-                "\\" . $map->{$2} . _get_diac_last_r($1,$2)
-              }gex;
-    }
-  }
-
-  foreach my $type (sort keys %$remap_e) {
-    my $map = $remap_e->{$type}{map};
-    my $re = $remap_e->{$type}{re};
-    if ($type eq 'letters') {
+    elsif ($type eq 'letters') {
       # General macros (excluding special encoding excludes)
-      $text =~ s/($re)/($remap_e_raw->{$1} ? '' : "{\\") . $map->{$1} . ($remap_e_raw->{$1} ? '' : '}')/ge;
+      $text =~ s/($re)/($remap_e_raw->{$1} ? '' : "\\") . $map->{$1} . ($remap_e_raw->{$1} ? '' : '{}')/ge;
     }
-    if (first {$type eq $_}  ('punctuation', 'symbols', 'greek')) {
+    elsif (first {$type eq $_}  ('punctuation', 'symbols', 'greek')) {
       # Math mode macros (excluding special encoding excludes)
       $text =~ s/($re)/($remap_e_raw->{$1} ? '' : "{\$\\") . $map->{$1} . ($remap_e_raw->{$1} ? '' : '$}')/ge;
     }
+    elsif ($type eq 'diacritics') {
+      # special case such as "i\x{304}" -> '\={\i}' -> "i" needs the dot removing for accents
+      $text =~ s/i($re)/"\\" . $map->{$1} . '\i{}'/ge;
+
+      $text =~ s/\{(\pL\pM*)\}($re)/"\\" . $map->{$2} . "{$1}"/ge;
+      $text =~ s/(\pL\pM*)($re)/"\\" . $map->{$2} . "{$1}"/ge;
+
+      $text =~ s{
+                  (\PM)($re)($re)($re)
+              }{
+                "\\" . $map->{$4} . "{\\" . $map->{$3} . "{\\" . $map->{$2} . "{$1}" . '}}'
+              }gex;
+      $text =~ s{
+                  (\PM)($re)($re)
+              }{
+                "\\" . $map->{$3} . "{\\" . $map->{$2} . "{$1}" . '}'
+              }gex;
+      $text =~ s{
+                  (\PM)($re)
+              }{
+                "\\" . $map->{$2} . "{$1}"
+              }gex;
+    }
   }
-
   return $text;
-}
-
-
-# Helper subroutines
-
-sub _get_diac_last_r {
-    my ($a,$b) = @_;
-    my $re = $remap_e->{accents}{re};
-
-    if ( $b =~ /$re/) {
-        return ($a eq 'i') or ($a eq 'j') ? "{\\$a}" : $a;
-    }
-    else {
-        return "{$a}"
-    }
 }
 
 1;
@@ -415,7 +385,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

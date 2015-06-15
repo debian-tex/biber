@@ -5,11 +5,14 @@ use utf8;
 no warnings 'utf8';
 
 use Test::More tests => 5;
+use Test::Differences;
+unified_diff;
 
 use Biber;
 use Biber::Output::bbl;
 use Log::Log4perl;
 use Capture::Tiny qw(capture);
+use Encode;
 
 chdir("t/tdata") ;
 
@@ -51,9 +54,6 @@ my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
 my $out = $biber->get_output_obj;
 
 my $xd1 = q|    \entry{xd1}{book}{}
-      \name{labelname}{1}{}{%
-        {{hash=51db4bfd331cba22959ce2d224c517cd}{Ellington}{E\bibinitperiod}{Edward}{E\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=51db4bfd331cba22959ce2d224c517cd}{Ellington}{E\bibinitperiod}{Edward}{E\bibinitperiod}{}{}{}{}}%
       }
@@ -67,18 +67,16 @@ my $xd1 = q|    \entry{xd1}{book}{}
       \strng{namehash}{51db4bfd331cba22959ce2d224c517cd}
       \strng{fullhash}{51db4bfd331cba22959ce2d224c517cd}
       \field{sortinit}{E}
-      \field{sortinithash}{655e26c7438ff123e5c69c6c3f702107}
+      \field{sortinithash}{fefc5210ef4721525b2a478df41efcd4}
       \field{labelyear}{2007}
       \field{datelabelsource}{}
+      \field{labelnamesource}{author}
       \field{note}{A Note}
       \field{year}{2007}
     \endentry
 |;
 
 my $xd2 = q|    \entry{xd2}{book}{}
-      \name{labelname}{1}{}{%
-        {{hash=68539e0ce4922cc4957c6cabf35e6fc8}{Pillington}{P\bibinitperiod}{Peter}{P\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=68539e0ce4922cc4957c6cabf35e6fc8}{Pillington}{P\bibinitperiod}{Peter}{P\bibinitperiod}{}{}{}{}}%
       }
@@ -92,9 +90,10 @@ my $xd2 = q|    \entry{xd2}{book}{}
       \strng{namehash}{68539e0ce4922cc4957c6cabf35e6fc8}
       \strng{fullhash}{68539e0ce4922cc4957c6cabf35e6fc8}
       \field{sortinit}{P}
-      \field{sortinithash}{b8af9282ac256b81613dc9012a0ac921}
+      \field{sortinithash}{c0a4896d0e424f9ca4d7f14f2b3428e7}
       \field{labelyear}{2003}
       \field{datelabelsource}{}
+      \field{labelnamesource}{author}
       \field{abstract}{An abstract}
       \field{addendum}{Москва}
       \field{note}{A Note}
@@ -103,13 +102,14 @@ my $xd2 = q|    \entry{xd2}{book}{}
     \endentry
 |;
 
-is($out->get_output_entry('xd1', $main), $xd1, 'xdata test - 1');
-is($out->get_output_entry('xd2', $main), $xd2, 'xdata test - 2');
+# Test::Differences doesn't like utf8 unless it's encoded here
+eq_or_diff($out->get_output_entry('xd1', $main), $xd1, 'xdata test - 1');
+eq_or_diff(encode_utf8($out->get_output_entry('xd2', $main)), encode_utf8($xd2), 'xdata test - 2');
 # XDATA entries should not be output at all
-is($out->get_output_entry('macmillan', $main), undef, 'xdata test - 3');
-is($out->get_output_entry('macmillan:pub', $main), undef, 'xdata test - 4');
+eq_or_diff($out->get_output_entry('macmillan', $main), undef, 'xdata test - 3');
+eq_or_diff($out->get_output_entry('macmillan:pub', $main), undef, 'xdata test - 4');
 chomp $stderr;
-is($stderr, "ERROR - Circular XDATA inheritance between 'loop'<->'loop:3'", 'Cyclic xdata error check');
+eq_or_diff($stderr, "ERROR - Circular XDATA inheritance between 'loop'<->'loop:3'", 'Cyclic xdata error check');
 #print $stdout;
 #print $stderr;
 

@@ -2,6 +2,9 @@
 use strict;
 use warnings;
 use Test::More tests => 2;
+use Test::Differences;
+unified_diff;
+
 use Encode;
 use Biber;
 use Biber::Utils;
@@ -84,33 +87,6 @@ my $bltxml1 = q|<?xml version="1.0" encoding="UTF-8"?>
         </bltx:last>
       </bltx:person>
     </bltx:author>
-    <bltx:author form="uniform" lang="lang">
-      <bltx:person>
-        <bltx:last>
-          <bltx:namepart initial="a">aaa</bltx:namepart>
-        </bltx:last>
-      </bltx:person>
-      <bltx:person>
-        <bltx:last>
-          <bltx:namepart initial="b">bbb</bltx:namepart>
-        </bltx:last>
-      </bltx:person>
-      <bltx:person>
-        <bltx:last>
-          <bltx:namepart initial="c">ccc</bltx:namepart>
-        </bltx:last>
-      </bltx:person>
-      <bltx:person>
-        <bltx:last>
-          <bltx:namepart initial="d">ddd</bltx:namepart>
-        </bltx:last>
-      </bltx:person>
-      <bltx:person>
-        <bltx:last>
-          <bltx:namepart initial="e">eee</bltx:namepart>
-        </bltx:last>
-      </bltx:person>
-    </bltx:author>
     <bltx:institution>
       <bltx:item>REPlaCEDte</bltx:item>
       <bltx:item>early</bltx:item>
@@ -126,14 +102,9 @@ my $bltxml1 = q|<?xml version="1.0" encoding="UTF-8"?>
       <bltx:item>one</bltx:item>
       <bltx:item>two</bltx:item>
     </bltx:location>
-    <bltx:location form="translated" lang="french">
-      <bltx:item>un</bltx:item>
-      <bltx:item>deux</bltx:item>
-    </bltx:location>
     <bltx:abstract>Some abstract %50 of which is useless</bltx:abstract>
     <bltx:note>i3Š</bltx:note>
     <bltx:title>Š title</bltx:title>
-    <bltx:title form="translated" lang="french">Le title</bltx:title>
     <bltx:userb>test</bltx:userb>
     <bltx:date>2003</bltx:date>
   </bltx:entry>
@@ -207,5 +178,5 @@ my $bltxml1 = q|<?xml version="1.0" encoding="UTF-8"?>
 |;
 
 # NFD here because we are testing internals here and all internals expect NFD
-is(decode_utf8($outvar), $bltxml1, 'bltxml tool mode - 1');
+eq_or_diff(decode_utf8($outvar), $bltxml1, 'bltxml tool mode - 1');
 is_deeply([$main->get_keys], ['macmillan:pub', 'macmillan:loc', 'mv1', 'b1', 'xd1', 'macmillan', NFD('i3Š')], 'tool mode sorting');

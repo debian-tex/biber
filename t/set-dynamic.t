@@ -5,6 +5,8 @@ use utf8;
 no warnings 'utf8';
 
 use Test::More tests => 8;
+use Test::Differences;
+unified_diff;
 
 use Biber;
 use Biber::Output::bbl;
@@ -47,19 +49,17 @@ my $out = $biber->get_output_obj;
 
 my $string1 = q|    \entry{DynSet}{set}{}
       \set{Dynamic1,Dynamic2,Dynamic3}
-      \name{labelname}{1}{}{%
-        {{hash=252caa7921a061ca92087a1a52f15b78}{Dynamism}{D\bibinitperiod}{Derek}{D\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=252caa7921a061ca92087a1a52f15b78}{Dynamism}{D\bibinitperiod}{Derek}{D\bibinitperiod}{}{}{}{}}%
       }
       \strng{namehash}{252caa7921a061ca92087a1a52f15b78}
       \strng{fullhash}{252caa7921a061ca92087a1a52f15b78}
       \field{sortinit}{0}
-      \field{sortinithash}{a08a9549c5c2429f8cec5d1a581b26ca}
+      \field{sortinithash}{990108227b3316c02842d895999a0165}
       \field{labelyear}{2002}
       \field{datelabelsource}{}
-      \field{labeltitle}{Doing Daring Deeds}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{annotation}{Some Dynamic Note}
       \field{shorthand}{d1}
       \field{title}{Doing Daring Deeds}
@@ -69,17 +69,15 @@ my $string1 = q|    \entry{DynSet}{set}{}
 
 my $string2 = q|    \entry{Dynamic1}{book}{}
       \inset{DynSet}
-      \name{labelname}{1}{}{%
-        {{hash=252caa7921a061ca92087a1a52f15b78}{Dynamism}{D\bibinitperiod}{Derek}{D\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=252caa7921a061ca92087a1a52f15b78}{Dynamism}{D\bibinitperiod}{Derek}{D\bibinitperiod}{}{}{}{}}%
       }
       \strng{namehash}{252caa7921a061ca92087a1a52f15b78}
       \strng{fullhash}{252caa7921a061ca92087a1a52f15b78}
       \field{sortinit}{0}
-      \field{sortinithash}{a08a9549c5c2429f8cec5d1a581b26ca}
-      \field{labeltitle}{Doing Daring Deeds}
+      \field{sortinithash}{990108227b3316c02842d895999a0165}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{annotation}{Some Dynamic Note}
       \field{shorthand}{d1}
       \field{title}{Doing Daring Deeds}
@@ -89,17 +87,15 @@ my $string2 = q|    \entry{Dynamic1}{book}{}
 
 my $string3 = q|    \entry{Dynamic2}{book}{}
       \inset{DynSet}
-      \name{labelname}{1}{}{%
-        {{hash=894a5fe6de820f5dcce84a65581667f4}{Bunting}{B\bibinitperiod}{Brian}{B\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=894a5fe6de820f5dcce84a65581667f4}{Bunting}{B\bibinitperiod}{Brian}{B\bibinitperiod}{}{}{}{}}%
       }
       \strng{namehash}{894a5fe6de820f5dcce84a65581667f4}
       \strng{fullhash}{894a5fe6de820f5dcce84a65581667f4}
       \field{sortinit}{0}
-      \field{sortinithash}{a08a9549c5c2429f8cec5d1a581b26ca}
-      \field{labeltitle}{Beautiful Birthdays}
+      \field{sortinithash}{990108227b3316c02842d895999a0165}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{shorthand}{d2}
       \field{title}{Beautiful Birthdays}
       \field{year}{2010}
@@ -108,17 +104,15 @@ my $string3 = q|    \entry{Dynamic2}{book}{}
 
 my $string4 = q|    \entry{Dynamic3}{book}{}
       \inset{DynSet}
-      \name{labelname}{1}{}{%
-        {{hash=fc3cc97631ceaecdde2aee6cc60ab42b}{Regardless}{R\bibinitperiod}{Roger}{R\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=fc3cc97631ceaecdde2aee6cc60ab42b}{Regardless}{R\bibinitperiod}{Roger}{R\bibinitperiod}{}{}{}{}}%
       }
       \strng{namehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{fullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \field{sortinit}{0}
-      \field{sortinithash}{a08a9549c5c2429f8cec5d1a581b26ca}
-      \field{labeltitle}{Reckless Ravishings}
+      \field{sortinithash}{990108227b3316c02842d895999a0165}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{shorthand}{d3}
       \field{title}{Reckless Ravishings}
       \field{year}{2000}
@@ -128,19 +122,17 @@ my $string4 = q|    \entry{Dynamic3}{book}{}
 # Labelyear is now here as skiplab is not set for this entry when cited in section
 # without citation of a set it is a member of
 my $string5 = q|    \entry{Dynamic3}{book}{}
-      \name{labelname}{1}{}{%
-        {{hash=fc3cc97631ceaecdde2aee6cc60ab42b}{Regardless}{R\bibinitperiod}{Roger}{R\bibinitperiod}{}{}{}{}}%
-      }
       \name{author}{1}{}{%
         {{hash=fc3cc97631ceaecdde2aee6cc60ab42b}{Regardless}{R\bibinitperiod}{Roger}{R\bibinitperiod}{}{}{}{}}%
       }
       \strng{namehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{fullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \field{sortinit}{0}
-      \field{sortinithash}{a08a9549c5c2429f8cec5d1a581b26ca}
+      \field{sortinithash}{990108227b3316c02842d895999a0165}
       \field{labelyear}{2000}
       \field{datelabelsource}{}
-      \field{labeltitle}{Reckless Ravishings}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{shorthand}{d3}
       \field{title}{Reckless Ravishings}
       \field{year}{2000}
@@ -152,11 +144,11 @@ my @allkeys = qw(dynamic1 dynamic2 dynamic3 dynset elias1955 elias1955a elias195
 my @keys = sort map {lc()} $section0->get_citekeys;
 is_deeply( \@keys, \@allkeys, 'citekeys') ;
 
-is($out->get_output_entry('DynSet', $main0), $string1, 'Dynamic set test 1');
-is($out->get_output_entry('Dynamic1', $main0), $string2, 'Dynamic set test 2');
-is($out->get_output_entry('Dynamic2', $main0), $string3, 'Dynamic set test 3');
-is($out->get_output_entry('Dynamic3', $main0), $string4, 'Dynamic set test 4');
-is($out->get_output_entry('Dynamic3', $main0, 1), $string5, 'Dynamic set test 5');
+eq_or_diff($out->get_output_entry('DynSet', $main0), $string1, 'Dynamic set test 1');
+eq_or_diff($out->get_output_entry('Dynamic1', $main0), $string2, 'Dynamic set test 2');
+eq_or_diff($out->get_output_entry('Dynamic2', $main0), $string3, 'Dynamic set test 3');
+eq_or_diff($out->get_output_entry('Dynamic3', $main0), $string4, 'Dynamic set test 4');
+eq_or_diff($out->get_output_entry('Dynamic3', $main0, 1), $string5, 'Dynamic set test 5');
 is_deeply([$sh0->get_keys], ['DynSet'], 'Dynamic set skipbiblist 1');
 is_deeply([$sh1->get_keys], ['Dynamic3'], 'Dynamic set skipbiblist 2');
 

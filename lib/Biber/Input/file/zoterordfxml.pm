@@ -564,15 +564,14 @@ sub _subject {
     $bibentry->set_datafield('library', $lib->textContent());
   }
   elsif (my @s = $entry->findnodes("./$f")) {
-    my @kws;
+    my $kws;
     foreach my $s (@s) {
-      push @kws, '{'.$s->textContent().'}';
+      push @$kws, '{'.$s->textContent().'}';
     }
-    $bibentry->set_datafield('keywords', join(',', @kws));
+    $bibentry->set_datafield('keywords', $kws);
   }
   return;
 }
-
 
 # List fields
 sub _list {
@@ -833,7 +832,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

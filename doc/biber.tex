@@ -29,8 +29,8 @@
 \newcommand*{\biblatex}{Biblatex\xspace}
 \MakeAutoQuote{«}{»}
 
-\gdef\biberversion{1.9}    % BIBER VERSION
-\gdef\biblatexversion{2.9}   % BIBLATEX VERSION
+\gdef\biberversion{2.1}    % BIBER VERSION
+\gdef\biblatexversion{3.0}   % BIBLATEX VERSION
 
 % colour for tables
 \definecolor{Gray}{gray}{0.85}
@@ -237,6 +237,8 @@ compatibility matrix for the recent versions.
 \toprule
 \biber\ version & \biblatex\ version\\
 \midrule
+2.1 & 3.0\\
+2.0 & 3.0\\
 1.9 & 2.9\\
 1.8 & 2.8x\\
 1.7 & 2.7\\
@@ -765,6 +767,7 @@ examples. A \opt{map} element looks like this:
 <map +\textcolor{blue}{map\_overwrite="0|1"}+>
   +\textcolor{blue}{<per\_datasource>\textcolor{red}{datasource}</per\_datasource>}+
   +\textcolor{blue}{<per\_type>\textcolor{red}{entrytype}</per\_type>}+
+  +\textcolor{blue}{<per\_nottype>\textcolor{red}{entrytype}</per\_nottype>}+
   <map_step +\textcolor{blue}{map\_type\_source="\textcolor{red}{source-entrytype}"}+
              +\textcolor{blue}{map\_field\_source="\textcolor{red}{source-field}"}+
              +\textcolor{blue}{map\_type\_target="\textcolor{red}{target-entrytype}"}+
@@ -777,6 +780,7 @@ examples. A \opt{map} element looks like this:
              +\textcolor{blue}{map\_append="1"}+
              +\textcolor{blue}{map\_null="1"}+
              +\textcolor{blue}{map\_entry\_null="1"}+
+             +\textcolor{blue}{map\_entry\_clone="\textcolor{red}{prefix}"}+
              +\textcolor{blue}{map\_origfield="1"}+
              +\textcolor{blue}{map\_origfieldval="1"}+
              +\textcolor{blue}{map\_origentrytype="1"}+
@@ -793,6 +797,9 @@ examples. A \opt{map} element looks like this:
 \item If there are any \textcolor{red}{\texttt{entrytypes}}s named in
   \textcolor{blue}{\texttt{per\_type}} elements, this mapping only applies to entries
   of the named \textcolor{red}{\texttt{entrytypes}}s.
+\item If there are any \textcolor{red}{\texttt{entrytypes}}s named in
+  \textcolor{blue}{\texttt{per\_nottype}} elements, this mapping only applies to entries
+  not of the named \textcolor{red}{\texttt{entrytypes}}s.
 \item The \texttt{map\_overwrite} attribute can be used to override the
   value for this attribute set on the parent \opt{maps} element. If
   omitted, it defaults to the parent \opt{maps} attribute value.
@@ -807,6 +814,13 @@ datasource entry being processed. A \opt{map\_step} works like this:
   entry is not created. It is as if it did not exist in the
   datasource. Obviously, you should select the entries which you want
   to apply this to using prior mapping steps.
+\item If \textcolor{blue}{\texttt{map\_entry\_clone}} is set,
+  a clone of the entry is created with an entry key prefixed by
+  \textcolor{red}{\texttt{prefix}}. Obviously this may cause
+  labelling problems in author/year styles etc. and should be used with
+  care. It is mainly intended for numbering issues with numeric styles
+  and multiple bibliographies where the same entries occur in more than one
+  bibliography.
 \item Change the \textcolor{red}{\texttt{source-entrytype}} to
   \textcolor{red}{\texttt{target-entrytype}}, if defined. If
   \textcolor{blue}{\texttt{map\_final}} is set then if the entrytype of the
@@ -2719,7 +2733,7 @@ of \biber\ version and locale of course but there should be no errors
 or warnings).
 
 \begin{verbatim}
-INFO - This is Biber 1.8
+INFO - This is Biber 2.0
 INFO - Logfile is 'test.blg'
 INFO - BibLaTeX control file 'test.bcf' validates
 INFO - Converted BibLaTeX control file 'test.bcf' to 'test.bcf.html'

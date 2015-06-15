@@ -592,11 +592,12 @@ sub _name {
 
       my $namestring = '';
 
+      # Don't add suffix to namestring or nameinitstring as these are used
+      # for uniquename disambiguation which should only care about lastname
+      # + any prefix (if useprefix=true). See biblatex github tracker #306.
+
       # lastname
       $namestring .= "$lastname, ";
-
-      # suffix
-      $namestring .= "$suffix, " if $suffix;
 
       # firstname
       $namestring .= $firstname if $firstname;
@@ -609,7 +610,6 @@ sub _name {
       # Construct $nameinitstring
       my $nameinitstr = '';
       $nameinitstr .= $lastname if $lastname;
-      $nameinitstr .= '_' . join('', @si) if $suffix;
       $nameinitstr .= '_' . join('', @fni) if $firstname;
       $nameinitstr =~ s/\s+/_/g;
       $nameinitstr =~ s/~/_/g;
@@ -743,7 +743,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

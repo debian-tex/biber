@@ -236,7 +236,7 @@ sub extract_entries {
       # Record a key->datasource name mapping for error reporting
       $section->set_keytods($key, $filename);
 
-      unless (create_entry($key, $entry, $source, $smaps)) {
+      unless (create_entry($key, $entry, $source, $smaps, \@rkeys)) {
         # if create entry returns false, remove the key from the cache
         @{$cache->{orig_key_order}{$filename}} = grep {$key ne $_} @{$cache->{orig_key_order}{$filename}};
       }
@@ -280,7 +280,7 @@ sub extract_entries {
 
         # Skip creation if it's already been done, for example, via a citekey alias
         unless ($section->bibentries->entry_exists($wanted_key)) {
-          create_entry($wanted_key, $entry, $source, $smaps);
+          create_entry($wanted_key, $entry, $source, $smaps, \@rkeys);
         }
         # found a key, remove it from the list of keys we want
         @rkeys = grep {$wanted_key ne $_} @rkeys;
@@ -294,7 +294,7 @@ sub extract_entries {
         # just in case only the alias is cited
         unless ($section->bibentries->entry_exists($rk)) {
           if (my $entry = $cache->{data}{$filename}{$rk}) {
-            create_entry($rk, $entry, $source, $smaps);
+            create_entry($rk, $entry, $source, $smaps, \@rkeys);
             $section->add_citekeys($rk);
           }
         }
@@ -348,11 +348,15 @@ sub extract_entries {
 =cut
 
 sub create_entry {
-  my ($key, $entry, $source, $smaps) = @_;
+  # We have to pass in $rkeys so that the clone operation can remove the clone
+  # key from the list of wanted keys because cloned entries will never appear to the normal
+  # key search loop
+  my ($key, $entry, $source, $smaps, $rkeys) = @_;
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
   my $bibentries = $section->bibentries;
   my $bibentry = new Biber::Entry;
+  $logger->debug("Creating entry with key '$key'");
 
   $bibentry->set_field('citekey', $key);
   my $ds = $section->get_keytods($key);
@@ -372,16 +376,26 @@ sub create_entry {
         my $last_field = undef;
         my $last_fieldval = undef;
 
-        my @imatches; # For persising parenthetical matches over several steps
+        my @imatches; # For persisting parenthetical matches over several steps
 
         # Check pertype restrictions
+        # Logic is "-(-P v Q)" which is equivalent to "P & -Q" but -Q is an array check so
+        # messier to write than Q
         unless (not exists($map->{per_type}) or
                 first {lc($_->{content}) eq $entry->type} @{$map->{per_type}}) {
           next;
         }
 
+        # Check negated pertype restrictions
+        if (exists($map->{per_nottype}) and
+            first {lc($_->{content}) eq $entry->type} @{$map->{per_nottype}}) {
+          next;
+        }
+
         # Check per_datasource restrictions
         # Don't compare case insensitively - this might not be correct
+        # Logic is "-(-P v Q)" which is equivalent to "P & -Q" but -Q is an array check so
+        # messier to write than Q
         unless (not exists($map->{per_datasource}) or
                 first {$_->{content} eq $source} @{$map->{per_datasource}}) {
           next;
@@ -394,6 +408,22 @@ sub create_entry {
           if ($step->{map_entry_null}) {
             $logger->debug("Source mapping (type=$level, key=$key): Ignoring entry completely");
             return 0; # don't create an entry at all
+          }
+
+          # entry clone
+          if (my $prefix = $step->{map_entry_clone}) {
+            $logger->debug("Source mapping (type=$level, key=$key): cloning entry with prefix '$prefix'");
+            # Create entry with no sourcemapping to avoid recursion
+            create_entry("$prefix$key", $entry);
+
+            # found a prefix clone key, remove it from the list of keys we want since we
+            # have "found" it by creating it along with its clone parent
+            @$rkeys = grep {"$prefix$key" ne $_} @$rkeys;
+            # Need to add the clone key to the section if allkeys is set since all keys are cleared
+            # for allkeys sections initially
+            if ($section->is_allkeys) {
+              $section->add_citekeys("$prefix$key");
+            }
           }
 
           # Entrytype map
@@ -602,35 +632,40 @@ sub create_entry {
 
 # HANDLERS
 # ========
-my $S = Biber::Config->getoption('mssplit');
-my $fl_re = qr/\A([^$S]+)$S?(original|translated|romanised|uniform)?$S?(.+)?\z/;
 
 # Literal fields
 sub _literal {
-  my ($bibentry, $entry, $f) = @_;
-  my $value = biber_decode_utf8($entry->get($f));
-  my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
+  my ($bibentry, $entry, $field) = @_;
+  my $value = biber_decode_utf8($entry->get($field));
+
   # If we have already split some date fields into literal fields
   # like date -> year/month/day, don't overwrite them with explicit
   # year/month
-  return if ($f eq 'year' and $bibentry->get_datafield('year'));
-  return if ($f eq 'month' and $bibentry->get_datafield('month'));
+  return if ($field eq 'year' and $bibentry->get_datafield('year'));
+  return if ($field eq 'month' and $bibentry->get_datafield('month'));
 
   # Try to sanitise months to biblatex requirements
-  if ($f eq 'month') {
-    $bibentry->set_datafield($field, _hack_month($value), $form, $lang);
+  if ($field eq 'month') {
+    $bibentry->set_datafield($field, _hack_month($value));
+  }
+  # Rationalise any bcp47 style langids into babel/polyglossia names
+  # biblatex will convert these back again when loading .lbx files
+  # We need this until babel/polyglossia support proper bcp47 language/locales
+  elsif ($field eq 'langid' and my $map = $LOCALE_MAP_R{$value}) {
+    $bibentry->set_datafield($field, $map);
   }
   else {
-    $bibentry->set_datafield($field, $value, $form, $lang);
+    $bibentry->set_datafield($field, $value);
   }
+
+
   return;
 }
 
 # URI fields
 sub _uri {
-  my ($bibentry, $entry, $f) = @_;
-  my $value = NFC(decode_utf8($entry->get($f)));# Unicode NFC boundary (before hex encoding)
-  my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
+  my ($bibentry, $entry, $field) = @_;
+  my $value = NFC(decode_utf8($entry->get($field)));# Unicode NFC boundary (before hex encoding)
 
   # If there are some escapes in the URI, unescape them
   if ($value =~ /\%/) {
@@ -641,7 +676,7 @@ sub _uri {
 
   $value = URI->new($value)->as_string;
 
-  $bibentry->set_datafield($field, $value, $form, $lang);
+  $bibentry->set_datafield($field, $value);
   return;
 }
 
@@ -649,37 +684,37 @@ sub _uri {
 sub _xsv {
   my $Srx = Biber::Config->getoption('xsvsep');
   my $S = qr/$Srx/;
-  my ($bibentry, $entry, $f) = @_;
-  $bibentry->set_datafield($f, [ split(/$S/, biber_decode_utf8($entry->get($f))) ]);
+  my ($bibentry, $entry, $field) = @_;
+  $bibentry->set_datafield($field, [ split(/$S/, biber_decode_utf8($entry->get($field))) ]);
   return;
 }
 
 # Verbatim fields
 sub _verbatim {
-  my ($bibentry, $entry, $f) = @_;
-  my $value = biber_decode_utf8($entry->get($f));
-  my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
-  $bibentry->set_datafield($field, $value, $form, $lang);
+  my ($bibentry, $entry, $field) = @_;
+  my $value = biber_decode_utf8($entry->get($field));
+  $bibentry->set_datafield($field, $value);
   return;
 }
 
 # Range fields
+# m-n -> [m, n]
+# m   -> [m, undef]
+# m-  -> [m, '']
+# -n  -> ['', n]
+# -   -> ['', undef]
 sub _range {
-  my ($bibentry, $entry, $f, $key) = @_;
+  my ($bibentry, $entry, $field, $key) = @_;
   my $values_ref;
-  my $value = biber_decode_utf8($entry->get($f));
-  # Because there is another match below and we dont' want bleed of $1,$2 etc.
-  my $field;
-  my $form;
-  my $lang;
-  {($field, $form, $lang) = $f =~ m/$fl_re/xms;}
+  my $value = biber_decode_utf8($entry->get($field));
 
   my @values = split(/\s*[;,]\s*/, $value);
   # If there is a range sep, then we set the end of the range even if it's null
-  # If no  range sep, then the end of the range is undef
+  # If no range sep, then the end of the range is undef
   foreach my $value (@values) {
     $value =~ m/\A\s*(\P{Pd}+)\s*\z/xms ||# Simple value without range
-      $value =~ m/\A\s*(\{[^\}]+\}|[^\p{Pd} ]+)\s*(\p{Pd}+)\s*(\{[^\}]+\}|\P{Pd}*)\s*\z/xms;
+      $value =~ m/\A\s*(\{[^\}]+\}|[^\p{Pd} ]+)\s*(\p{Pd}+)\s*(\{[^\}]+\}|\P{Pd}*)\s*\z/xms ||
+        $value =~ m/\A\s*(.+)(\p{Pd}{2,})(.+)\s*\z/xms;# M-1--M-4
     my $start = $1;
     my $end;
     if ($2) {
@@ -693,18 +728,17 @@ sub _range {
     biber_warn("Range field '$field' in entry '$key' is malformed, skipping", $bibentry) unless $start;
     push @$values_ref, [$start || '', $end];
   }
-  $bibentry->set_datafield($field, $values_ref, $form, $lang);
+  $bibentry->set_datafield($field, $values_ref);
   return;
 }
 
 
 # Names
 sub _name {
-  my ($bibentry, $entry, $f, $key) = @_;
+  my ($bibentry, $entry, $field, $key) = @_;
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
-  my $value = biber_decode_utf8($entry->get($f));
-  my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
+  my $value = biber_decode_utf8($entry->get($field));
 
   # @tmp is bytes again now
   my @tmp = Text::BibTeX::split_list($value, Biber::Config->getoption('namesep'));
@@ -742,7 +776,7 @@ sub _name {
     }
 
     # Skip names that don't parse for some reason (like no lastname found - see parsename())
-    next unless my $no = parsename($name, $f, {useprefix => $useprefix});
+    next unless my $no = parsename($name, $field, {useprefix => $useprefix});
 
     # Deal with implied "et al" in data source
     if (lc($no->get_namestring) eq Biber::Config->getoption('others_string')) {
@@ -753,17 +787,16 @@ sub _name {
     }
 
   }
-  $bibentry->set_datafield($field, $names, $form, $lang);
+  $bibentry->set_datafield($field, $names);
   return;
 }
 
 # Dates
 # Date fields can't have script forms - they are just a(n ISO) standard format
 sub _date {
-  my ($bibentry, $entry, $f, $key) = @_;
-  my $datetype = $f =~ s/date\z//xmsr;
-  my $date = biber_decode_utf8($entry->get($f));
-  my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
+  my ($bibentry, $entry, $field, $key) = @_;
+  my $datetype = $field =~ s/date\z//xmsr;
+  my $date = biber_decode_utf8($entry->get($field));
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
   my $ds = $section->get_keytods($key);
@@ -798,29 +831,27 @@ sub _date {
     }
   }
   else {
-    biber_warn("Datamodel: Entry '$key' ($ds): Invalid format '$date' of date field '$f' - ignoring", $bibentry);
+    biber_warn("Datamodel: Entry '$key' ($ds): Invalid format '$date' of date field '$field' - ignoring", $bibentry);
   }
   return;
 }
 
 # Bibtex list fields with listsep separator
 sub _list {
-  my ($bibentry, $entry, $f) = @_;
-  my $value = biber_decode_utf8($entry->get($f));
-  my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
+  my ($bibentry, $entry, $field) = @_;
+  my $value = biber_decode_utf8($entry->get($field));
 
   my @tmp = Text::BibTeX::split_list($value, Biber::Config->getoption('listsep'));
   @tmp = map { biber_decode_utf8($_) } @tmp;
   @tmp = map { remove_outer($_) } @tmp;
-  $bibentry->set_datafield($field, [ @tmp ], $form, $lang);
+  $bibentry->set_datafield($field, [ @tmp ]);
   return;
 }
 
 # Bibtex uri lists
 sub _urilist {
-  my ($bibentry, $entry, $f) = @_;
-  my $value = NFC(decode_utf8($entry->get($f)));# Unicode NFC boundary (before hex encoding)
-  my ($field, $form, $lang) = $f =~ m/$fl_re/xms;
+  my ($bibentry, $entry, $field) = @_;
+  my $value = NFC(decode_utf8($entry->get($field)));# Unicode NFC boundary (before hex encoding)
   my @tmp = Text::BibTeX::split_list($value, Biber::Config->getoption('listsep'));
   @tmp = map {
     # If there are some escapes in the URI, unescape them
@@ -834,7 +865,7 @@ sub _urilist {
 
   @tmp = map { URI->new($_)->as_string } @tmp;
 
-  $bibentry->set_datafield($field, [ @tmp ], $form, $lang);
+  $bibentry->set_datafield($field, [ @tmp ]);
   return;
 }
 
@@ -1032,6 +1063,8 @@ sub parsename {
   $namestr =~ s/\A\s*//xms; # leading whitespace
   $namestr =~ s/\s*\z//xms; # trailing whitespace
   $namestr =~ s/\s+/ /g;    # Collapse internal whitespace
+  $namestr =~ s/\\\s/ /g;   # Remove escaped spaces like in "Christina A. L.\ Thiele"
+  $namestr =~ s/\A\{\{+([^{}]+)\}+\}\z/{$1}/xms; # Allow only one enveloping set of braces
 
   # If requested, try to correct broken initials with no space between them.
   # This can slightly mess up some other names like {{U.K. Government}} etc.
@@ -1077,7 +1110,7 @@ sub parsename {
 
   # Make initials with ties in between work. btparse doesn't understand this so replace with
   # spaces - this is fine as we are just generating initials
-  $nd_namestr =~ s/\.~/. /g;
+  $nd_namestr =~ s/\.~\s*/. /g;
 
   # We use NFC here as we are "outputting" to an external module
   my $nd_name = new Text::BibTeX::Name(NFC($nd_namestr), $fieldname);
@@ -1104,6 +1137,12 @@ sub parsename {
   $gen_suffix_i      = inits(biber_decode_utf8($nd_name->format($si_f)));
 
   my $namestring = '';
+
+
+  # Don't add suffix to namestring or nameinitstring as these are used for uniquename disambiguation
+  # which should only care about lastname + any prefix (if useprefix=true). See biblatex github
+  # tracker #306.
+
   # prefix
   my $ps;
   my $prefix_stripped;
@@ -1132,7 +1171,6 @@ sub parsename {
     $suffix_i        = $gen_suffix_i;
     $suffix_stripped = remove_outer($suffix);
     $ss = $suffix ne $suffix_stripped ? 1 : 0;
-    $namestring .= "$suffix_stripped, ";
   }
   # firstname
   my $fs;
@@ -1148,13 +1186,12 @@ sub parsename {
   # Remove any trailing comma and space if, e.g. missing firstname
   # Replace any nbspes
   $namestring =~ s/,\s+\z//xms;
-  $namestring =~ s/~/ /gxms;
+  $namestring =~ s/\s*~\s*/ /gxms;
 
   # Construct $nameinitstring
   my $nameinitstr = '';
   $nameinitstr .= join('', @$prefix_i) . '_' if ( $usepre and $prefix );
   $nameinitstr .= $lastname if $lastname;
-  $nameinitstr .= '_' . join('', @$suffix_i) if $suffix;
   $nameinitstr .= '_' . join('', @$firstname_i) if $firstname;
   $nameinitstr =~ s/\s+/_/g;
   $nameinitstr =~ s/~/_/g;
@@ -1235,8 +1272,6 @@ sub _hack_month {
 
 sub _get_handler {
   my $field = shift;
-  my $S = Biber::Config->getoption('mssplit');
-  $field =~ s/$S(?:original|translated|romanised|uniform)$S?.*$//;
   if (my $h = $handlers->{CUSTOM}{$field}) {
     return $h;
   }
@@ -1275,7 +1310,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2014 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
