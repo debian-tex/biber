@@ -1,3 +1,12 @@
+biber (2.1-1) experimental; urgency=medium
+
+  * Imported Upstream version 2.1
+  * update gbp config file
+  * update patches for new release
+  * add libmodule-build-perl build dep (Closes: #788887)
+
+ -- Norbert Preining <preining@debian.org>  Tue, 16 Jun 2015 08:42:12 +0900
+
 biber (1.9-3) unstable; urgency=medium
 
   * cherry pick upstream fix for hyphenation fixes (Closes: #773872)
