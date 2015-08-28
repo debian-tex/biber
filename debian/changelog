@@ -1,3 +1,9 @@
+biber (2.1-3) UNRELEASED; urgency=medium
+
+  * Add patch to fix FTBS when using Perl 5.22 (Closes: #796944)
+
+ -- Hilmar Preuße <hille42@web.de>  Fri, 28 Aug 2015 15:59:04 +0200
+
 biber (2.1-2) unstable; urgency=medium
 
   * upload to unstable

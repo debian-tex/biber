@@ -4,3 +4,4 @@
 fix-xpathcontext
 fix-slurp-unknown
 #fix-perl-warning
+fix-perl-regex-braces
