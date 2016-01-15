@@ -293,7 +293,7 @@ sub extract_entries {
         # Make sure there is a real, cited entry for the citekey alias
         # just in case only the alias is cited
         unless ($section->bibentries->entry_exists($rk)) {
-          if (my $entry = $cache->{data}{$filename}{$rk}) {
+          if (my $entry = $cache->{data}{GLOBALDS}{$rk}) {# Look in cache of all datasource keys
             create_entry($rk, $entry, $source, $smaps, \@rkeys);
             $section->add_citekeys($rk);
           }
@@ -333,6 +333,13 @@ sub extract_entries {
   # and there are some preambles to push
   if ($cache->{counts}{$filename} < 2 and @{$cache->{preamble}{$filename}}) {
     push @{$Biber::MASTER->{preamble}}, @{$cache->{preamble}{$filename}};
+  }
+
+  # Save comments if in tool mode
+  if (Biber::Config->getoption('tool')) {
+    if ($cache->{comments}{$filename}) {
+      $Biber::MASTER->{comments} = $cache->{comments}{$filename};
+    }
   }
 
   return @rkeys;
@@ -626,7 +633,6 @@ sub create_entry {
     $bibentry->set_field('datatype', 'bibtex');
     $bibentries->add_entry($key, $bibentry);
   }
-
   return 1;
 }
 
@@ -635,7 +641,7 @@ sub create_entry {
 
 # Literal fields
 sub _literal {
-  my ($bibentry, $entry, $field) = @_;
+  my ($bibentry, $entry, $field, $key) = @_;
   my $value = biber_decode_utf8($entry->get($field));
 
   # If we have already split some date fields into literal fields
@@ -643,6 +649,41 @@ sub _literal {
   # year/month
   return if ($field eq 'year' and $bibentry->get_datafield('year'));
   return if ($field eq 'month' and $bibentry->get_datafield('month'));
+
+  # Deal with ISBN options
+  if ($field eq 'isbn') {
+    require Business::ISBN;
+    my ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
+    $dir =~ s/\/$//;            # splitpath sometimes leaves a trailing '/'
+    # Just in case it is already set. We also need to fake this in tests or it will
+    # look for it in the blib dir
+    unless (exists($ENV{ISBN_RANGE_MESSAGE})) {
+      $ENV{ISBN_RANGE_MESSAGE} = File::Spec->catpath($vol, "$dir/ISBN/", 'RangeMessage.xml');
+    }
+    my $isbn = Business::ISBN->new($value);
+
+    # Ignore invalid ISBNs
+    if (not $isbn or not $isbn->is_valid) {
+      biber_warn("ISBN '$value' in entry '$key' is invalid - run biber with '--validate_datamodel' for details.");
+      $bibentry->set_datafield($field, $value);
+      return;
+    }
+
+    # Force to a specified format
+    if (Biber::Config->getoption('isbn13')) {
+      $isbn = $isbn->as_isbn13;
+      $value = $isbn->isbn;
+    }
+    elsif (Biber::Config->getoption('isbn10')) {
+      $isbn = $isbn->as_isbn10;
+      $value = $isbn->isbn;
+    }
+
+    # Normalise if requested
+    if (Biber::Config->getoption('isbn_normalise')) {
+      $value = $isbn->as_string;
+    }
+  }
 
   # Try to sanitise months to biblatex requirements
   if ($field eq 'month') {
@@ -657,8 +698,6 @@ sub _literal {
   else {
     $bibentry->set_datafield($field, $value);
   }
-
-
   return;
 }
 
@@ -666,17 +705,7 @@ sub _literal {
 sub _uri {
   my ($bibentry, $entry, $field) = @_;
   my $value = NFC(decode_utf8($entry->get($field)));# Unicode NFC boundary (before hex encoding)
-
-  # If there are some escapes in the URI, unescape them
-  if ($value =~ /\%/) {
-    $value =~ s/\\%/%/g; # just in case someone BibTeX escaped the "%"
-    # This is what uri_unescape() does but it's faster
-    $value =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/eg;
-  }
-
-  $value = URI->new($value)->as_string;
-
-  $bibentry->set_datafield($field, $value);
+  $bibentry->set_datafield($field, URI->new($value)->as_string); # Performs url encoding
   return;
 }
 
@@ -759,7 +788,7 @@ sub _name {
     # Check for malformed names in names which aren't completely escaped
 
     # Too many commas
-    unless ($name =~ m/\A{\X+}\z/xms) { # Ignore these tests for escaped names
+    unless ($name =~ m/\A\{\X+\}\z/xms) { # Ignore these tests for escaped names
       my @commas = $name =~ m/,/g;
       if ($#commas > 1) {
         biber_warn("Name \"$name\" has too many commas: skipping name", $bibentry);
@@ -792,7 +821,6 @@ sub _name {
 }
 
 # Dates
-# Date fields can't have script forms - they are just a(n ISO) standard format
 sub _date {
   my ($bibentry, $entry, $field, $key) = @_;
   my $datetype = $field =~ s/date\z//xmsr;
@@ -900,10 +928,18 @@ sub cache_data {
       next;
     }
 
+    # Save comments for output in tool mode unless comment strippig is requested
+    if ( $entry->metatype == BTE_COMMENT ) {
+      if (Biber::Config->getoption('tool') and not
+          Biber::Config->getoption('strip_comments') ) {
+        push @{$cache->{comments}{$filename}}, process_comment(biber_decode_utf8($entry->value));
+      }
+      next;
+    }
+
     # Ignore misc BibTeX entry types we don't care about
     next if ( $entry->metatype == BTE_MACRODEF or
-              $entry->metatype == BTE_UNKNOWN or
-              $entry->metatype == BTE_COMMENT );
+              $entry->metatype == BTE_UNKNOWN );
 
     # If an entry has no key, ignore it and warn
     unless ($entry->key) {
@@ -956,12 +992,16 @@ sub cache_data {
       biber_warn("Possible typo (case mismatch) between datasource keys: '$key' and '$okey' in file '$filename'");
     }
 
-    # If we've already seen this key in a datasource, ignore it and warn
-    if ($section->has_everykey($key)) {
+    # If we've already seen this key in a datasource, ignore it and warn unless user wants
+    # duplicates
+    if ($section->has_everykey($key) and not Biber::Config->getoption('noskipduplicates')) {
       biber_warn("Duplicate entry key: '$key' in file '$filename', skipping ...");
       next;
     }
     else {
+      if ($section->has_everykey($key)) {
+        biber_warn("Duplicate entry key: '$key' in file '$filename'");
+      }
       $section->add_everykey($key);
     }
 
@@ -973,7 +1013,8 @@ sub cache_data {
 
     # Cache the entry so we don't have to read the file again on next pass.
     # Two reasons - So we avoid T::B macro redef warnings and speed
-    $cache->{data}{$filename}{$key} = $entry;
+    # Create a global "all datasources" cache too as this is useful in places
+    $cache->{data}{GLOBALDS}{$key} = $cache->{data}{$filename}{$key} = $entry;
     # We do this as otherwise we have no way of determining the origing .bib entry order
     # We need this in order to do sorting=none + allkeys because in this case, there is no
     # "citeorder" because nothing is explicitly cited and so "citeorder" means .bib order
@@ -1262,8 +1303,8 @@ my %months = (
 
 sub _hack_month {
   my $in_month = shift;
-  if ($in_month =~ m/\A\s*((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).*)\s*\z/i) {
-    return $months{lc(Unicode::GCString->new($1)->substr(0,3)->as_string)};
+  if (my ($m) = $in_month =~ m/\A\s*((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).*)\s*\z/i) {
+    return $months{lc(Unicode::GCString->new($m)->substr(0,3)->as_string)};
   }
   else {
     return $in_month;

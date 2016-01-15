@@ -43,6 +43,9 @@ GetOptions(
            'input_directory|input-directory=s',
            'input_encoding|input-encodinge=s',
            'input_format|input-format=s',
+           'isbn10',
+           'isbn13',
+           'isbn_normalise|isbn-normalise',
            'listsep=s',
            'logfile=s',
            'mincrossrefs|m=s',
@@ -68,12 +71,14 @@ GetOptions(
            'output_safecharsset|output-safecharsset=s',
            'quiet|q+',
            'recodedata=s',
+           'noskipduplicates',
            'sortcase=s',
            'sortfirstinits=s',
            'sortlocale|l=s',
            'sortupper=s',
            'ssl-nointernalca',
            'ssl-noverify-host',
+           'strip_comments|strip-comments',
            'tool',
            'tool_align|tool-align',                 # legacy alias for output_align
            'tool_config|tool-config',
@@ -216,6 +221,12 @@ if (not exists($opts->{output_format})) {
   }
 }
 
+# Check ISBN options
+if (exists($opts->{isbn10}) and exists($opts->{isbn13})) {
+  say STDERR "Biber: Select only one of 'isbn10' or 'isbn13' but not both";
+  exit EXIT_ERROR;
+}
+
 # Check the tool_* options
 if (exists($opts->{output_indent}) and $opts->{output_indent} !~ /^\d+$/) {
   say STDERR "Biber: Invalid non-numeric argument for 'output_indent' option!";
@@ -296,6 +307,10 @@ else {
     elsif (Biber::Config->getoption('output_format') eq 'bbl') { # bbl output
       $outfile = $bcf =~ s/bcf$/bbl/r;
     }
+    else {
+      say "output_format option '" . Biber::Config->getoption('output_format') . "' only makes sense in tool mode (--tool)";
+      exit EXIT_ERROR;
+    }
   }
 }
 
@@ -304,6 +319,23 @@ if (my $outdir = Biber::Config->getoption('output_directory')) {
   my (undef, undef, $file) = File::Spec->splitpath($outfile);
   $outfile = File::Spec->catfile($outdir, $file)
 }
+
+# Set the output class. Should be a subclass of Biber::Output::base
+if (Biber::Config->getoption('output_format') eq 'dot') { # .dot output
+  require Biber::Output::dot;
+  $biber->set_output_obj(Biber::Output::dot->new());
+}
+else {
+  my $package = 'Biber::Output::' . Biber::Config->getoption('output_format');
+  eval "require $package" or biber_error("Error loading data source package '$package': $@");
+  $biber->set_output_obj(eval "${package}->new()");
+}
+
+# Get reference to output object
+my $biberoutput = $biber->get_output_obj;
+
+# Set the output target file name
+$biberoutput->set_output_target_file($outfile);
 
 # Fake some necessary .bcf parts if in tool mode
 if (Biber::Config->getoption('tool')) {
@@ -331,23 +363,6 @@ if (Biber::Config->getoption('trace')) {
     $biber->_stringdump,
     "\n###########################################################")
 }
-
-# Set the output class. Should be a subclass of Biber::Output::base
-if (Biber::Config->getoption('output_format') eq 'dot') { # .dot output
-  require Biber::Output::dot;
-  $biber->set_output_obj(Biber::Output::dot->new());
-}
-else {
-  my $package = 'Biber::Output::' . Biber::Config->getoption('output_format');
-  eval "require $package" or biber_error("Error loading data source package '$package': $@");
-  $biber->set_output_obj(eval "${package}->new()");
-}
-
-# Get reference to output object
-my $biberoutput = $biber->get_output_obj;
-
-# Set the output target file name
-$biberoutput->set_output_target_file($outfile);
 
 # Do all the real work
 Biber::Config->getoption('tool') ? $biber->prepare_tool : $biber->prepare;
@@ -380,11 +395,11 @@ C<biber> - A bibtex replacement for users of biblatex
 
 =head1 SYNOPSIS
 
-biber [options] file[.bcf]
-biber [options] --tool <datasource>
+  biber [options] file[.bcf]
+  biber [options] --tool <datasource>
 
   Creates "file.bbl" using control file "file.bcf" (".bcf" extension is
-  optional). Normaly use with biblatex requires no options as they are
+  optional). Normally use with biblatex requires no options as they are
   all set in biblatex and passed via the ".bcf" file
 
   In "tool" mode (see B<--tool> option), takes a datasource (defaults to
@@ -496,6 +511,22 @@ normally the input format of a data source is specified in the F<.bcf> file and
 therefore from the B<\addbibresouce> macro in BibLaTeX.
 The default value when in tool mode is 'bibtex'
 
+=item B<--isbn10>
+
+Force all ISBNs to 10-digit versions on output. This will convert the ISBN internally to an ISBN
+object which will not have hyphens on output. If you use this option and want an ISBN with hyphens
+in the correct place on output, use the B<--isbn-normalise> option.
+
+=item B<--isbn13>
+
+Force all ISBNs to 13-digit versions on output. This will convert the ISBN internally to an ISBN
+object which will not have hyphens on output. If you use this option and want an ISBN with hyphens
+in the correct place on output, use the B<--isbn-normalise> option.
+
+=item B<--isbn-normalise>
+
+Normalise ISBNs with hyphens in the correct places on output.
+
 =item B<--logfile [file]>
 
 Use F<file.blg> as the name of the logfile.
@@ -545,7 +576,7 @@ Use F<string> as the final name in a name field which implies "et al". Defaults 
 
 =item B<--output-align>
 
-Align field values in neat columns in output. Effect depends on the output format. Default is true.
+Align field values in neat columns in output. Effect depends on the output format. Default is false.
 The legacy option B<--tool_align> is supported as an alias.
 
 =item B<--output-directory [directory]>
@@ -634,6 +665,12 @@ It defaults to F<recode_data.xml> in the same directory as Biber's F<Recode.pm> 
 See the PDF documentation for the format of this file. If this option is
 used, then F<file> should be somewhere C<kpsewhich> can find it.
 
+=item B<--noskipduplicates>
+
+Don't skip duplicate bibliography keys if found. The detection of duplicate keys is done across
+all data sources. Sometimes you might need duplicates when using several data sources
+across several refsections in which case you might need to use this option.
+
 =item B<--sortcase=true|false>
 
 Case-sensitive sorting (default is true).
@@ -668,6 +705,10 @@ to find the CA certs.
 
 Turn off host verification when using HTTPS to fetch remote data sources.
 You may need this if the SSL certificate is self-signed for example.
+
+=item B<--strip-comments>
+
+In tool mode, strip all comments from the output file.
 
 =item B<--tool>
 

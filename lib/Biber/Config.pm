@@ -21,7 +21,7 @@ use Log::Log4perl::Layout::SimpleLayout;
 use Log::Log4perl::Layout::PatternLayout;
 use Unicode::Normalize;
 
-our $VERSION = '2.1';
+our $VERSION = '2.3';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -175,6 +175,8 @@ sub _initopts {
     elsif (lc($k) eq 'dot_include' or
            lc($k) eq 'collate_options' or
            lc($k) eq 'nosort' or
+           lc($k) eq 'nolabel' or
+           lc($k) eq 'nolabelwidthcount' or
            lc($k) eq 'noinit' ) {
       Biber::Config->setoption($k, $v->{option});
     }
@@ -395,7 +397,8 @@ sub _config_file_set {
     }
     # mildly complex options - nosort/collate_options
     elsif (lc($k) eq 'nosort' or
-           lc($k) eq 'noinit' ) {
+           lc($k) eq 'noinit' or
+           lc($k) eq 'nolabel' ) {
       Biber::Config->setconfigfileoption($k, $v->{option});
     }
     # rather complex options
@@ -679,6 +682,12 @@ sub setconfigfileoption {
   my ($opt, $val) = @_;
   # Config file options are also options ...
   $CONFIG->{options}{biber}{$opt} = $CONFIG->{configfileoptions}{$opt} = $val;
+
+  # Config file options can also be global biblatex options
+  if ($CONFIG_SCOPE_BIBLATEX{$opt}) {
+    $CONFIG->{options}{biblatex}{GLOBAL}{$opt} = $val;
+  }
+
   return;
 }
 

@@ -35,6 +35,7 @@ use Data::Dump;
 use Data::Compare;
 use Text::BibTeX qw(:macrosubs);
 use Unicode::Normalize;
+use POSIX qw( locale_h ); # for lc()
 
 =encoding utf-8
 
@@ -284,6 +285,18 @@ sub parse_ctrlfile {
 
   biber_error("Cannot find control file '$ctrl_file'! - did you pass the \"backend=biber\" option to BibLaTeX?") unless ($ctrl_file_path and -e $ctrl_file_path);
 
+  # Early check to make sure .bcf is well-formed. If not, this means that the last biblatex run
+  # exited prematurely while writing the .bcf. This results is problems for latexmk. So, if the
+  # .bcf is broken, just stop here, remove the .bcf and exit with error so that we don't write
+  # a bad .bbl
+  my $checkbuf = File::Slurp::read_file($ctrl_file_path) or biber_error("Cannot open $ctrl_file_path: $!");
+  $checkbuf = NFD(decode('UTF-8', $checkbuf));# Unicode NFD boundary
+  unless (eval "XML::LibXML->load_xml(string => \$checkbuf)") {
+    my $output = $self->get_output_obj->get_output_target_file;
+    unlink($output);
+    biber_error("$ctrl_file_path is malformed, last biblatex run probably failed. Deleted $output");
+  }
+
   # Validate if asked to
   if (Biber::Config->getoption('validate_control')) {
     validate_biber_xml($ctrl_file_path, 'bcf', 'https://sourceforge.net/projects/biblatex');
@@ -301,7 +314,7 @@ sub parse_ctrlfile {
     # we assume that the schema files are in the same dir as Biber.pm:
     (my $vol, my $biber_path, undef) = File::Spec->splitpath( $INC{"Biber.pm"} );
 
-    # Deal with the strange world of Par::Packer paths
+    # Deal with the strange world of PAR::Packer paths
     # We might be running inside a PAR executable and @INC is a bit odd in this case
     # Specifically, "Biber.pm" in @INC might resolve to an internal jumbled name
     # nowhere near to these files. You know what I mean if you've dealt with pp
@@ -360,6 +373,8 @@ sub parse_ctrlfile {
                                                            qr/\Aper_datasource\z/,
                                                            qr/\Anosort\z/,
                                                            qr/\Anoinit\z/,
+                                                           qr/\Anolabel\z/,
+                                                           qr/\Anolabelwidthcount\z/,
                                                            qr/\Apresort\z/,
                                                            qr/\Atype_pair\z/,
                                                            qr/\Ainherit\z/,
@@ -375,7 +390,7 @@ sub parse_ctrlfile {
                                                            qr/\Asortlist\z/,
                                                            qr/\Alabel(?:part|element|alphatemplate)\z/,
                                                            qr/\Acondition\z/,
-                                                           qr/\A(?:or)?filter\z/,
+                                                           qr/\Afilter(?:or)?\z/,
                                                            qr/\Aoptionscope\z/,
                                                           ],
                                           'NsStrip' => 1,
@@ -472,7 +487,14 @@ sub parse_ctrlfile {
       # Merge any user maps from the document set by \DeclareSourcemap into user
       # maps set in the biber config file. These document user maps take precedence so go
       # at the front of any other user maps
-      unshift(@$usms, grep {$_->{level} eq 'user'} @{$bcfxml->{sourcemap}{maps}});
+      # Are there any doc maps to merge?
+      if (my @docmaps = grep {$_->{level} eq 'user'} @{$bcfxml->{sourcemap}{maps}}) {
+        # If so, get a reference to the maps in the config map and prepend all
+        # of the doc maps to it. Must also deref the doc maps map element to make
+        # sure that they collapse nicely
+        my $configmaps = first {$_->{level} eq 'user'} @$usms;
+        unshift(@{$configmaps->{map}}, map {@{$_->{map}}} @docmaps);
+      }
 
       # Merge the driver/style maps with the user maps from the config file
       if (my @m = grep {$_->{level} eq 'driver' or
@@ -515,6 +537,28 @@ sub parse_ctrlfile {
   }
   # There is a default so don't set this option if nothing is in the .bcf
   Biber::Config->setoption('noinit', $noinit) if $noinit;
+
+  # NOLABEL
+  # Make the data structure look like the biber config file structure
+  # "value" is forced to arrays for other elements so we extract
+  # the first element here as they will always be only length=1
+  my $nolabel;
+  foreach my $nl (@{$bcfxml->{nolabels}{nolabel}}) {
+    push @$nolabel, { value => $nl->{value}[0]};
+  }
+  # There is a default so don't set this option if nothing is in the .bcf
+  Biber::Config->setoption('nolabel', $nolabel) if $nolabel;
+
+  # NOLABELWIDTHCOUNT
+  # Make the data structure look like the biber config file structure
+  # "value" is forced to arrays for other elements so we extract
+  # the first element here as they will always be only length=1
+  my $nolabelwidthcount;
+  foreach my $nlwc (@{$bcfxml->{nolabelwidthcounts}{nolabelwidthcount}}) {
+    push @$nolabelwidthcount, { value => $nlwc->{value}[0]};
+  }
+  # There is a default so don't set this option if nothing is in the .bcf
+  Biber::Config->setoption('nolabelwidthcount', $nolabelwidthcount) if $nolabelwidthcount;
 
   # NOSORT
   # Make the data structure look like the biber config file structure
@@ -676,11 +720,17 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
     $seclist->set_type($ltype || 'entry'); # lists are entry lists by default
     $seclist->set_name($lname || $lssn); # name is only relevelant for "list" type, default to ss
     foreach my $filter (@{$list->{filter}}) {
-      $seclist->add_filter($filter->{type}, $filter->{content});
+      $seclist->add_filter({'type'  => $filter->{type},
+                            'value' => $filter->{content}});
     }
-    # disjunctive filters
-    foreach my $orfilter (@{$list->{orfilter}}) {
-      $seclist->add_filter('orfilter', { map {$_->{type} => [$_->{content}]} @{$orfilter->{filter}} });
+    # disjunctive filters are an array ref of filter hashes
+    foreach my $orfilter (@{$list->{filteror}}) {
+      my $orfilts = [];
+      foreach my $filter (@{$orfilter->{filter}}) {
+        push @$orfilts, {'type'  => $filter->{type},
+                         'value' => $filter->{content}};
+      }
+      $seclist->add_filter($orfilts) if $orfilts;
     }
 
     if (my $sorting = $list->{sorting}) { # can be undef for fallback to global sorting
@@ -870,7 +920,7 @@ sub process_citekey_aliases {
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   foreach my $citekey ($section->get_citekeys) {
-    if ($section->get_citekey_alias($citekey)) {
+    if (my $a = $section->get_citekey_alias($citekey)) {
       $logger->debug("Pruning citekey alias '$citekey' from citekeys");
       $section->del_citekey($citekey);
     }
@@ -1980,14 +2030,13 @@ KEYLOOP: foreach my $k ($list->get_keys) {
 
         $logger->debug("Checking key '$k' in list '$lname' against list filters");
         my $be = $section->bibentry($k);
-        foreach my $t (keys %$filters) {
-          my $fs = $filters->{$t};
+        foreach my $f (@$filters) {
           # Filter disjunction is ok if any of the checks are ok, hence the grep()
-          if ($t eq 'orfilter') {
-            next KEYLOOP unless grep {check_list_filter($k, $_, $fs->{$_}, $be)} keys %$fs;
+          if (ref $f eq 'ARRAY') {
+            next KEYLOOP unless grep {check_list_filter($k, $_->{type}, $_->{value}, $be)} @$f;
           }
           else {
-            next KEYLOOP unless check_list_filter($k, $t, $fs, $be);
+            next KEYLOOP unless check_list_filter($k, $f->{type}, $f->{value}, $be);
           }
         }
         push @$flist, $k;
@@ -2008,32 +2057,72 @@ KEYLOOP: foreach my $k ($list->get_keys) {
 
 sub check_list_filter {
   my ($k, $t, $fs, $be) = @_;
-  $logger->debug("Checking key '$k' against filter '$t=" . join(',', @$fs) . "'");
+  $logger->debug("Checking key '$k' against filter '$t=$fs'");
   if ($t eq 'type') {
-    return 0 unless grep {$be->get_field('entrytype') eq $_} @$fs;
+    if ($be->get_field('entrytype') eq lc($fs)) {
+      $logger->trace("Key '$k' passes against filter '$t=$fs'");
+    }
+    else {
+      return 0;
+    }
   }
   elsif ($t eq 'nottype') {
-    return 0 if grep {$be->get_field('entrytype') eq $_} @$fs;
+    if ($be->get_field('entrytype') eq lc($fs)) {
+      return 0;
+    }
+    else {
+      $logger->trace("Key '$k' passes against filter '$t=$fs'");
+    }
   }
   elsif ($t eq 'subtype') {
-    return 0 unless grep {$be->field_exists('entrysubtype') and
-                                $be->get_field('entrysubtype') eq $_} @$fs;
+    if ($be->field_exists('entrysubtype') and
+        $be->get_field('entrysubtype') eq lc($fs)) {
+      $logger->trace("Key '$k' passes against filter '$t=$fs'");
+    }
+    else {
+      return 0;
+    }
   }
   elsif ($t eq 'notsubtype') {
-    return 0 if grep {$be->field_exists('entrysubtype') and
-                            $be->get_field('entrysubtype') eq $_} @$fs;
+    if ($be->field_exists('entrysubtype') and
+        $be->get_field('entrysubtype') eq lc($fs)) {
+      return 0;
+    }
+    else {
+      $logger->trace("Key '$k' passes against filter '$t=$fs'");
+    }
   }
   elsif ($t eq 'keyword') {
-    return 0 unless grep {$be->has_keyword($_)} @$fs;
+    if ($be->has_keyword($fs)) {
+      $logger->trace("Key '$k' passes against filter '$t=$fs'");
+    }
+    else {
+      return 0;
+    }
   }
   elsif ($t eq 'notkeyword') {
-    return 0 if grep {$be->has_keyword($_)} @$fs;
+    if ($be->has_keyword($fs)) {
+      return 0;
+    }
+    else {
+      $logger->trace("Key '$k' passes against filter '$t=$fs'");
+    }
   }
   elsif ($t eq 'field') {
-    return 0 unless grep {$be->field_exists($_)} @$fs;
+    if ($be->field_exists($fs)) {
+      $logger->trace("Key '$k' passes against filter '$t=$fs'");
+    }
+    else {
+      return 0;
+    }
   }
   elsif ($t eq 'notfield') {
-    return 0 if grep {$be->field_exists($_)} @$fs;
+    if ($be->field_exists($fs)) {
+      return 0;
+    }
+    else {
+      $logger->trace("Key '$k' passes against filter '$t=$fs'");
+    }
   }
   return 1;
 }
@@ -2462,7 +2551,7 @@ sub generate_uniquename {
 
 =head2 create_uniquelist_info
 
-    Gather the uniquename information as we look through the names
+    Gather the uniquelist information as we look through the names
 
 =cut
 
@@ -3023,6 +3112,8 @@ sub prepare_tool {
   Biber::Config->_init;   # (re)initialise Config object
   $self->set_current_section($secnum); # Set the section number we are working on
   $self->fetch_data;      # Fetch cited key and dependent data from sources
+
+  $self->process_visible_names;# Generate visible names information for all entries
 
   if (Biber::Config->getoption('output_resolve')) {
     $self->resolve_alias_refs; # Resolve xref/crossref/xdata aliases to real keys

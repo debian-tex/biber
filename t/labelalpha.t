@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 113;
+use Test::More tests => 118;
 use Test::Differences;
 unified_diff;
 
@@ -37,8 +37,8 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 # relying on here for tests
 
 # Biber options
+Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 Biber::Config->setoption('fastsort', 1);
-Biber::Config->setoption('sortlocale', 'C');
 
 # Biblatex options
 Biber::Config->setblxoption('maxalphanames', 1);
@@ -51,6 +51,8 @@ my $section = $biber->sections->get_section(0);
 my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
 my $bibentries = $section->bibentries;
 
+
+eq_or_diff($bibentries->entry('prefix1')->get_field('sortlabelalpha'), 'vVaa99', 'Default prefix settings entry prefix1 labelalpha');
 eq_or_diff($bibentries->entry('L1')->get_field('sortlabelalpha'), 'Doe95', 'maxalphanames=1 minalphanames=1 entry L1 labelalpha');
 ok(is_undef($main->get_extraalphadata('l1')), 'maxalphanames=1 minalphanames=1 entry L1 extraalpha');
 eq_or_diff($bibentries->entry('L2')->get_field('sortlabelalpha'), 'Doe+95', 'maxalphanames=1 minalphanames=1 entry L2 labelalpha');
@@ -73,6 +75,8 @@ eq_or_diff($main->get_extraalphadata('knuth:ct'), '1', 'YEAR with range needs la
 eq_or_diff($main->get_extraalphadata('knuth:ct:a'), '2', 'YEAR with range needs label differentiating from individual volumes - 2');
 eq_or_diff($main->get_extraalphadata('knuth:ct:b'), '1', 'YEAR with range needs label differentiating from individual volumes - 3');
 eq_or_diff($main->get_extraalphadata('knuth:ct:c'), '2', 'YEAR with range needs label differentiating from individual volumes - 4');
+eq_or_diff($bibentries->entry('ignore1')->get_field('sortlabelalpha'), 'OTo07', 'Default ignore');
+eq_or_diff($bibentries->entry('ignore2')->get_field('sortlabelalpha'), 'De 07', 'Default no ignore spaces');
 
 # reset options and regenerate information
 Biber::Config->setblxoption('maxalphanames', 2);
@@ -418,5 +422,47 @@ eq_or_diff($bibentries->entry('labelstest')->get_field('sortlabelalpha'), '20050
 eq_or_diff($bibentries->entry('padtest')->get_field('labelalpha'), '\&Al\_\_{\textasciitilde}{\textasciitilde}T07', 'pad test - 1');
 eq_or_diff($bibentries->entry('padtest')->get_field('sortlabelalpha'), '&Al__~~T07', 'pad test - 2');
 
+Biber::Config->setblxoption('labelalphatemplate', {
+  labelelement => [
+                   {
+                    labelpart => [
+                                  {
+                   content         => "author",
+                   ifnamecount     => 1,
+                   substring_side  => "left",
+                   substring_width => 3,
+                   substring_pwidth => 2,
+                   substring_pcompound=> 1,
+                                  },
+               ],
+                   order => 1,
+                   },
+                   {
+               labelpart => [
+                 {
+                   content         => "title",
+                   substring_side  => "left",
+                   substring_width => 4,
+                 },
+               ],
+              order => 2,
+             },
+           ],
+  type  => "global",
+});
 
+foreach my $k ($section->get_citekeys) {
+  $bibentries->entry($k)->del_field('sortlabelalpha');
+  $bibentries->entry($k)->del_field('labelalpha');
+  $main->set_extraalphadata_for_key($k, undef);
+}
+# The "o"s are ignored for width substring calculation - take note
+Biber::Config->setoption('nolabelwidthcount', [ {value => q/o+/} ] );
+$biber->prepare;
+$section = $biber->sections->get_section(0);
+$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+$bibentries = $section->bibentries;
+
+eq_or_diff($bibentries->entry('skipwidthtest1')->get_field('sortlabelalpha'), 'OToolOToole', 'Skip width test - 1');
+eq_or_diff($bibentries->entry('prefix1')->get_field('sortlabelalpha'), 'vadeVaaThin', 'compound and string length entry prefix1 labelalpha');
 

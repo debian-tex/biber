@@ -27,7 +27,7 @@ our @EXPORT = qw{
 
 # Version of biblatex control file which this release expects. Matched against version
 # passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '2.7';
+our $BCF_VERSION = '2.9';
 # Format version of the .bbl. Used when writing the .bbl
 our $BBL_VERSION = '2.5';
 
@@ -96,7 +96,7 @@ our %DM_DATATYPES = (
 our $CONFIG_DEFAULT_BIBER = {
   clrmacros           => { content => 0 },
   collate             => { content => 1 },
-  collate_options     => { option => { level => 4, variable => 'non-ignorable', normalization => 'prenormalized' }},
+  collate_options     => { option => {level => 4, variable => 'non-ignorable', normalization => 'prenormalized' }},
   graph               => { content => 0 },
   debug               => { content => 0 },
   decodecharsset      => { content => 'base' },
@@ -105,20 +105,24 @@ our $CONFIG_DEFAULT_BIBER = {
   fixinits            => { content => 0 },
   input_encoding      => { content => 'UTF-8' },
   input_format        => { content => 'bibtex' },
+  isbn10              => { content => 0 },
+  isbn13              => { content => 0 },
+  isbn_normalise      => { content => 0 },
   listsep             => { content => 'and' },
   mincrossrefs        => { content => 2 },
-  mssplit             => { content => '_' },
   namesep             => { content => 'and' },
   nodieonerror        => { content => 0 },
   noinit              => { option => [ {value => q/\b\p{Ll}{2}\p{Pd}/},
                                        {value => q/[\x{2bf}\x{2018}]/} ] },
+  nolabel             => { option => [ {value => q/[\p{P}\p{S}\p{C}]+/} ] },
+  nolabelwidthcount   => { option => [ {value => q//} ] },
   nolog               => { content => 0 },
   nostdmacros         => { content => 0 },
   nosort              => { option => [ { name => 'type_name', value => q/\A\p{L}{2}\p{Pd}/ },
                                        { name => 'type_name', value => q/[\x{2bf}\x{2018}]/ } ] },
   onlylog             => { content => 0 },
   others_string       => { content => 'others' },
-  output_align        => { content => 1 },
+  output_align        => { content => 0 },
   output_encoding     => { content => 'UTF-8' },
   output_format       => { content => 'bbl' },
   output_indent       => { content => '2' },
@@ -127,9 +131,11 @@ our $CONFIG_DEFAULT_BIBER = {
   output_safechars    => { content => 0 },
   output_safecharsset => { content => 'base' },
   quiet               => { content => 0 },
+  noskipduplicates    => { content => 0 },
   sortcase            => { content => 1 },
   sortfirstinits      => { content => 0 },
   sortupper           => { content => 1 },
+  strip_comments      => { content => 0 },
   tool                => { content => 0 },
   trace               => { content => 0 },
   validate_config     => { content => 0 },
@@ -144,8 +150,20 @@ our $CONFIG_DEFAULT_BIBER = {
 # * Some tool-mode defaults (as there is no .bcf and some biblatex options
 #   cannot be set in a biber config file)
 our %CONFIG_DEFAULT_BIBLATEX = (
-  sortscheme => 'none',
-);
+                                sortscheme    => 'none',
+                                useauthor     => 1,
+                                useeditor     => 1,
+                                usetranslator => 1,
+                                maxbibnames   => 100,
+                                maxitems      => 100,
+                                minbibnames   => 100,
+                                maxalphanames => 100,
+                                maxcitenames  => 100,
+                                minalphanames => 100,
+                                mincitenames  => 100,
+                                minitems      => 100,
+                                useprefix     => 0
+                               );
 
 # Set up some encoding aliases to map \inputen{c,x} encoding names to Encode
 # It seems that inputen{c,x} has a different idea of nextstep than Encode
@@ -258,6 +276,9 @@ our %LOCALE_MAP = (
                    'slovenian'       => 'sl-SI',
                    'spanish'         => 'es-ES',
                    'swedish'         => 'sv-SE',
+                   'swiss'           => 'de-CH',
+                   'swissgerman'     => 'de-CH',
+                   'nswissgerman'    => 'de-CH',
                    'syriac'          => 'syc',
                    'tamil'           => 'ta-IN',
                    'telugu'          => 'te-IN',
@@ -306,6 +327,8 @@ our %LOCALE_MAP_R = (
                      'de-1996'    => 'ngerman',
                      'de-AT'      => 'austrian',
                      'de-AT-1996' => 'naustrian',
+                     'de-CH'      => 'swissgerman',
+                     'de-CH-1996' => 'nswissgerman',
                      'de-DE'      => 'german',
                      'de-DE-1996' => 'ngerman',
                      'dsb'        => 'lowersorbian',

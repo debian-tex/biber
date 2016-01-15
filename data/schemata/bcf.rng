@@ -455,6 +455,19 @@
         </element>
       </optional>
       <optional>
+        <!-- nolabel specification -->
+        <element name="bcf:nolabels">
+          <oneOrMore>
+            <element name="bcf:nolabel">
+              <attribute name="value">
+                <data type="string"/>
+              </attribute>
+              <empty/>
+            </element>
+          </oneOrMore>
+        </element>
+      </optional>
+      <optional>
         <!-- nosort specification -->
         <element name="bcf:nosorts">
           <oneOrMore>
@@ -747,7 +760,7 @@
         <zeroOrMore>
           <choice>
             <ref name="filter"/>
-            <ref name="orfilter"/>
+            <ref name="filteror"/>
           </choice>
         </zeroOrMore>
         <optional>
@@ -975,8 +988,8 @@
       </zeroOrMore>
     </element>
   </define>
-  <define name="orfilter">
-    <element name="bcf:orfilter">
+  <define name="filteror">
+    <element name="bcf:filteror">
       <oneOrMore>
         <ref name="filter"/>
       </oneOrMore>
