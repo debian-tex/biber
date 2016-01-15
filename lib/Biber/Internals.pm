@@ -268,8 +268,8 @@ sub _genlabel {
 
   foreach my $labelpart (sort {$a->{order} <=> $b->{order}} @{$labelalphatemplate->{labelelement}}) {
     my $ret = _labelpart($self, $labelpart->{labelpart}, $citekey);
-    $label .= $ret->[0];
-    $slabel .= $ret->[1];
+    $label .= $ret->[0] || '';
+    $slabel .= $ret->[1] || '';
     last if $LABEL_FINAL;
   }
 
@@ -444,7 +444,7 @@ sub _label_name {
     my $numnames  = $nameval->count_names;
     my $visibility = $nameval->get_visible_alpha;
 
-    my @lastnames = map { normalise_string_sort($_->get_lastname, $realname) } @{$nameval->names};
+    my @lastnames = map { normalise_string_label($_->get_lastname, $realname) } @{$nameval->names};
     my @prefices  = map { $_->get_prefix } @{$nameval->names};
     my $loopnames;
 
@@ -453,14 +453,28 @@ sub _label_name {
       if ($lc > $numnames) { # cap at numnames, of course
         $lc = $numnames;
       }
-      $loopnames = $lc; # Only look as many names as specified
+      $loopnames = $lc; # Only look at as many names as specified
     }
     else {
       $loopnames = $visibility; # Else use bib visibility
     }
 
     for (my $i = 0; $i < $loopnames; $i++) {
-      $acc .= Unicode::GCString->new($prefices[$i])->substr(0,1)->as_string if ($useprefix and $prefices[$i]);
+      # Deal with prefix options
+      if ($useprefix and $prefices[$i]) {
+        my $w = $labelattrs->{substring_pwidth} // 1;
+        if ($labelattrs->{substring_pcompound}) {
+          my $tmpstring;
+          # Splitting on tilde too as libbtparse inserts these into compound prefices
+          foreach my $part (split(/[\s\p{Dash}~]+/, $prefices[$i])) {
+            $tmpstring .= Unicode::GCString->new($part)->substr(0, $w)->as_string;
+          }
+          $acc .= $tmpstring;
+        }
+        else {
+          $acc .= Unicode::GCString->new($prefices[$i])->substr(0, $w)->as_string;
+        }
+      }
       $acc .= _process_label_attributes($self, $citekey, $lastnames[$i], $labelattrs, $realname, 'lastname', $i);
     }
 
@@ -611,11 +625,24 @@ sub _process_label_attributes {
         $subs_offset = 0 - $subs_width;
       }
 
-      # If desired, do the substring on all part of compound strings
+      # Get map of regexps to not count against stringth width and record their place in the string
+      my $nolabelwcs = Biber::Config->getoption('nolabelwidthcount');
+      my $nolabelwcis = match_indices([map {$_->{value}} @$nolabelwcs], $field_string);
+
+      $logger->trace('Saved indices for nolabelwidthcount: ' . Data::Dump::pp($nolabelwcis));
+
+      # Then remove the nolabelwidthcount chars for now
+      foreach my $nolabelwc (@$nolabelwcs) {
+        my $nlwcopt = $nolabelwc->{value};
+        my $re = qr/$nlwcopt/;
+        $field_string =~ s/$re//gxms;           # remove nolabelwidthcount items
+      }
+
+      # If desired, do the substring on all parts of compound strings
       # (strings with internal spaces or hyphens)
       if ($labelattrs->{substring_compound}) {
         my $tmpstring;
-        foreach my $part (split(/[ -]+/, $field_string)) {
+        foreach my $part (split(/[\s\p{Dash}]+/, $field_string)) {
           $tmpstring .= Unicode::GCString->new($part)->substr($subs_offset, $subs_width)->as_string;
         }
         $field_string = $tmpstring;
@@ -629,7 +656,7 @@ sub _process_label_attributes {
         $padchar = unescape_label($padchar);
         my $pad_side = ($labelattrs->{pad_side} or 'right');
         my $paddiff = $subs_width - Unicode::GCString->new($field_string)->length;
-        if ($paddiff) {
+        if ($paddiff > 0) {
           if ($pad_side eq 'right') {
             $field_string .= $padchar x $paddiff;
           }
@@ -639,6 +666,20 @@ sub _process_label_attributes {
         }
         $field_string = escape_label($field_string);
       }
+
+      # Now reinstate any nolabelwidthcount regexps
+      # Unicode::GCString->substr() with 3 args doesn't seem to work
+      my $subslength = Unicode::GCString->new($field_string)->length;
+      my @gca = Unicode::GCString->new($field_string)->as_array;
+      my $splicelen = 0;
+      foreach my $nolabelwci (@$nolabelwcis) {
+        if (($nolabelwci->[1] + 1) <= $subslength) {
+          splice(@gca, $nolabelwci->[1] + $splicelen, 0, $nolabelwci->[0]);
+          # - 1 here as we are using a length as a 0-based index calculation later on
+          $splicelen += (Unicode::GCString->new($nolabelwci->[0])->length - 1);
+        }
+      }
+      $field_string = join('', @gca);
     }
   }
 
@@ -1245,11 +1286,13 @@ sub _process_sort_attributes {
     my $pad_side = ($sortelementattributes->{pad_side} or $default_pad_side);
     my $pad_char = ($sortelementattributes->{pad_char} or $default_pad_char);
     my $pad_length = $pad_width - Unicode::GCString->new($field_string)->length;
-    if ($pad_side eq 'left') {
-      $field_string = ($pad_char x $pad_length) . $field_string;
-    }
-    elsif ($pad_side eq 'right') {
-      $field_string = $field_string . ($pad_char x $pad_length);
+    if ($pad_length > 0) {
+      if ($pad_side eq 'left') {
+        $field_string = ($pad_char x $pad_length) . $field_string;
+      }
+      elsif ($pad_side eq 'right') {
+        $field_string = $field_string . ($pad_char x $pad_length);
+      }
     }
   }
   return $field_string;

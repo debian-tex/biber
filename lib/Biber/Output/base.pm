@@ -64,6 +64,16 @@ sub set_output_target_file {
   $self->set_output_target($TARGET);
 }
 
+=head2 get_output_target_file
+
+  Get the output target file name
+
+=cut
+
+sub get_output_target_file {
+  my $self = shift;
+  return $self->{output_target_file};
+}
 
 =head2 set_output_target
 
@@ -206,6 +216,18 @@ sub get_output_entries {
                 $self->{output_data}{ALIAS_ENTRIES}{$section}{index}{$_}} @{$list->get_keys}];
 }
 
+
+=head2 get_output_comments
+
+    Get the output comments for tool mode tests
+
+=cut
+
+sub get_output_comments {
+  my $self = shift;
+  return $self->{output_data}{COMMENTS};
+}
+
 =head2 get_output_entry
 
     Get the output data for a specific entry.
@@ -253,38 +275,10 @@ sub get_output_entry {
     }
   }
 
-
   # Sometimes $out_string might still be a scalar ref (tool mode, for example which doesn't use
   # sort lists)
   return $out ? (ref($out_string) eq 'SCALAR' ? NFC($$out_string) : NFC($out_string)) : undef;
 }
-
-=head2 set_los
-
-    Set the output list of shorthands for a section
-
-=cut
-
-sub set_los {
-  my $self = shift;
-  my $shs = shift;
-  my $section = shift;
-  $self->{output_data}{LOS}{$section} = $shs;
-  return;
-}
-
-=head2 get_los
-
-    Get the output list of shorthands for a section as an array
-
-=cut
-
-sub get_los {
-  my $self = shift;
-  my $section = shift;
-  return @{$self->{output_data}{LOS}{$section}}
-}
-
 
 =head2 set_output_entry
 

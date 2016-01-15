@@ -24,6 +24,7 @@ use Log::Log4perl qw(:no_extra_logdie_message);
 use Scalar::Util qw(looks_like_number);
 use Text::Roman qw(isroman roman2int);
 use Unicode::Normalize;
+use Unicode::GCString;
 my $logger = Log::Log4perl::get_logger('main');
 
 =encoding utf-8
@@ -47,7 +48,7 @@ our @EXPORT = qw{ locate_biber_file makenamesid makenameid stringify_hash
   is_undef_or_null is_notnull is_null normalise_utf8 inits join_name latex_recode_output
   filter_entry_options biber_error biber_warn ireplace imatch validate_biber_xml
   process_entry_options escape_label unescape_label biber_decode_utf8 out parse_date
-  locale2bcp47 bcp472locale rangelen};
+  locale2bcp47 bcp472locale rangelen match_indices process_comment};
 
 =head1 FUNCTIONS
 
@@ -270,19 +271,27 @@ sub strip_nosort {
 
 =head2 normalise_string_label
 
-Remove some things from a string for label generation, like braces.
-It also decodes LaTeX character macros into Unicode as this is always safe when
-normalising strings for sorting since they don't appear in the output.
+Remove some things from a string for label generation.
 
 =cut
 
 sub normalise_string_label {
   my $str = shift;
-  my $fieldname = shift;
   return '' unless $str; # Sanitise missing data
-  return normalise_string_common($str);
+  my $nolabels = Biber::Config->getoption('nolabel');
+  $str =~ s/\\[A-Za-z]+//g;        # remove latex macros (assuming they have only ASCII letters)
+  # Replace ties with spaces or they will be lost
+  $str =~ s/([^\\])~/$1 /g; # Foo~Bar -> Foo Bar
+  foreach my $nolabel (@$nolabels) {
+    my $nlopt = $nolabel->{value};
+    my $re = qr/$nlopt/;
+    $str =~ s/$re//gxms;           # remove nolabel items
+  }
+  $str =~ s/^\s+//;                # Remove leading spaces
+  $str =~ s/\s+$//;                # Remove trailing spaces
+  $str =~ s/\s+/ /g;               # collapse spaces
+  return $str;
 }
-
 
 =head2 normalise_string_sort
 
@@ -431,11 +440,14 @@ sub reduce_array {
 
     Remove surrounding curly brackets:
         '{string}' -> 'string'
+    but not
+        '{string} {string}' -> 'string} {string'
 
 =cut
 
 sub remove_outer {
   my $str = shift;
+  return $str if $str =~ m/}\s*{/;
   $str =~ s/^{(\X+)}$/$1/;
   return $str;
 }
@@ -933,6 +945,23 @@ sub _expand_option {
   return;
 }
 
+=head2 process_comment
+
+  Fix up some problems with comments after being processed by btparse
+
+=cut
+
+sub process_comment {
+  my $comment = shift;
+  # Fix up structured Jabref comments by re-instating line breaks. Hack.
+  if ($comment =~ m/jabref-meta:/) {
+    $comment =~ s/([:;])\s(\d)/$1\n$2/xmsg;
+    $comment =~ s/\z/\n/xms;
+  }
+  return $comment;
+}
+
+
 =head2 locale2bcp47
 
   Map babel/polyglossia language options to a sensible CLDR (bcp47) locale default
@@ -1024,6 +1053,30 @@ sub rangelen {
     }
   }
   return $rl;
+}
+
+
+=head2 match_indices
+
+  Return array ref of array refs of matches and start indices of matches
+  for provided array of compiled regexps into string
+
+=cut
+
+sub match_indices {
+  my ($regexes, $string) = @_;
+  my $ret;
+  my $relen = 0;
+  foreach my $regex (@$regexes) {
+    my $len = 0;
+    while ($string =~ /$regex/g) {
+      my $gcs = Unicode::GCString->new($string)->substr($-[0], $+[0]-$-[0]);
+      push @$ret, [ $gcs->as_string, $-[0] - $relen ];
+      $len = $gcs->length;
+    }
+    $relen += $len;
+  }
+  return $ret
 }
 
 1;

@@ -1,7 +1,7 @@
 # -*- cperl -*-
 use strict;
 use warnings;
-use Test::More tests => 5;
+use Test::More tests => 6;
 use Test::Differences;
 unified_diff;
 
@@ -36,9 +36,10 @@ $biber->set_output_obj(Biber::Output::bibtex->new());
 
 # Biber options
 Biber::Config->setoption('tool', 1);
+Biber::Config->setoption('output_align', '1');
 Biber::Config->setoption('output_resolve', 1);
 Biber::Config->setoption('output_format', 'bibtex');
-Biber::Config->setoption('sortlocale', 'C');
+Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 
 # THERE IS A CONFIG FILE BEING READ!
 
@@ -85,9 +86,14 @@ my $t3 = q|@BOOK{b1,
 
 |;
 
+my $tc1 = ["\@COMMENT{Comment 1}\n",
+           "\@COMMENT{Comment 2}\n",
+           "\@COMMENT{jabref-meta: groupstree:\n0 AllEntriesGroup:;\n1 ExplicitGroup:Doktorandkurser\\;2\\;;\n2 KeywordGroup:Fra\x{30a}n ko\x{308}nsroll till genus\\;0\\;course\\;UCGS Fra\x{30a}n ko\x{308}nsrolltill genus\\;0\\;0\\;;\n2 KeywordGroup:Historiska och filosofiska perspektiv pa\x{30a} psykologi\\;0\\;course\\;Historiska och filosofiska perspektiv pa\x{30a} psykologi\\;0\\;0\\;;\n2 KeywordGroup:Kurs i introduktion\\;0\\;course\\;Kurs i introduktion\\;0\\;0\\;;\n2 KeywordGroup:Fenomenologi, ko\x{308}n och genus\\;0\\;course\\;UCGS Fenomenologi\\;0\\;0\\;;\n2 KeywordGroup:Quantitative Research Methods\\;0\\;course\\;QMR\\;0\\;0\\;;\n2 KeywordGroup:Multivariate Analysis\\;0\\;course\\;MVA\\;1\\;0\\;;\n}\n"];
+
 # NFD here because we are testing internals here and all internals expect NFD
 eq_or_diff($out->get_output_entry(NFD('i3Š')), $t1, 'tool mode 1');
 ok(is_undef($out->get_output_entry('loh')), 'tool mode 2');
 eq_or_diff($out->get_output_entry('xd1',), $t2, 'tool mode 3');
 eq_or_diff($out->get_output_entry('b1',), $t3, 'tool mode 4');
 is_deeply([$main->get_keys], ['macmillan:pub', 'macmillan:loc', 'mv1', 'b1', 'xd1', 'macmillan', NFD('i3Š')], 'tool mode sorting');
+eq_or_diff($out->get_output_comments, $tc1, 'tool mode 5');
