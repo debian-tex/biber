@@ -2,7 +2,7 @@ package Biber::Output::dot;
 use v5.16;
 use strict;
 use warnings;
-use base 'Biber::Output::base';
+use parent qw(Biber::Output::base);
 
 use Biber::Config;
 use Biber::Constants;
@@ -69,10 +69,7 @@ sub set_output_target_file {
   my $self = shift;
   my $dotfile = shift;
   $self->{output_target_file} = $dotfile;
-  my $enc_out;
-  $enc_out = ':encoding(UTF-8)';
-  my $DOTFILE = IO::File->new($dotfile, ">$enc_out");
-  $self->set_output_target($DOTFILE);
+  $self->set_output_target(IO::File->new($dotfile, '>:encoding(UTF-8)'));
 }
 
 =head2 set_output_entry
@@ -366,7 +363,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

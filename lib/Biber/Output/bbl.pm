@@ -2,7 +2,7 @@ package Biber::Output::bbl;
 use v5.16;
 use strict;
 use warnings;
-use base 'Biber::Output::base';
+use parent qw(Biber::Output::base);
 
 use Biber::Config;
 use Biber::Constants;
@@ -107,8 +107,8 @@ sub set_output_target_file {
   my $bblfile = shift;
   $self->{output_target_file} = $bblfile;
   my $enc_out;
-  if (Biber::Config->getoption('output_encoding')) {
-    $enc_out = ':encoding(' . Biber::Config->getoption('output_encoding') . ')';
+  if (my $enc = Biber::Config->getoption('output_encoding')) {
+    $enc_out = ":encoding($enc)";
   }
   my $BBLFILE = IO::File->new($bblfile, ">$enc_out");
   $self->set_output_target($BBLFILE);
@@ -217,7 +217,6 @@ sub set_output_entry {
 
   # Skip entrytypes we don't want to output according to datamodel
   return if $dm->entrytype_is_skipout($bee);
-
   $acc .= "    \\entry{$key}{$bee}{" . join(',', @{filter_entry_options($be->get_field('options'))}) . "}\n";
 
   # Generate set information
@@ -243,15 +242,30 @@ sub set_output_entry {
 
       my $total = $nf->count_names;
 
-      # Add per-list options, if any
       my $lni = $be->get_labelname_info;
       if (defined($lni) and
           $lni eq $namefield) {
-        # Add uniquelist, if defined
         my @plo;
+
+        # Add uniquelist, if defined
         if (my $ul = $nf->get_uniquelist){
           push @plo, "uniquelist=$ul";
         }
+
+        # Add per-namelist options
+        foreach my $ploname (keys %{$CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}}) {
+          if (defined($nf->${\"get_$ploname"})) {
+            my $plo = $nf->${\"get_$ploname"};
+            if ($CONFIG_OPTTYPE_BIBLATEX{lc($ploname)} and
+                $CONFIG_OPTTYPE_BIBLATEX{lc($ploname)} eq 'boolean') {
+                  push @plo, "$ploname=" . map_boolean($plo, 'tostring');
+                }
+            else {
+              push @plo, "$ploname=$plo";
+            }
+          }
+        }
+
         $plo = join(',', @plo);
       }
       $acc .= "      \\name{$namefield}{$total}{$plo}{%\n";
@@ -516,8 +530,10 @@ sub output {
     my @lists; # Need to reshuffle list to put global sort order list at end, see below
 
     # This sort is cosmetic, just to order the lists in a predictable way in the .bbl
+    # but omit the global context list so that we can add this last
     foreach my $list (sort {$a->get_sortschemename cmp $b->get_sortschemename} @{$Biber::MASTER->sortlists->get_lists_for_section($secnum)}) {
       if ($list->get_sortschemename eq Biber::Config->getblxoption('sortscheme') and
+          $list->get_sortnamekeyschemename eq 'global' and
           $list->get_type eq 'entry') {
         next;
       }
@@ -528,50 +544,53 @@ sub output {
     # due to its sequential reading of the .bbl as the final list overrides the
     # previously read ones and the global list determines the order of labelnumber
     # and sortcites etc. when not using defernumbers
-    push @lists, $Biber::MASTER->sortlists->get_list($secnum, Biber::Config->getblxoption('sortscheme'), 'entry', Biber::Config->getblxoption('sortscheme'));
+    push @lists, $Biber::MASTER->sortlists->get_list($secnum, Biber::Config->getblxoption('sortscheme') . '/global', 'entry', Biber::Config->getblxoption('sortscheme'), 'global');
 
     foreach my $list (@lists) {
       next unless $list->count_keys; # skip empty lists
       my $listssn = $list->get_sortschemename;
+      my $listsnksn = $list->get_sortnamekeyschemename;
       my $listtype = $list->get_type;
       my $listname = $list->get_name;
-      $logger->debug("Writing entries in '$listname' list of type '$listtype' with sortscheme '$listssn'");
 
-      out($target, "  \\sortlist{$listname}{$listssn}\n");
+      $logger->debug("Writing entries in '$listname' list of type '$listtype' with sortscheme '$listssn' and sort name key scheme '$listsnksn'");
+
+      if ($listtype eq 'entry') {
+        out($target, "  \\sortlist[entry]{$listname}\n");
+      }
+      elsif ($listtype eq 'list') {
+        out($target, "  \\sortlist[list]{$listname}\n");
+      }
 
       # The order of this array is the sorted order
       foreach my $k ($list->get_keys) {
         $logger->debug("Writing entry for key '$k'");
-        if ($listtype eq 'entry') {
-          my $entry = $data->{ENTRIES}{$secnum}{index}{$k};
 
-          # Instantiate any dynamic, list specific entry information
-          my $entry_string = $list->instantiate_entry($entry, $k);
+        my $entry = $data->{ENTRIES}{$secnum}{index}{$k};
 
-          # If requested to convert UTF-8 to macros ...
-          if (Biber::Config->getoption('output_safechars')) {
-            $entry_string = latex_recode_output($entry_string);
-          }
-          else { # ... or, check for encoding problems and force macros
-            my $outenc = Biber::Config->getoption('output_encoding');
-            if ($outenc ne 'UTF-8') {
-              # Can this entry be represented in the output encoding?
-              # We must have an ASCII-safe replacement string for encode whic is unlikely to be
-              # in the string. Default is "?" which could easily be in URLS so we choose ASCII null
-              if (encode($outenc, NFC($entry_string), sub {"\0"})  =~ /\0/) { # Malformed data encoding char
-                # So convert to macro
-                $entry_string = latex_recode_output($entry_string);
-                biber_warn("The entry '$k' has characters which cannot be encoded in '$outenc'. Recoding problematic characters into macros.");
-              }
+        # Instantiate any dynamic, list specific entry information
+        my $entry_string = $list->instantiate_entry($entry, $k);
+
+        # If requested to convert UTF-8 to macros ...
+        if (Biber::Config->getoption('output_safechars')) {
+          $entry_string = latex_recode_output($entry_string);
+        }
+        else {       # ... or, check for encoding problems and force macros
+          my $outenc = Biber::Config->getoption('output_encoding');
+          if ($outenc ne 'UTF-8') {
+            # Can this entry be represented in the output encoding?
+            # We must have an ASCII-safe replacement string for encode which is unlikely to be
+            # in the string. Default is "?" which could easily be in URLS so we choose ASCII null
+            if (encode($outenc, NFC($entry_string), sub {"\0"})  =~ /\0/) { # Malformed data encoding char
+              # So convert to macro
+              $entry_string = latex_recode_output($entry_string);
+              biber_warn("The entry '$k' has characters which cannot be encoded in '$outenc'. Recoding problematic characters into macros.");
             }
           }
+        }
 
-          # Now output
-          out($target, $entry_string);
-        }
-        elsif ($listtype eq 'list') {
-          out($target, "    \\key{$k}\n");
-        }
+        # Now output
+        out($target, $entry_string);
       }
 
       out($target, "  \\endsortlist\n");
@@ -579,12 +598,12 @@ sub output {
     }
 
     # Aliases
-    while (my ($k, $ks) = each %{$data->{ALIAS_ENTRIES}{$secnum}{index}}) {
+    foreach my $ks (values %{$data->{ALIAS_ENTRIES}{$secnum}{index}}) {
       out($target, $$ks);
     }
 
     # Missing keys
-    while (my ($k, $ks) = each %{$data->{MISSING_ENTRIES}{$secnum}{index}}) {
+    foreach my $ks (values %{$data->{MISSING_ENTRIES}{$secnum}{index}}) {
       out($target, $$ks);
     }
 
@@ -614,7 +633,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

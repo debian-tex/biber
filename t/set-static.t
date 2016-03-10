@@ -40,13 +40,17 @@ Biber::Config->setoption('fastsort', 1);
 # Now generate the information
 $biber->prepare;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 my $out = $biber->get_output_obj;
 
 my $string1 = q|    \entry{Static1}{set}{}
       \set{Static2,Static3,Static4}
       \name{author}{1}{}{%
-        {{hash=43874d80d7ce68027102819f16c47df1}{Bumble}{B\bibinitperiod}{Brian}{B\bibinitperiod}{}{}{}{}}%
+        {{hash=43874d80d7ce68027102819f16c47df1}{%
+           family={Bumble},
+           family_i={B\bibinitperiod},
+           given={Brian},
+           given_i={B\bibinitperiod}}}%
       }
       \strng{namehash}{43874d80d7ce68027102819f16c47df1}
       \strng{fullhash}{43874d80d7ce68027102819f16c47df1}
@@ -65,7 +69,11 @@ my $string1 = q|    \entry{Static1}{set}{}
 my $string2 = q|    \entry{Static2}{book}{}
       \inset{Static1}
       \name{author}{1}{}{%
-        {{hash=43874d80d7ce68027102819f16c47df1}{Bumble}{B\bibinitperiod}{Brian}{B\bibinitperiod}{}{}{}{}}%
+        {{hash=43874d80d7ce68027102819f16c47df1}{%
+           family={Bumble},
+           family_i={B\bibinitperiod},
+           given={Brian},
+           given_i={B\bibinitperiod}}}%
       }
       \strng{namehash}{43874d80d7ce68027102819f16c47df1}
       \strng{fullhash}{43874d80d7ce68027102819f16c47df1}
@@ -82,7 +90,11 @@ my $string2 = q|    \entry{Static2}{book}{}
 my $string3 = q|    \entry{Static3}{book}{}
       \inset{Static1}
       \name{author}{1}{}{%
-        {{hash=da80091c8cd89e5269bd55af1bd5d2fa}{Crenellation}{C\bibinitperiod}{Clive}{C\bibinitperiod}{}{}{}{}}%
+        {{hash=da80091c8cd89e5269bd55af1bd5d2fa}{%
+           family={Crenellation},
+           family_i={C\bibinitperiod},
+           given={Clive},
+           given_i={C\bibinitperiod}}}%
       }
       \strng{namehash}{da80091c8cd89e5269bd55af1bd5d2fa}
       \strng{fullhash}{da80091c8cd89e5269bd55af1bd5d2fa}
@@ -98,7 +110,11 @@ my $string3 = q|    \entry{Static3}{book}{}
 my $string4 = q|    \entry{Static4}{book}{}
       \inset{Static1}
       \name{author}{1}{}{%
-        {{hash=22dafa5cd57bb5dd7f3e3bab98fd539c}{Dingle}{D\bibinitperiod}{Derek}{D\bibinitperiod}{}{}{}{}}%
+        {{hash=22dafa5cd57bb5dd7f3e3bab98fd539c}{%
+           family={Dingle},
+           family_i={D\bibinitperiod},
+           given={Derek},
+           given_i={D\bibinitperiod}}}%
       }
       \strng{namehash}{22dafa5cd57bb5dd7f3e3bab98fd539c}
       \strng{fullhash}{22dafa5cd57bb5dd7f3e3bab98fd539c}
@@ -115,7 +131,11 @@ my $string4 = q|    \entry{Static4}{book}{}
 # without citation of a set it is a member of
 my $string5 = q|    \entry{Static2}{book}{}
       \name{author}{1}{}{%
-        {{hash=43874d80d7ce68027102819f16c47df1}{Bumble}{B\bibinitperiod}{Brian}{B\bibinitperiod}{}{}{}{}}%
+        {{hash=43874d80d7ce68027102819f16c47df1}{%
+           family={Bumble},
+           family_i={B\bibinitperiod},
+           given={Brian},
+           given_i={B\bibinitperiod}}}%
       }
       \strng{namehash}{43874d80d7ce68027102819f16c47df1}
       \strng{fullhash}{43874d80d7ce68027102819f16c47df1}

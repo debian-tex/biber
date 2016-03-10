@@ -6,8 +6,6 @@ data/biber-tool.conf
 data/latinkeys.txt
 data/schemata/bcf.rnc
 data/schemata/bcf.rng
-data/schemata/biblatexml.rnc
-data/schemata/biblatexml.rng
 data/schemata/config.rnc
 data/schemata/config.rng
 data/schemata/texmap.rnc
@@ -23,9 +21,7 @@ lib/Biber/Entry/Names.pm
 lib/Biber/Entry.pm
 lib/Biber/Input/file/biblatexml.pm
 lib/Biber/Input/file/bibtex.pm
-lib/Biber/Input/file/endnotexml.pm
 lib/Biber/Input/file/ris.pm
-lib/Biber/Input/file/zoterordfxml.pm
 lib/Biber/Internals.pm
 lib/Biber/LaTeX/recode_data.xml
 lib/Biber/LaTeX/Recode.pm
@@ -56,7 +52,6 @@ t/crossrefs.t
 t/dm-constraints.t
 t/dm-dateformats.t
 t/encoding.t
-t/endnotexml.t
 t/extratitle.t
 t/extratitleyear.t
 t/extrayear.t
@@ -67,8 +62,6 @@ t/labelname.t
 t/names.t
 TODO.org
 t/options.t
-t/pod-coverage.t
-t/pod.t
 t/related-entries.t
 t/remote-files.t
 t/ris.t
@@ -86,6 +79,8 @@ t/sort-order.t
 t/sort-uc.t
 t/tool.t
 t/tool-bltxml.t
+t/tool-bltxml-inout.t
+t/tdata/basic-misc.bcf
 t/tdata/biber-test.conf
 t/tdata/tool-test.conf
 t/tdata/biblatexml.bcf
@@ -111,8 +106,6 @@ t/tdata/encoding5.bcf
 t/tdata/encoding5.bib
 t/tdata/encoding6.bcf
 t/tdata/encoding6.bib
-t/tdata/endnote.xml
-t/tdata/endnotexml.bcf
 t/tdata/examples.bib
 t/tdata/extratitle.bcf
 t/tdata/extratitle.bib
@@ -124,8 +117,7 @@ t/tdata/extrayear.bib
 t/tdata/full1.bbl
 t/tdata/full.bcf
 t/tdata/full.bib
-t/tdata/general1.bcf
-t/tdata/general2.bcf
+t/tdata/general.bcf
 t/tdata/labelalpha.bcf
 t/tdata/labelalpha.bib
 t/tdata/labelalpha.bib
@@ -159,6 +151,7 @@ t/tdata/sort-case.bib
 t/tdata/sort-complex.bcf
 t/tdata/sortlists.bcf
 t/tdata/sortlists.bib
+t/tdata/sortlists.bltxml
 t/tdata/sort-order.bcf
 t/tdata/sort-order.bib
 t/tdata/sort-order.bib
@@ -178,10 +171,7 @@ t/tdata/uniqueness5.bib
 t/tdata/xdata.bcf
 t/tdata/xdata.bib
 t/tdata/xdata.bltxml
-t/tdata/zotero.rdf
-t/tdata/zoterordfxml.bcf
 t/uniqueness.t
 t/utils.t
 t/xdata.t
-t/zoterordfxml.t
 visual.pl

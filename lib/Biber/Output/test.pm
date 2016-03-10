@@ -2,7 +2,7 @@ package Biber::Output::test;
 use v5.16;
 use strict;
 use warnings;
-use base 'Biber::Output::base';
+use parent qw(Biber::Output::base);
 
 use Biber::Config;
 use Biber::Constants;
@@ -353,26 +353,19 @@ sub output {
     my $section = $self->get_output_section($secnum);
     foreach my $list (sort {$a->get_sortschemename cmp $b->get_sortschemename} @{$Biber::MASTER->sortlists->get_lists_for_section($secnum)}) {
       next unless $list->count_keys; # skip empty lists
-      my $listssn = $list->get_sortschemename;
       my $listtype = $list->get_type;
-      my $listname = $list->get_name;
       foreach my $k ($list->get_keys) {
-        if ($listtype eq 'entry') {
-          my $entry = $data->{ENTRIES}{$secnum}{index}{$k};
+        my $entry = $data->{ENTRIES}{$secnum}{index}{$k};
 
-          # Instantiate any dynamic, list specific entry information
-          my $entry_string = $list->instantiate_entry($entry, $k);
+        # Instantiate any dynamic, list specific entry information
+        my $entry_string = $list->instantiate_entry($entry, $k);
 
-          # If requested to convert UTF-8 to macros ...
-          if (Biber::Config->getoption('output_safechars')) {
-            $entry_string = latex_recode_output($entry_string);
-          }
-          out($target, $entry_string);
+        # If requested to convert UTF-8 to macros ...
+        if (Biber::Config->getoption('output_safechars')) {
+          $entry_string = latex_recode_output($entry_string);
         }
-        elsif ($listtype eq 'shorthand') {
-          next if Biber::Config->getblxoption('skipbiblist', $section->bibentry($k), $k);
-          out($target, $k);
-        }
+        out($target, $entry_string);
+
       }
     }
   }
@@ -396,7 +389,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

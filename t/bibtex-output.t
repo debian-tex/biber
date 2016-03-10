@@ -43,7 +43,7 @@ $biber->set_output_obj(Biber::Output::bibtex->new());
 
 # Now generate the information
 $biber->prepare_tool;
-my $main = $biber->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme'), 'entry', Biber::Config->getblxoption('sortscheme'));
+my $main = $biber->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme') . '/global', 'entry', Biber::Config->getblxoption('sortscheme'), 'global');
 my $out = $biber->get_output_obj;
 
 my $b1 = q|@ARTICLE{murray,
@@ -75,7 +75,7 @@ my $b2 = q|@BOOK{b1,
 |;
 
 my $b3 = q|@BOOK{xd1,
-  AUTHOR    = {Edward Ellington},
+  AUTHOR    = {Edward Paul Ellington},
   LOCATION  = {New York and London},
   NOTE      = {A Note},
   PUBLISHER = {Macmillan},

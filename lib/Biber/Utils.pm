@@ -3,7 +3,7 @@ use v5.16;
 use strict;
 use warnings;
 use re 'eval';
-use base 'Exporter';
+use parent qw(Exporter);
 
 use constant {
   EXIT_OK => 0,
@@ -48,7 +48,7 @@ our @EXPORT = qw{ locate_biber_file makenamesid makenameid stringify_hash
   is_undef_or_null is_notnull is_null normalise_utf8 inits join_name latex_recode_output
   filter_entry_options biber_error biber_warn ireplace imatch validate_biber_xml
   process_entry_options escape_label unescape_label biber_decode_utf8 out parse_date
-  locale2bcp47 bcp472locale rangelen match_indices process_comment};
+  locale2bcp47 bcp472locale rangelen match_indices process_comment map_boolean parse_range maploop };
 
 =head1 FUNCTIONS
 
@@ -728,15 +728,22 @@ sub filter_entry_options {
   my $roptions = [];
   foreach (@$options) {
     m/^([^=\s]+)\s*=?\s*([^\s]+)?$/;
-    my $cfopt = $CONFIG_BIBLATEX_PER_ENTRY_OPTIONS{lc($1)}{OUTPUT};
+    my $cfopt = $CONFIG_BIBLATEX_ENTRY_OPTIONS{lc($1)}{OUTPUT};
+    # convert booleans
+    my $val = $2;
+    if ($val and
+        $CONFIG_OPTTYPE_BIBLATEX{lc($1)} and
+        $CONFIG_OPTTYPE_BIBLATEX{lc($1)} eq 'boolean') {
+      $val = map_boolean($val, 'tostring');
+    }
     # Standard option
     if (not defined($cfopt) or $cfopt == 1) {
-      push @$roptions, $1 . ($2 ? "=$2" : '') ;
+      push @$roptions, $1 . ($val ? "=$val" : '') ;
     }
     # Set all split options to same value as parent
     elsif (ref($cfopt) eq 'ARRAY') {
       foreach my $map (@$cfopt) {
-        push @$roptions, "$map=$2";
+        push @$roptions, "$map=$val";
       }
     }
     # Set all splits to specific values
@@ -752,6 +759,8 @@ sub filter_entry_options {
 =head2 imatch
 
     Do an interpolating (neg)match using a match RE and a string passed in as variables
+    Using /g on matches so that $1,$2 etc. can be populated from repeated matches of
+    same capture group as well as different groups
 
 =cut
 
@@ -760,10 +769,10 @@ sub imatch {
   return 0 unless $val_match;
   $val_match = qr/$val_match/;
   if ($negmatch) {# "!~" doesn't work here as we need an array returned
-    return $value =~ m/$val_match/xms ? () : (1);
+    return $value =~ m/$val_match/xmsg ? () : (1);
   }
   else {
-    return $value =~ m/$val_match/xms;
+    return $value =~ m/$val_match/xmsg;
   }
 }
 
@@ -788,12 +797,12 @@ sub ireplace {
 
 =head2 validate_biber_xml
 
-  Validate a biber/biblatex XML metadata file against an RNG schema
+  Validate a biber/biblatex XML metadata file against an RNG XML schema
 
 =cut
 
 sub validate_biber_xml {
-  my ($file, $type, $prefix) = @_;
+  my ($file, $type, $prefix, $schema) = @_;
   require XML::LibXML;
 
   # Set up XML parser
@@ -803,52 +812,77 @@ sub validate_biber_xml {
   # Set up schema
   my $xmlschema;
 
-  # we assume that the schema files are in the same dir as Biber.pm:
-  (my $vol, my $biber_path, undef) = File::Spec->splitpath( $INC{"Biber.pm"} );
-  $biber_path =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
-
   # Deal with the strange world of Par::Packer paths
   # We might be running inside a PAR executable and @INC is a bit odd in this case
   # Specifically, "Biber.pm" in @INC might resolve to an internal jumbled name
   # nowhere near to these files. You know what I mean if you've dealt with pp
-  my $rng;
-  if ($biber_path =~ m|/par\-| and $biber_path !~ m|/inc|) { # a mangled PAR @INC path
-    $rng = File::Spec->catpath($vol, "$biber_path/inc/lib/Biber", "${type}.rng");
-  }
-  else {
-    $rng = File::Spec->catpath($vol, "$biber_path/Biber", "${type}.rng");
+  unless ($schema) {
+    # we assume that unspecified schema files are in the same dir as Biber.pm:
+    (my $vol, my $biber_path, undef) = File::Spec->splitpath( $INC{"Biber.pm"} );
+    $biber_path =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
+
+    if ($biber_path =~ m|/par\-| and $biber_path !~ m|/inc|) { # a mangled PAR @INC path
+      $schema = File::Spec->catpath($vol, "$biber_path/inc/lib/Biber", "${type}.rng");
+    }
+    else {
+      $schema = File::Spec->catpath($vol, "$biber_path/Biber", "${type}.rng");
+    }
   }
 
-  if (-e $rng) {
-    $xmlschema = XML::LibXML::RelaxNG->new( location => $rng )
+  if (-e $schema) {
+    $xmlschema = XML::LibXML::RelaxNG->new( location => $schema )
   }
   else {
-    biber_warn("Cannot find XML::LibXML::RelaxNG schema. Skipping validation : $!");
+    biber_warn("Cannot find XML::LibXML::RelaxNG schema '$schema'. Skipping validation : $!");
     return;
   }
 
   # Parse file
-  my $xp = $xmlparser->parse_file($file);
+  my $doc = $xmlparser->load_xml(location => $file);
 
   # XPath context
   if ($prefix) {
-    my $xpc = XML::LibXML::XPathContext->new($xp);
+    my $xpc = XML::LibXML::XPathContext->new($doc);
     $xpc->registerNs($type, $prefix);
   }
 
   # Validate against schema. Dies if it fails.
-  eval { $xmlschema->validate($xp) };
+  eval { $xmlschema->validate($doc) };
   if (ref($@)) {
     $logger->debug( $@->dump() );
-    biber_error("'$file' failed to validate against schema '$rng'");
+    biber_error("'$file' failed to validate against schema '$schema'");
   }
   elsif ($@) {
-    biber_error("'$file' failed to validate against schema '$rng'\n$@");
+    biber_error("'$file' failed to validate against schema '$schema'\n$@");
   }
   else {
-    $logger->info("'$file' validates against schema '$rng'");
+    $logger->info("'$file' validates against schema '$schema'");
   }
   undef $xmlparser;
+}
+
+=head2 map_boolean
+
+    Convert booleans between strings and numbers. Because standard XML "boolean"
+    datatype considers "true" and "1" the same etc.
+
+=cut
+
+sub map_boolean {
+  my $b = lc(shift);
+  my $dir = shift;
+  my %map = (true  => 1,
+             false => 0,
+            );
+  if ($dir eq 'tonum') {
+    return $b if looks_like_number($b);
+    return $map{$b};
+  }
+  elsif ($dir eq 'tostring') {
+    return $b if not looks_like_number($b);
+    %map = reverse %map;
+    return $map{$b};
+  }
 }
 
 =head2 process_entry_options
@@ -864,21 +898,39 @@ sub process_entry_options {
   foreach (@$options) {
     s/\s+=\s+/=/g; # get rid of spaces around any "="
     m/^([^=]+)(=?)(.+)?$/;
-    my $val;
     if ($2) {
-      if ($3 eq 'true') {
-        $val = 1;
-      }
-      elsif ($3 eq 'false') {
-        $val = 0;
+      if ($CONFIG_OPTTYPE_BIBLATEX{lc($1)} and
+          $CONFIG_OPTTYPE_BIBLATEX{lc($1)} eq 'boolean') {
+        _expand_option($1, map_boolean($3, 'tonum'), $citekey);
       }
       else {
-        $val = $3;
+        _expand_option($1, $3, $citekey);
       }
-      _expand_option($1, $val, $citekey);
     }
     else {
       _expand_option($1, 1, $citekey);
+    }
+  }
+  return;
+}
+
+sub _expand_option {
+  my ($opt, $val, $citekey) = @_;
+  my $cfopt = $CONFIG_BIBLATEX_ENTRY_OPTIONS{lc($opt)}{INPUT};
+  # Standard option
+  if (not defined($cfopt)) {
+    Biber::Config->setblxoption($opt, $val, 'ENTRY', $citekey);
+  }
+  # Set all split options to same value as parent
+  elsif (ref($cfopt) eq 'ARRAY') {
+    foreach my $k (@$cfopt) {
+      Biber::Config->setblxoption($k, $val, 'ENTRY', $citekey);
+    }
+  }
+  # Specify values per all splits
+  elsif (ref($cfopt) eq 'HASH') {
+    foreach my $k (keys %$cfopt) {
+      Biber::Config->setblxoption($k, $cfopt->{$k}, 'ENTRY', $citekey);
     }
   }
   return;
@@ -921,28 +973,6 @@ sub biber_decode_utf8 {
 sub out {
   my ($fh, $string) = @_;
   print $fh NFC($string);# Unicode NFC boundary
-}
-
-sub _expand_option {
-  my ($opt, $val, $citekey) = @_;
-  my $cfopt = $CONFIG_BIBLATEX_PER_ENTRY_OPTIONS{lc($opt)}{INPUT};
-  # Standard option
-  if (not defined($cfopt)) {
-    Biber::Config->setblxoption($opt, $val, 'PER_ENTRY', $citekey);
-  }
-  # Set all split options to same value as parent
-  elsif (ref($cfopt) eq 'ARRAY') {
-    foreach my $k (@$cfopt) {
-      Biber::Config->setblxoption($k, $val, 'PER_ENTRY', $citekey);
-    }
-  }
-  # Specify values per all splits
-  elsif (ref($cfopt) eq 'HASH') {
-    foreach my $k (keys %$cfopt) {
-      Biber::Config->setblxoption($k, $cfopt->{$k}, 'PER_ENTRY', $citekey);
-    }
-  }
-  return;
 }
 
 =head2 process_comment
@@ -1079,6 +1109,42 @@ sub match_indices {
   return $ret
 }
 
+=head2 parse_range
+
+  Parses a range of values into a two-value array ref.
+  Ranges with no starting value default to "1"
+  Ranges can be open-ended and it's up to surrounding code to interpret this
+  Ranges can be single figures which is shorthand for 1-x
+
+=cut
+
+sub parse_range {
+  my $rs = shift;
+  $rs =~ m/\A\s*(\P{Pd}+)?\s*(\p{Pd})*\s*(\P{Pd}+)?\s*\z/xms;
+  if ($2) {
+    return [$1 // 1, $3];
+  }
+  else {
+    return [1, $1];
+  }
+}
+
+=head2 maploop
+
+  Replace loop markers with values.
+
+=cut
+
+sub maploop {
+  my ($string, $maploop, $mapuniq) = @_;
+  return $string if not defined($string);
+  return $string unless ($maploop or $mapuniq);
+  $string =~ s/\$MAPLOOP/$maploop/ge if $maploop;
+  $string =~ s/\$MAPUNIQ/$mapuniq/ge if $mapuniq;
+  return $string;
+}
+
+
 1;
 
 __END__
@@ -1095,7 +1161,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

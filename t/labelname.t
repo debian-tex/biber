@@ -29,7 +29,7 @@ Log::Log4perl->init(\$l4pconf);
 
 Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 Biber::Config->setoption('fastsort', 1);
-$biber->parse_ctrlfile("general1.bcf");
+$biber->parse_ctrlfile("general.bcf");
 $biber->set_output_obj(Biber::Output::bbl->new());
 
 # Options - we could set these in the control file but it's nice to see what we're
@@ -42,9 +42,9 @@ Biber::Config->setblxoption('labelnamespec', [ {content => 'shortauthor'},
                                                {content => 'editor'},
                                                {content => 'translator'}]);
 Biber::Config->setblxoption('labelnamespec', [ {content => 'editor'},
-                                               {content => 'translator'}], 'PER_TYPE', 'book');
+                                               {content => 'translator'}], 'ENTRYTYPE', 'book');
 Biber::Config->setblxoption('labelnamespec', [ {content => 'namea'},
-                                               {content => 'author' }], 'PER_TYPE', 'misc');
+                                               {content => 'author' }], 'ENTRYTYPE', 'misc');
 
 # Now generate the information
 $biber->prepare;

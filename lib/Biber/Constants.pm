@@ -5,18 +5,21 @@ use warnings;
 
 use Encode::Alias;
 
-use base 'Exporter';
+use parent qw(Exporter);
 
 our @EXPORT = qw{
                   $CONFIG_DEFAULT_BIBER
                   %CONFIG_DEFAULT_BIBLATEX
-                  %CONFIG_SCOPE_BIBLATEX
-                  %CONFIG_BIBLATEX_PER_ENTRY_OPTIONS
+                  %CONFIG_OPTSCOPE_BIBLATEX
+                  %CONFIG_SCOPEOPT_BIBLATEX
+                  %CONFIG_OPTTYPE_BIBLATEX
+                  %CONFIG_BIBLATEX_ENTRY_OPTIONS
                   %NOSORT_TYPES
                   %DM_DATATYPES
                   %LOCALE_MAP
                   %LOCALE_MAP_R
                   %REMOTE_MAP
+                  %DS_EXTENSIONS
                   $BIBER_CONF_NAME
                   $BCF_VERSION
                   $BBL_VERSION
@@ -27,9 +30,9 @@ our @EXPORT = qw{
 
 # Version of biblatex control file which this release expects. Matched against version
 # passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '2.9';
+our $BCF_VERSION = '3.0';
 # Format version of the .bbl. Used when writing the .bbl
-our $BBL_VERSION = '2.5';
+our $BBL_VERSION = '2.6';
 
 # Global flags needed for sorting
 our $BIBER_SORT_FINAL = 0;
@@ -87,9 +90,16 @@ our %NOSORT_TYPES = (
 
 # datatypes for data model validation
 our %DM_DATATYPES = (
-                     integer => qr/\A\d+\z/xms,
+                     integer  => qr/\A\d+\z/xms,
                      datepart => qr/\A\d+\z/xms
-);
+                    );
+
+# Mapping of data source types to extensions
+our %DS_EXTENSIONS = (
+                      bibtex     => 'bib',
+                      biblatexml => 'bltxml',
+                      ris        => 'ris'
+                      );
 
 # Biber option defaults. Mostly not needed outside of tool mode since they are passed by .bcf
 
@@ -99,6 +109,7 @@ our $CONFIG_DEFAULT_BIBER = {
   collate_options     => { option => {level => 4, variable => 'non-ignorable', normalization => 'prenormalized' }},
   graph               => { content => 0 },
   debug               => { content => 0 },
+  dieondatamodel      => { content => 0 },
   decodecharsset      => { content => 'base' },
   dot_include         => { option => {section => 1, xdata => 1, crossref => 1, xref => 1 }},
   fastsort            => { content => 0 },
@@ -111,6 +122,7 @@ our $CONFIG_DEFAULT_BIBER = {
   listsep             => { content => 'and' },
   mincrossrefs        => { content => 2 },
   namesep             => { content => 'and' },
+  no_bltxml_schema    => { content => 0 },
   nodieonerror        => { content => 0 },
   noinit              => { option => [ {value => q/\b\p{Ll}{2}\p{Pd}/},
                                        {value => q/[\x{2bf}\x{2018}]/} ] },
@@ -133,13 +145,14 @@ our $CONFIG_DEFAULT_BIBER = {
   quiet               => { content => 0 },
   noskipduplicates    => { content => 0 },
   sortcase            => { content => 1 },
-  sortfirstinits      => { content => 0 },
+  sortgiveninits      => { content => 0 },
   sortupper           => { content => 1 },
   strip_comments      => { content => 0 },
   tool                => { content => 0 },
   trace               => { content => 0 },
   validate_config     => { content => 0 },
   validate_control    => { content => 0 },
+  validate_bltxml     => { content => 0 },
   validate_datamodel  => { content => 0 },
   wraplines           => { content => 0 },
   xsvsep              => { content => q/\s*,\s*/ },
@@ -464,39 +477,49 @@ our %LOCALE_MAP_R = (
                      'vi-VN'      => 'vietnamese',
                     );
 
-# Holds the scope of each of the BibLaTeX configuration options fro the .bcf
-our %CONFIG_SCOPE_BIBLATEX;
+# Holds the scope of each of the BibLaTeX configuration options from the .bcf
+our %CONFIG_OPTSCOPE_BIBLATEX;
+# Holds the options in a particular scope
+our %CONFIG_SCOPEOPT_BIBLATEX;
+# Holds the datatype of an option at a particular scope
+our %CONFIG_OPTTYPE_BIBLATEX;
 
 # For per-entry options, what should be set when we find them and
 # what should be output to the .bbl for biblatex.
 # Basically, here we have to emulate relevant parts of biblatex's options processing
 # for local entry-specific options, note therefore the presence here of some
 # options like max/mincitenames which are not passed in the .bcf
-our %CONFIG_BIBLATEX_PER_ENTRY_OPTIONS =  (
-  dataonly       => {OUTPUT => 1, INPUT => {'skiplab' => 1,
-                                            'skipbiblist' => 1,
-                                            'uniquename' => 0,
-                                            'uniquelist' => 0}},
-  maxitems       => {OUTPUT => 1},
-  minitems       => {OUTPUT => 1},
-  maxbibnames    => {OUTPUT => 1},
-  minbibnames    => {OUTPUT => 1},
-  maxcitenames   => {OUTPUT => 1},
-  mincitenames   => {OUTPUT => 1},
-  maxalphanames  => {OUTPUT => 0},
-  minalphanames  => {OUTPUT => 0},
-  maxnames       => {OUTPUT => ['maxcitenames', 'maxbibnames'], INPUT  => ['maxcitenames', 'maxbibnames']},
-  minnames       => {OUTPUT => ['mincitenames', 'minbibnames'], INPUT  => ['mincitenames', 'minbibnames']},
-  presort        => {OUTPUT => 0},
-  skipbib        => {OUTPUT => 1},
-  skipbiblist    => {OUTPUT => 1},
-  skiplab        => {OUTPUT => 1},
-  uniquelist     => {OUTPUT => 0},
-  useauthor      => {OUTPUT => 1},
-  useeditor      => {OUTPUT => 1},
-  useprefix      => {OUTPUT => 1},
-  usetranslator  => {OUTPUT => 1},
-);
+our %CONFIG_BIBLATEX_ENTRY_OPTIONS =
+  (
+   dataonly          => {OUTPUT => 1,
+                         INPUT => {skiplab     => 1,
+                                   skipbiblist => 1,
+                                   uniquename  => 0,
+                                   uniquelist  => 0}
+                        },
+   maxitems          => {OUTPUT => 1},
+   minitems          => {OUTPUT => 1},
+   maxbibnames       => {OUTPUT => 1},
+   minbibnames       => {OUTPUT => 1},
+   maxcitenames      => {OUTPUT => 1},
+   mincitenames      => {OUTPUT => 1},
+   maxalphanames     => {OUTPUT => 0},
+   minalphanames     => {OUTPUT => 0},
+   maxnames          => {OUTPUT => ['maxcitenames', 'maxbibnames'],
+                         INPUT  => ['maxcitenames', 'maxbibnames']},
+   minnames          => {OUTPUT => ['mincitenames', 'minbibnames'],
+                         INPUT  => ['mincitenames', 'minbibnames']},
+   presort           => {OUTPUT => 0},
+   skipbib           => {OUTPUT => 1},
+   skipbiblist       => {OUTPUT => 1},
+   skiplab           => {OUTPUT => 1},
+   sortnamekeyscheme => {OUTPUT => 1},
+   uniquelist        => {OUTPUT => 0},
+   useauthor         => {OUTPUT => 1},
+   useeditor         => {OUTPUT => 1},
+   useprefix         => {OUTPUT => 1},
+   usetranslator     => {OUTPUT => 1},
+  );
 
 
 1;
@@ -523,7 +546,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

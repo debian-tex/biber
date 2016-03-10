@@ -2,7 +2,7 @@ package Biber::Output::bibtex;
 use v5.16;
 use strict;
 use warnings;
-use base 'Biber::Output::base';
+use parent qw(Biber::Output::base);
 
 use Biber;
 use Biber::Config;
@@ -200,7 +200,7 @@ sub output {
   $logger->debug("Writing entries in bibtex format");
 
   # Bibtex output uses just one special section, always sorted by global sorting spec
-  foreach my $key ($Biber::MASTER->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme'), 'entry', Biber::Config->getblxoption('sortscheme'))->get_keys) {
+  foreach my $key ($Biber::MASTER->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme') . '/global', 'entry', Biber::Config->getblxoption('sortscheme'), 'global')->get_keys) {
     out($target, ${$data->{ENTRIES}{99999}{index}{$key}});
   }
 
@@ -265,7 +265,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

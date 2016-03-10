@@ -16,7 +16,7 @@ start =
       debug,
       mincrossrefs,
       sortcase,
-      sortfirstinits,
+      sortgiveninits,
       sortupper
     },
 
@@ -85,14 +85,17 @@ start =
 
     # Option scope
     element bcf:optionscope {
-      attribute type { "GLOBAL" | "PER_TYPE" | "PER_ENTRY" },
-      element bcf:option { xsd:string }+
+      attribute type { "GLOBAL" | "ENTRYTYPE" | "ENTRY" | "NAMELIST" | "NAME" },
+      element bcf:option {
+        attribute datatype { "boolean" | "integer" | "string" | "xml" },
+        xsd:string
+      }+
     }+,
     
     # user field/entrytype mapping
     element bcf:sourcemap {
       element bcf:maps {
-        attribute datatype { "bibtex" | "biblatexml" | "ris" | "zoterordfxml" | "endnotexml" },
+        attribute datatype { "bibtex" | "biblatexml" | "ris" },
         attribute map_overwrite { "0" | "1" }?,
         attribute level { "user" | "style" | "driver" }?,
         map+
@@ -109,13 +112,15 @@ start =
           attribute pad_char { xsd:string {minLength="1"}}?,
           attribute pad_side { "left" | "right" }?,
           attribute substring_width { xsd:integer | "v" | "vf" | "l" }?,
+          attribute substring_pwidth { xsd:integer }?,
           attribute substring_fixed_threshold { xsd:integer }?,
           attribute substring_width_max { xsd:integer }?,
           attribute substring_side { "left" | "right" }?,
           attribute substring_compound { "0" | "1" }?,
+          attribute substring_pcompound { "0" | "1" }?,
           attribute ifnamecount { xsd:integer }?,
-          attribute namecount { xsd:integer }?,
-          attribute form { "original" | "translated" | "romanised" | "uniform" }?,
+          attribute namerange { text }?,
+          attribute noalphaothers { "0" | "1" }?,
           xsd:string
         }+
       }+
@@ -184,10 +189,20 @@ start =
         empty
       }+
     }?,
+    # Sorting name key specification
+    sortingnamekey,
     # Global sorting specification
     sorting,
     # Data model specification
     element bcf:datamodel {
+      # Constants
+      element bcf:constants {
+        element bcf:constant {
+          attribute type { "string" | "list" }?,
+          attribute name { text },
+          text
+        }+
+      },
       # Valid entrytypes
       element bcf:entrytypes {
         element bcf:entrytype {
@@ -290,6 +305,7 @@ listspec =
       attribute section { xsd:integer },
       attribute type { "entry" | "list" },
       attribute sortscheme { xsd:string {minLength="1"}},
+      attribute sortnamekeyscheme { xsd:string {minLength="1"}},
       # name is only needed for list types
       attribute name { xsd:string {minLength="1"}},
       (filter | filteror )*,
@@ -300,6 +316,19 @@ listspec =
       }?
     }*
 
+sortingnamekey = 
+  element bcf:sortingnamekey {
+    attribute keyscheme { text },
+    element bcf:keypart {
+     attribute order { xsd:integer },
+     element bcf:part {
+        attribute type { "namepart" | "literal" },
+        attribute order { xsd:integer },
+        attribute use { "0" | "1" }?,
+        text
+      }+
+    }+
+  }+
 
 sorting = 
   element bcf:sorting {
@@ -344,7 +373,6 @@ sort =
       attribute pad_side { "left" | "right" }?,
       attribute pad_width { xsd:integer }?,
       attribute pad_char { xsd:string { minLength = "1" maxLength = "1" } }?,
-      attribute form { "original" | "translated" | "romanised" | "uniform" }?,
       text
     }+
   }+
@@ -357,7 +385,7 @@ secspec =
     attribute section { xsd:integer },
     element bcf:datasource {
       attribute type { "file" },
-      attribute datatype { "bibtex" | "biblatexml" | "ris" | "zoterordfxml" | "endnotexml" }?,
+      attribute datatype { "bibtex" | "biblatexml" | "ris" }?,
       xsd:anyURI
     }*
   }?,
@@ -415,7 +443,6 @@ labeltitlespec =
     element bcf:key { "labeltitlespec" },
     element bcf:value {
       attribute order { xsd:integer },
-      attribute form { "original" | "translated" | "romanised" | "uniform" }?,
       attribute lang { text }?,
       text
     }+
@@ -560,7 +587,6 @@ labelnamespec =
     element bcf:key { "labelnamespec" },
     element bcf:value {
       attribute order { xsd:integer },
-      attribute form { "original" | "translated" | "romanised" | "uniform" }?,
       attribute lang { text }?,
       text
     }+
@@ -601,10 +627,10 @@ sortcase =
     element bcf:key { "sortcase" },
     element bcf:value { "0" | "1" }
   }
-sortfirstinits =
+sortgiveninits =
   element bcf:option {
     attribute type { "singlevalued" },
-    element bcf:key { "sortfirstinits" },
+    element bcf:key { "sortgiveninits" },
     element bcf:value { "0" | "1" }
   }
 alphaothers =
@@ -633,10 +659,14 @@ sortalphaothers =
 map =
   element bcf:map {
     attribute map_overwrite { "0" | "1" }?,
+    attribute map_foreach { xsd:string {minLength="1"} }?,
     element bcf:per_datasource { xsd:string {minLength="1"} }*,
     element bcf:per_type { xsd:string {minLength="1"} }*,
     element bcf:map_step {
       (
+        ( attribute map_entry_new { xsd:string {minLength="1"} },
+          attribute map_entry_newtype { xsd:string {minLength="1"} }
+        ) |
         (
           attribute map_entry_null { "1" }
         ) |
@@ -651,10 +681,12 @@ map =
           attribute map_final { "1" }?,
           attribute map_match { xsd:string {minLength="1"} }?,
           attribute map_notmatch { xsd:string {minLength="1"} }?,
-          attribute map_replace { xsd:string {minLength="1"} }?
+          attribute map_replace { xsd:string }?
         ) |
         (
-          attribute map_field_set { xsd:string {minLength="1"} },
+          attribute map_field_source { xsd:string {minLength="1"} }?,
+          attribute map_entrytarget { xsd:string {minLength="1"} }?,
+          attribute map_field_set { xsd:string {minLength="1"} }?,
           attribute map_append { "1" }?,
           attribute map_final { "1" }?,
           ( attribute map_null { "1" } |
@@ -667,7 +699,7 @@ map =
       empty
     }+
   }
-# Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+# Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 # This code is free software.  You can redistribute it and/or
 # modify it under the terms of the Artistic License 2.0.

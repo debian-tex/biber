@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 43;
+use Test::More tests => 44;
 use Test::Differences;
 unified_diff;
 
@@ -28,7 +28,7 @@ my $l4pconf = qq|
 |;
 Log::Log4perl->init(\$l4pconf);
 
-$biber->parse_ctrlfile("general1.bcf");
+$biber->parse_ctrlfile("general.bcf");
 $biber->set_output_obj(Biber::Output::bbl->new());
 
 # Options - we could set these in the control file but it's nice to see what we're
@@ -79,6 +79,7 @@ my $prefix1     = 'mm,,Luzzatto!Moshe Ḥayyim,,,Lashon laRamḥal uvo sheloshah
 my $diacritic1  = 'mm,,Hasan!Alī,alHasan!ʿAlī,Hasan!Alī,Some title,2000,0000';
 my $labels      = '2005,03,02';
 my $sn1         = '';
+my $snk1        = 'mm,,John John!von!Doe!Jr,,,0000';
 
 # These have custom presort and also an exclusion on year and title set
 my $useprefix1  = 'ww,,von!Bobble!Terrence,,,0000';
@@ -90,13 +91,38 @@ Biber::Config->setblxoption('useprefix', 1);
 $biber->prepare;
 my $section = $biber->sections->get_section(0);
 my $bibentries = $section->bibentries;
-my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 
 eq_or_diff($main->get_sortdata('tvonb')->[0], $useprefix1, 'von with type-specific presort, exclusions and useprefix=true' );
 
-Biber::Config->setblxoption('useprefix', 0);
+
+# Testing custom name sorting key
+my $SNK;
+$SNK = {global => [
+        [{ type => 'namepart', value => 'given' },
+         { type => 'literal', value => ' ' },
+         { type => 'namepart', value => 'given' }],
+        [{ type => 'namepart', value => 'prefix', use => 1}],
+        [{ type => 'namepart', value => 'family'}],
+        [{ type => 'namepart', value => 'suffix'}],
+        [{ type => 'namepart', value => 'prefix', use => 0}]
+       ]};
+Biber::Config->setblxoption('sortingnamekey', $SNK);
+$biber->prepare;
+eq_or_diff($main->get_sortdata('snk1')->[0], $snk1, 'Sorting name key - 1' );
+
 
 # regenerate information
+Biber::Config->setblxoption('useprefix', 0);
+# Default name sorting key back again
+$SNK = {global => [
+        [{ type => 'namepart', value => 'prefix', use => 1}],
+        [{ type => 'namepart', value => 'family'}],
+        [{ type => 'namepart', value => 'given' }],
+        [{ type => 'namepart', value => 'suffix'}],
+        [{ type => 'namepart', value => 'prefix', use => 0}]
+       ]};
+Biber::Config->setblxoption('sortingnamekey', $SNK);
 $biber->prepare;
 
 eq_or_diff($main->get_sortdata('tvonb')->[0], $useprefix2, 'von with type-specific presort, exclusions and useprefix=false' );
@@ -1250,11 +1276,11 @@ $main->set_sortscheme($S);
 $biber->prepare;
 
 eq_or_diff($main->get_sortdata('stdmodel')->[0], $ydnt, 'basic ydnt sort' );
-Biber::Config->setoption('sortfirstinits', 1);
+Biber::Config->setoption('sortgiveninits', 1);
 $biber->prepare;
 eq_or_diff($main->get_sortdata('stdmodel')->[0], $sortinits, 'sort first name inits only' );
 
-Biber::Config->setoption('sortfirstinits', 0);
+Biber::Config->setoption('sortgiveninits', 0);
 Biber::Config->setblxoption('labelalpha', 0);
 
 # debug

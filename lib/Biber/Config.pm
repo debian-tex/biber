@@ -20,8 +20,10 @@ use Log::Log4perl::Appender::File;
 use Log::Log4perl::Layout::SimpleLayout;
 use Log::Log4perl::Layout::PatternLayout;
 use Unicode::Normalize;
+use parent qw(Class::Accessor);
+__PACKAGE__->follow_best_practice;
 
-our $VERSION = '2.3';
+our $VERSION = '2.4';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -50,6 +52,7 @@ Biber::Config - Configuration items which need to be saved across the
 
 # Static (class) data
 our $CONFIG;
+
 $CONFIG->{state}{crossrefkeys} = {};
 $CONFIG->{state}{seenwork} = {};
 
@@ -78,7 +81,7 @@ $CONFIG->{state}{uniquelistcount} = {};
 # Default is true so that uniquename/uniquelist processing starts
 $CONFIG->{state}{unulchanged} = 1;
 
-# uniquenamecount holds a hash of lastnames and lastname/initials
+# uniquenamecount holds a hash of familynames and familyname/initials
 $CONFIG->{state}{uniquenamecount} = {};
 # Same as uniquenamecount but for all names, regardless of visibility. Needed to track
 # uniquelist
@@ -119,7 +122,7 @@ $CONFIG->{state}{datafiles} = [];
 =cut
 
 sub _init {
-  $CONFIG->{options}{biblatex}{PER_ENTRY} = {};
+  $CONFIG->{options}{biblatex}{ENTRY} = {};
   $CONFIG->{state}{unulchanged} = 1;
   $CONFIG->{state}{control_file_location} = '';
   $CONFIG->{state}{seenwork} = {};
@@ -218,10 +221,20 @@ sub _initopts {
     }
   }
 
-  # Set control file name. In a conditional as @ARGV might not be set in tests
-  if (my $bcf = $ARGV[0]) {         # ARGV is ok even in a module
-    $bcf .= '.bcf' unless $bcf =~ m/\.bcf$/;
-    Biber::Config->setoption('bcf', $bcf); # only referenced in biber program
+
+  # Record the $ARGV[0] name for future use
+  if (Biber::Config->getoption('tool')) {
+    # Set datasource file name. In a conditional as @ARGV might not be set in tests
+    if (my $dsn = $ARGV[0]) {         # ARGV is ok even in a module
+      Biber::Config->setoption('dsn', $dsn);
+    }
+  }
+  else {
+    # Set control file name. In a conditional as @ARGV might not be set in tests
+    if (my $bcf = $ARGV[0]) {         # ARGV is ok even in a module
+      $bcf .= '.bcf' unless $bcf =~ m/\.bcf$/;
+      Biber::Config->setoption('bcf', $bcf);
+    }
   }
 
   # Set log file name
@@ -383,11 +396,25 @@ sub _config_file_set {
   }
   # Option scope has to be set first
   foreach my $bcfscopeopts (@{$userconf->{optionscope}}) {
-    my $type = $bcfscopeopts->{type};
+    my $scope = $bcfscopeopts->{type};
     foreach my $bcfscopeopt (@{$bcfscopeopts->{option}}) {
-      $CONFIG_SCOPE_BIBLATEX{$bcfscopeopt->{content}}{$type} = 1;
+      my $opt = $bcfscopeopt->{content};
+      $CONFIG_OPTSCOPE_BIBLATEX{$opt}{$scope} = 1;
+      $CONFIG_SCOPEOPT_BIBLATEX{$scope}{$opt} = 1;
     }
   }
+
+  # Now we have the per-namelist options, make the accessors for them in the Names package
+  foreach my $nso (keys %{$CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}}) {
+    Biber::Entry::Names->follow_best_practice;
+    Biber::Entry::Names->mk_accessors($nso);
+  }
+  # Now we have the per-name options, make the accessors for them in the Name package
+  foreach my $no (keys %{$CONFIG_SCOPEOPT_BIBLATEX{NAME}}) {
+    Biber::Entry::Name->follow_best_practice;
+    Biber::Entry::Name->mk_accessors($no);
+  }
+
   delete $userconf->{optionscope};
 
   # Set options from config file
@@ -437,7 +464,7 @@ sub _config_file_set {
         }
         Biber::Config->setblxoption('sortexclusion',
                                     $excludes,
-                                    'PER_TYPE',
+                                    'ENTRYTYPE',
                                     $sex->{type});
       }
 
@@ -451,7 +478,7 @@ sub _config_file_set {
         else {
           Biber::Config->setblxoption('presort',
                                       $presort->{content},
-                                      'PER_TYPE',
+                                      'ENTRYTYPE',
                                       $presort->{type});
         }
       }
@@ -565,11 +592,11 @@ sub set_unul_changed {
 
 sub postprocess_biber_opts {
   shift; # class method so don't care about class name
-  # Turn sortcase, sortupper, sortfirstinits into booleans if they are not already
+  # Turn sortcase, sortupper, sortgiveninits into booleans if they are not already
   # They are not booleans on the command-line/config file so that they
   # mirror biblatex option syntax for users, for example
 
-  foreach my $opt ('sortfirstinits', 'sortcase', 'sortupper') {
+  foreach my $opt ('sortgiveninits', 'sortcase', 'sortupper') {
     if (exists($CONFIG->{options}{biber}{$opt})) {
       if ($CONFIG->{options}{biber}{$opt} eq 'true') {
         $CONFIG->{options}{biber}{$opt} = 1;
@@ -584,6 +611,7 @@ sub postprocess_biber_opts {
     }
   }
 }
+
 
 =head2 set_dm
 
@@ -684,7 +712,7 @@ sub setconfigfileoption {
   $CONFIG->{options}{biber}{$opt} = $CONFIG->{configfileoptions}{$opt} = $val;
 
   # Config file options can also be global biblatex options
-  if ($CONFIG_SCOPE_BIBLATEX{$opt}) {
+  if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}) {
     $CONFIG->{options}{biblatex}{GLOBAL}{$opt} = $val;
   }
 
@@ -750,12 +778,12 @@ sub setblxoption {
   shift; # class method so don't care about class name
   my ($opt, $val, $scope, $scopeval) = @_;
   if (not defined($scope)) { # global is the default
-    if ($CONFIG_SCOPE_BIBLATEX{$opt}->{GLOBAL}) {
+    if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}->{GLOBAL}) {
       $CONFIG->{options}{biblatex}{GLOBAL}{$opt} = $val;
     }
   }
   else { # Per-type/entry options need to specify type/entry too
-    if ($CONFIG_SCOPE_BIBLATEX{$opt}->{$scope}) {
+    if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}->{$scope}) {
       $CONFIG->{options}{biblatex}{$scope}{$scopeval}{$opt} = $val;
     }
   }
@@ -764,7 +792,7 @@ sub setblxoption {
 
 =head2 getblxoption
 
-    Get a biblatex option from the global or per entry-type scope
+    Get a biblatex option from the global, per-type or per entry scope
 
     getblxoption('option', ['entrytype'], ['citekey'])
 
@@ -776,21 +804,20 @@ sub setblxoption {
 =cut
 
 sub getblxoption {
+  no autovivification;
   shift; # class method so don't care about class name
   my ($opt, $entrytype, $citekey) = @_;
   if ( defined($citekey) and
-       $CONFIG_SCOPE_BIBLATEX{$opt}->{PER_ENTRY} and
-       defined $CONFIG->{options}{biblatex}{PER_ENTRY}{$citekey} and
-       defined $CONFIG->{options}{biblatex}{PER_ENTRY}{$citekey}{$opt}) {
-    return $CONFIG->{options}{biblatex}{PER_ENTRY}{$citekey}{$opt};
+       $CONFIG_OPTSCOPE_BIBLATEX{$opt}->{ENTRY} and
+       defined $CONFIG->{options}{biblatex}{ENTRY}{$citekey}{$opt}) {
+    return $CONFIG->{options}{biblatex}{ENTRY}{$citekey}{$opt};
   }
   elsif (defined($entrytype) and
-         $CONFIG_SCOPE_BIBLATEX{$opt}->{PER_TYPE} and
-         defined $CONFIG->{options}{biblatex}{PER_TYPE}{lc($entrytype)} and
-         defined $CONFIG->{options}{biblatex}{PER_TYPE}{lc($entrytype)}{$opt}) {
-    return $CONFIG->{options}{biblatex}{PER_TYPE}{lc($entrytype)}{$opt};
+         $CONFIG_OPTSCOPE_BIBLATEX{$opt}->{ENTRYTYPE} and
+         defined $CONFIG->{options}{biblatex}{ENTRYTYPE}{lc($entrytype)}{$opt}) {
+    return $CONFIG->{options}{biblatex}{ENTRYTYPE}{lc($entrytype)}{$opt};
   }
-  elsif ($CONFIG_SCOPE_BIBLATEX{$opt}->{GLOBAL}) {
+  elsif ($CONFIG_OPTSCOPE_BIBLATEX{$opt}->{GLOBAL}) {
     return $CONFIG->{options}{biblatex}{GLOBAL}{$opt};
   }
 }
@@ -1690,89 +1717,6 @@ sub incr_crossrefkey {
   return;
 }
 
-
-############################
-# Displaymode static methods
-############################
-
-=head2 set_displaymode
-
-    Set the display mode for a field.
-    setdisplaymode(['entrytype'], ['field'], ['citekey'], $value)
-
-    This sets the desired displaymode to use for some data in the bib.
-    Of course, this is entirey seperate semantically from the
-    displaymodes *defined* in the bib which just tell you what to return
-    for a particular displaymode request for some data.
-
-=cut
-
-sub set_displaymode {
-  shift; # class method so don't care about class name
-  my ($val, $entrytype, $fieldtype, $citekey) = @_;
-  if ($citekey) {
-    if ($fieldtype) {
-      $CONFIG->{displaymodes}{PER_FIELD}{$citekey}{$fieldtype} = $val;
-    }
-    else {
-      $CONFIG->{displaymodes}{PER_ENTRY}{$citekey} = $val;
-    }
-  }
-  elsif ($fieldtype) {
-    $CONFIG->{displaymodes}{PER_FIELDTYPE}{$fieldtype} = $val;
-  }
-  elsif ($entrytype) {
-    $CONFIG->{displaymodes}{PER_ENTRYTYPE}{$entrytype} = $val;
-  }
-  else {
-    $CONFIG->{displaymodes}{GLOBAL} = $val ;
-  }
-}
-
-=head2 get_displaymode
-
-    Get the display mode for a field.
-    getdisplaymode(['entrytype'], ['field'], ['citekey'])
-
-    Returns the displaymode. In order of decreasing preference, returns:
-    1. Mode defined for a specific field in a specific citekey
-    2. Mode defined for a citekey
-    3. Mode defined for a fieldtype (any citekey)
-    4. Mode defined for an entrytype (any citekey)
-    5. Mode defined globally (any citekey)
-
-=cut
-
-sub get_displaymode {
-  shift; # class method so don't care about class name
-  my ($entrytype, $fieldtype, $citekey) = @_;
-  my $dm;
-  if ($citekey) {
-    if ($fieldtype and
-      defined($CONFIG->{displaymodes}{PER_FIELD}) and
-      defined($CONFIG->{displaymodes}{PER_FIELD}{$citekey}) and
-      defined($CONFIG->{displaymodes}{PER_FIELD}{$citekey}{$fieldtype})) {
-      $dm = $CONFIG->{displaymodes}{PER_FIELD}{$citekey}{$fieldtype};
-    }
-    elsif (defined($CONFIG->{displaymodes}{PER_ENTRY}) and
-      defined($CONFIG->{displaymodes}{PER_ENTRY}{$citekey})) {
-      $dm = $CONFIG->{displaymodes}{PER_ENTRY}{$citekey};
-    }
-  }
-  elsif ($fieldtype and
-    defined($CONFIG->{displaymodes}{PER_FIELDTYPE}) and
-    defined($CONFIG->{displaymodes}{PER_FIELDTYPE}{$fieldtype})) {
-    $dm = $CONFIG->{displaymodes}{PER_FIELDTYPE}{$fieldtype};
-  }
-  elsif ($entrytype and
-    defined($CONFIG->{displaymodes}{PER_ENTRYTYPE}) and
-    defined($CONFIG->{displaymodes}{PER_ENTRYTYPE}{$entrytype})) {
-    $dm = $CONFIG->{displaymodes}{PER_ENTRYTYPE}{$entrytype};
-  }
-  $dm = $CONFIG->{displaymodes}{'*'} unless $dm; # Global if nothing else;
-  return $dm;
-}
-
 =head2 dump
 
     Dump config information (for debugging)
@@ -1800,7 +1744,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

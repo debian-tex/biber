@@ -396,14 +396,8 @@ sub output {
       my $listtype = $list->get_type;
       out($target, "  LIST: $listlabel\n\n");
       foreach my $k ($list->get_keys) {
-        if ($listtype eq 'entry') {
-          my $entry_string = $data->{ENTRIES}{$secnum}{index}{$k};
-          out($target, $entry_string);
-        }
-        elsif ($listtype eq 'shorthand') {
-          next if Biber::Config->getblxoption('skipbiblist', $section->bibentry($k), $k);
-          out($target, $k);
-        }
+        my $entry_string = $data->{ENTRIES}{$secnum}{index}{$k};
+        out($target, $entry_string);
       }
     }
   }
@@ -431,7 +425,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

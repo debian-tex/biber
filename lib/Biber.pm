@@ -2,7 +2,7 @@ package Biber;
 use v5.16;
 use strict;
 use warnings;
-use base 'Biber::Internals';
+use parent qw(Class::Accessor Biber::Internals);
 
 use constant {
   EXIT_OK => 0,
@@ -23,6 +23,7 @@ use Biber::DataModel;
 use Biber::Internals;
 use Biber::Entries;
 use Biber::Entry;
+use Biber::Entry::Names;
 use Biber::Entry::Name;
 use Biber::Sections;
 use Biber::Section;
@@ -251,7 +252,7 @@ sub tool_mode_setup {
   $self->add_sections($bib_sections);
 
   my $sortlists = new Biber::SortLists;
-  my $seclist = Biber::SortList->new(section => 99999, sortschemename => Biber::Config->getblxoption('sortscheme'), name => Biber::Config->getblxoption('sortscheme'));
+  my $seclist = Biber::SortList->new(section => 99999, sortschemename => Biber::Config->getblxoption('sortscheme'), sortnamekeyschemename => 'global', name => Biber::Config->getblxoption('sortscheme') . '/global');
   $seclist->set_type('entry');
   $seclist->set_sortscheme(Biber::Config->getblxoption('sorting'));
   # Locale just needs a default here - there is no biblatex option to take it from
@@ -360,6 +361,7 @@ sub parse_ctrlfile {
                                                            qr/\Asortitem\z/,
                                                            qr/\Abibdata\z/,
                                                            qr/\Adatasource\z/,
+                                                           qr/\Aconstant\z/,
                                                            qr/\Asection\z/,
                                                            qr/\Asortexclusion\z/,
                                                            qr/\Aexclusion\z/,
@@ -370,6 +372,9 @@ sub parse_ctrlfile {
                                                            qr/\Amap_step\z/,
                                                            qr/\Aper_type\z/,
                                                            qr/\Aper_nottype\z/,
+                                                           qr/\Akeypart\z/,
+                                                           qr/\Apart\z/,
+                                                           qr/\Asortingnamekey\z/,
                                                            qr/\Aper_datasource\z/,
                                                            qr/\Anosort\z/,
                                                            qr/\Anoinit\z/,
@@ -406,10 +411,29 @@ sub parse_ctrlfile {
 
   # Option scope
   foreach my $bcfscopeopts (@{$bcfxml->{optionscope}}) {
-    my $type = $bcfscopeopts->{type};
+    my $scope = $bcfscopeopts->{type};
     foreach my $bcfscopeopt (@{$bcfscopeopts->{option}}) {
-      $CONFIG_SCOPE_BIBLATEX{$bcfscopeopt->{content}}{$type} = 1;
+      my $opt = $bcfscopeopt->{content};
+      $CONFIG_OPTSCOPE_BIBLATEX{$opt}{$scope} = 1;
+      $CONFIG_SCOPEOPT_BIBLATEX{$scope}{$opt} = 1;
+      if (defined($CONFIG_OPTTYPE_BIBLATEX{$opt}) and
+          lc($CONFIG_OPTTYPE_BIBLATEX{$opt}) ne lc($bcfscopeopt->{datatype})) {
+        biber_warn("Warning: Datatype for biblatex option '$opt' has conflicting values, probably at different scopes. This is not supported.");
+      }
+      else {
+        $CONFIG_OPTTYPE_BIBLATEX{$opt} = lc($bcfscopeopt->{datatype});
+      }
     }
+  }
+  # Now we have the per-namelist options, make the accessors for them in the Names package
+  foreach my $nso (keys %{$CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}}) {
+    Biber::Entry::Names->follow_best_practice;
+    Biber::Entry::Names->mk_accessors($nso);
+  }
+  # Now we have the per-name options, make the accessors for them in the Name package
+  foreach my $no (keys %{$CONFIG_SCOPEOPT_BIBLATEX{NAME}}) {
+    Biber::Entry::Name->follow_best_practice;
+    Biber::Entry::Name->mk_accessors($no);
   }
 
   # OPTIONS
@@ -457,13 +481,13 @@ sub parse_ctrlfile {
         my $entrytype = $bcfopts->{type};
         foreach my $bcfopt (@{$bcfopts->{option}}) {
           if ($bcfopt->{type} eq 'singlevalued') {
-            Biber::Config->setblxoption($bcfopt->{key}{content}, $bcfopt->{value}[0]{content}, 'PER_TYPE', $entrytype);
+            Biber::Config->setblxoption($bcfopt->{key}{content}, $bcfopt->{value}[0]{content}, 'ENTRYTYPE', $entrytype);
           }
           elsif ($bcfopt->{type} eq 'multivalued') {
             # sort on order attribute and then remove it
             Biber::Config->setblxoption($bcfopt->{key}{content},
               [ map {delete($_->{order}); $_} sort {$a->{order} <=> $b->{order}} @{$bcfopt->{value}} ],
-              'PER_TYPE',
+              'ENTRYTYPE',
               $entrytype);
           }
         }
@@ -519,7 +543,7 @@ sub parse_ctrlfile {
     else {
       Biber::Config->setblxoption('labelalphatemplate',
                                   $t,
-                                  'PER_TYPE',
+                                  'ENTRYTYPE',
                                   $latype);
     }
   }
@@ -571,6 +595,34 @@ sub parse_ctrlfile {
   # There is a default so don't set this option if nothing is in the .bcf
   Biber::Config->setoption('nosort', $nosort) if $nosort;
 
+  # SORTING NAME KEY
+
+  # Use the order attributes to make sure things are in right order and create a data structure
+  # we can use later
+  my $snss;
+  foreach my $sns (@{$bcfxml->{sortingnamekey}}) {
+    my $snkps;
+    foreach my $snkp (sort {$a->{order} <=> $b->{order}} @{$sns->{keypart}}) {
+      my $snps;
+      foreach my $snp (sort {$a->{order} <=> $b->{order}} @{$snkp->{part}}) {
+        my $np;
+        if ($snp->{type} eq 'namepart') {
+          $np = { type => 'namepart', value => $snp->{content} };
+          if (exists($snp->{use})) {
+            $np->{use} = $snp->{use};
+          }
+        }
+        elsif ($snp->{type} eq 'literal') {
+          $np = { type => 'literal', value => $snp->{content} };
+        }
+        push @$snps, $np;
+      }
+      push @$snkps, $snps;
+    }
+    $snss->{$sns->{keyscheme}} = $snkps;
+  }
+  Biber::Config->setblxoption('sortingnamekey', $snss);
+
   # SORTING
 
   # sorting excludes
@@ -581,7 +633,7 @@ sub parse_ctrlfile {
     }
     Biber::Config->setblxoption('sortexclusion',
                                 $excludes,
-                                'PER_TYPE',
+                                'ENTRYTYPE',
                                 $sex->{type});
   }
 
@@ -595,7 +647,7 @@ sub parse_ctrlfile {
     else {
       Biber::Config->setblxoption('presort',
                                   $presort->{content},
-                                  'PER_TYPE',
+                                  'ENTRYTYPE',
                                   $presort->{type});
     }
   }
@@ -708,19 +760,20 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
   foreach my $list (@{$bcfxml->{sortlist}}) {
     my $ltype  = $list->{type};
     my $lssn = $list->{sortscheme};
+    my $lsnksn = $list->{sortnamekeyscheme};
     my $lname = $list->{name};
 
     my $lsection = $list->{section}[0]; # because "section" needs to be a list elsewhere in XML
-    if (my $l = $sortlists->get_list($lsection, $lname, $ltype, $lssn)) {
-      $logger->debug("Section sortlist '$lname' of type '$ltype' with sortscheme '$lssn' is repeated for section $lsection - ignoring");
+    if ($sortlists->get_list($lsection, $lname, $ltype, $lssn, $lsnksn)) {
+      $logger->debug("Section sortlist '$lname' of type '$ltype' with sortscheme '$lssn' and sortnamekeyscheme '$lsnksn' is repeated for section $lsection - ignoring");
       next;
     }
 
-    my $seclist = Biber::SortList->new(section => $lsection, sortschemename => $lssn, name => $lname);
-    $seclist->set_type($ltype || 'entry'); # lists are entry lists by default
-    $seclist->set_name($lname || $lssn); # name is only relevelant for "list" type, default to ss
+    my $sortlist = Biber::SortList->new(section => $lsection, sortschemename => $lssn, sortnamekeyschemename => $lsnksn, name => $lname);
+    $sortlist->set_type($ltype || 'entry'); # lists are entry lists by default
+    $sortlist->set_name($lname || $lssn . "/$lsnksn"); # default to ss+snkss
     foreach my $filter (@{$list->{filter}}) {
-      $seclist->add_filter({'type'  => $filter->{type},
+      $sortlist->add_filter({'type'  => $filter->{type},
                             'value' => $filter->{content}});
     }
     # disjunctive filters are an array ref of filter hashes
@@ -730,17 +783,21 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
         push @$orfilts, {'type'  => $filter->{type},
                          'value' => $filter->{content}};
       }
-      $seclist->add_filter($orfilts) if $orfilts;
+      $sortlist->add_filter($orfilts) if $orfilts;
     }
 
     if (my $sorting = $list->{sorting}) { # can be undef for fallback to global sorting
-      $seclist->set_sortscheme(_parse_sort($sorting));
+      $sortlist->set_sortscheme(_parse_sort($sorting));
     }
     else {
-      $seclist->set_sortscheme(Biber::Config->getblxoption('sorting'));
+      $sortlist->set_sortscheme(Biber::Config->getblxoption('sorting'));
     }
-    $logger->debug("Adding sortlist of type '$ltype' with sortscheme '$lssn' and name '$lname' for section $lsection");
-    $sortlists->add_list($seclist);
+
+    # Set sorting name key scheme name
+    $sortlist->set_sortnamekeyschemename($lsnksn);
+
+    $logger->debug("Adding sortlist of type '$ltype' with sortscheme '$lssn', sortnamekeyscheme '$lsnksn' and name '$lname' for section $lsection");
+    $sortlists->add_list($sortlist);
   }
 
   # Check to make sure that each section has an entry sortlist for global sorting
@@ -748,10 +805,10 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
   foreach my $section (@{$bcfxml->{section}}) {
     my $globalss = Biber::Config->getblxoption('sortscheme');
     my $secnum = $section->{number};
-    unless ($sortlists->get_list($secnum, $globalss, 'entry', $globalss)) {
-      my $seclist = Biber::SortList->new(section => $secnum, type => 'entry', sortschemename => $globalss, name => $globalss);
-      $seclist->set_sortscheme(Biber::Config->getblxoption('sorting'));
-      $sortlists->add_list($seclist);
+    unless ($sortlists->get_list($secnum, "$globalss/global", 'entry', $globalss, 'global')) {
+      my $sortlist = Biber::SortList->new(section => $secnum, type => 'entry', sortschemename => $globalss, sortnamekeyschemename => 'global', name => $globalss . '/global');
+      $sortlist->set_sortscheme(Biber::Config->getblxoption('sorting'));
+      $sortlists->add_list($sortlist);
     }
   }
 
@@ -795,10 +852,10 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
     # Global locale in non tool mode bibtex output is default
     Biber::Config->setblxoption('sortlocale', 'english');
 
-    my $seclist = Biber::SortList->new(section => 99999, sortschemename => Biber::Config->getblxoption('sortscheme'), name => Biber::Config->getblxoption('sortscheme'));
-    $seclist->set_type('entry');
+    my $sortlist = Biber::SortList->new(section => 99999, sortschemename => Biber::Config->getblxoption('sortscheme'), sortnamekeyschemename => 'global', name => Biber::Config->getblxoption('sortscheme') . '/global');
+    $sortlist->set_type('entry');
     # bibtex output in non-tool mode is just citeorder
-    $seclist->set_sortscheme({locale => locale2bcp47(Biber::Config->getblxoption('sortlocale')),
+    $sortlist->set_sortscheme({locale => locale2bcp47(Biber::Config->getblxoption('sortlocale')),
                               spec   =>
                              [
                               [
@@ -807,7 +864,7 @@ SECTION: foreach my $section (@{$bcfxml->{section}}) {
                               ]
                              ]});
     $logger->debug("Adding 'entry' list 'none' for pseudo-section 99999");
-    $self->{sortlists}->add_list($seclist);
+    $self->{sortlists}->add_list($sortlist);
   }
 
   return;
@@ -829,7 +886,7 @@ sub process_setup {
   foreach my $section (@{$self->sections->get_sections}) {
     my $secnum = $section->number;
     unless ($self->sortlists->has_lists_of_type_for_section($secnum, 'entry')) {
-      my $dlist = Biber::SortList->new(sortschemename => Biber::Config->getblxoption('sortscheme'), name => Biber::Config->getblxoption('sortscheme'));
+      my $dlist = Biber::SortList->new(sortschemename => Biber::Config->getblxoption('sortscheme'), sortnamekeyschemename => 'global', name => Biber::Config->getblxoption('sortscheme') . '/global');
       $dlist->set_sortscheme(Biber::Config->getblxoption('sorting'));
       $dlist->set_type('entry');
       $dlist->set_section($secnum);
@@ -1172,6 +1229,7 @@ sub validate_datamodel {
   my $dm = Biber::Config->get_dm;
 
   if (Biber::Config->getoption('validate_datamodel')) {
+    my $dmwe = Biber::Config->getoption('dieondatamodel') ? \&biber_error : \&biber_warn;
     foreach my $citekey ($section->get_citekeys) {
       my $be = $section->bibentry($citekey);
       my $citekey = $be->get_field('citekey');
@@ -1180,7 +1238,7 @@ sub validate_datamodel {
 
       # default entrytype to MISC type if not a known type
       unless ($dm->is_entrytype($et)) {
-        biber_warn("Datamodel: Entry '$citekey' ($ds): Invalid entry type '" . $be->get_field('entrytype') . "' - defaulting to 'misc'", $be);
+        &{$dmwe}("Datamodel: Entry '$citekey' ($ds): Invalid entry type '" . $be->get_field('entrytype') . "' - defaulting to 'misc'", $be);
         $be->set_field('entrytype', 'misc');
         $et = 'misc';           # reset this too
       }
@@ -1192,23 +1250,23 @@ sub validate_datamodel {
       # * Valid because entrytype allows "ALL" fields
       foreach my $ef ($be->datafields) {
         unless ($dm->is_field_for_entrytype($et, $ef)) {
-          biber_warn("Datamodel: Entry '$citekey' ($ds): Invalid field '$ef' for entrytype '$et'", $be);
+          &{$dmwe}("Datamodel: Entry '$citekey' ($ds): Invalid field '$ef' for entrytype '$et'", $be);
         }
       }
 
       # Mandatory constraints
       foreach my $warning ($dm->check_mandatory_constraints($be)) {
-        biber_warn($warning, $be);
+        &{$dmwe}($warning, $be);
       }
 
       # Conditional constraints
       foreach my $warning ($dm->check_conditional_constraints($be)) {
-        biber_warn($warning, $be);
+        &{$dmwe}($warning, $be);
       }
 
       # Data constraints
       foreach my $warning ($dm->check_data_constraints($be)) {
-        biber_warn($warning, $be);
+        &{$dmwe}($warning, $be);
       }
     }
   }
@@ -1483,7 +1541,9 @@ sub process_extratitleyear {
 
     Postprocess set entries
 
-    Checks for common set errors and enforces 'dataonly' for set members
+    Checks for common set errors and enforces 'dataonly' for set members.
+    It's not necessary to set skipbib, skipbiblist in the OPTIONS field for
+    the set members as these are automatically set by biblatex due to the \inset
 
 =cut
 
@@ -1497,9 +1557,9 @@ sub process_sets {
     # Enforce Biber parts of virtual "dataonly" for set members
     # Also automatically create an "entryset" field for the members
     foreach my $member (@entrysetkeys) {
+      my $me = $section->bibentry($member);
       process_entry_options($member, [ 'skiplab', 'skipbiblist', 'uniquename=0', 'uniquelist=0' ]);
 
-      my $me = $section->bibentry($member);
       if ($me->get_field('entryset')) {
         biber_warn("Field 'entryset' is no longer needed in set member entries in Biber - ignoring in entry '$member'", $me);
         $me->del_field('entryset');
@@ -1516,6 +1576,7 @@ sub process_sets {
   # had skips set by being seen as a member of that set yet
   else {
     if (Biber::Config->get_set_parents($citekey)) {
+      my $me = $section->bibentry($citekey);
       process_entry_options($citekey, [ 'skiplab', 'skipbiblist', 'uniquename=0', 'uniquelist=0' ]);
     }
   }
@@ -1554,7 +1615,7 @@ sub process_labelname {
     }
 
     # If there is a biblatex option which controls the use of this labelname info, check it
-    if ($CONFIG_SCOPE_BIBLATEX{"use$lnameopt"} and
+    if ($CONFIG_OPTSCOPE_BIBLATEX{"use$lnameopt"} and
        not Biber::Config->getblxoption("use$lnameopt", $bee, $citekey)) {
       next;
     }
@@ -1580,7 +1641,7 @@ sub process_labelname {
     }
 
     # If there is a biblatex option which controls the use of this labelname info, check it
-    if ($CONFIG_SCOPE_BIBLATEX{"use$ln"} and
+    if ($CONFIG_OPTSCOPE_BIBLATEX{"use$ln"} and
        not Biber::Config->getblxoption("use$ln", $bee, $citekey)) {
       next;
     }
@@ -1667,14 +1728,14 @@ sub process_labeldate {
           $be->set_field('labelyear',
                          $be->get_field('labelyear') . '\bibdatedash ' . $be->get_field($ytype . 'endyear'));
         }
-        # pseudodates (field which are not really dates per se) are just years
+        # pseudodates (fields which are not really dates per se) are just years
         if (not $pseudodate and
             $be->get_field($ytype . 'endmonth')
             and ($be->get_field($df->{month}) ne $be->get_field($ytype . 'endmonth'))) {
           $be->set_field('labelmonth',
                          $be->get_field('labelmonth') . '\bibdatedash ' . $be->get_field($ytype . 'endmonth'));
         }
-        # pseudodates (field which are not really dates per se) are just years
+        # pseudodates (fields which are not really dates per se) are just years
         if (not $pseudodate and
             $be->get_field($ytype . 'endday')
             and ($be->get_field($df->{day}) ne $be->get_field($ytype . 'endday'))) {
@@ -1954,7 +2015,7 @@ sub process_presort {
   my $be = $section->bibentry($citekey);
   # We are treating presort as an option as it can be set per-type and globally too
   if (my $ps = $be->get_field('presort')) {
-    Biber::Config->setblxoption('presort', $ps, 'PER_ENTRY', $citekey);
+    Biber::Config->setblxoption('presort', $ps, 'ENTRY', $citekey);
   }
 }
 
@@ -1970,13 +2031,15 @@ sub process_lists {
   my $section = $self->sections->get_section($secnum);
   foreach my $list (@{$self->sortlists->get_lists_for_section($secnum)}) {
     my $lssn = $list->get_sortschemename;
+    my $lsnksn = $list->get_sortnamekeyschemename;
     my $ltype = $list->get_type;
     my $lname = $list->get_name;
     # Last-ditch fallback in case we still don't have a sorting spec
     $list->set_sortscheme(Biber::Config->getblxoption('sorting')) unless $list->get_sortscheme;
+    $list->set_sortnamekeyschemename('global') unless $list->get_sortnamekeyschemename;
 
     $list->set_keys([ $section->get_citekeys ]);
-    $logger->debug("Populated sortlist '$lname' of type '$ltype' with sortscheme '$lssn' in section $secnum with keys: " . join(', ', $list->get_keys));
+    $logger->debug("Populated sortlist '$lname' of type '$ltype' with sortscheme '$lssn' and sorting name key scheme '$lsnksn' in section $secnum with keys: " . join(', ', $list->get_keys));
 
     # Now we check the sorting cache to see if we already have results
     # for this scheme since sorting is computationally expensive.
@@ -1990,43 +2053,42 @@ sub process_lists {
     # * extra* data
 
     my $cache_flag = 0;
-    $logger->debug("Checking sorting cache for scheme '$lssn'");
+    $logger->debug("Checking sorting cache for scheme '$lssn' with sorting name key scheme '$lsnksn'");
     foreach my $cacheitem (@{$section->get_sort_cache}) {
-      if (Compare($list->get_sortscheme, $cacheitem->[0])) {
-        $logger->debug("Found sorting cache entry for scheme '$lssn'");
-        $logger->trace("Sorting list cache for scheme '$lssn':\n-------------------\n" . Data::Dump::pp($list->get_sortscheme) . "\n-------------------\n");
-        $list->set_keys($cacheitem->[1]);
-        $list->set_sortinitdata($cacheitem->[2]);
-        $list->set_extrayeardata($cacheitem->[3]);
-        $list->set_extraalphadata($cacheitem->[4]);
+      # This conditional checks for identity of the data elements which constitute
+      # a biblatex refcontext since a sortlist is conceptually part of a refcontext
+      if (Compare($list->get_sortscheme, $cacheitem->[0]) and
+          $list->get_sortnamekeyschemename eq $cacheitem->[1]) {
+        $logger->debug("Found sorting cache entry for scheme '$lssn' with sorting name key scheme '$lsnksn'");
+        $logger->trace("Sorting list cache for scheme '$lssn' with sorting name key scheme '$lsnksn':\n-------------------\n" . Data::Dump::pp($list->get_sortscheme) . "\n-------------------\n");
+        $list->set_sortnamekeyschemename($cacheitem->[1]);
+        $list->set_keys($cacheitem->[2]);
+        $list->set_sortinitdata($cacheitem->[3]);
+        $list->set_extrayeardata($cacheitem->[4]);
+        $list->set_extraalphadata($cacheitem->[5]);
+        $list->set_extratitledata($cacheitem->[6]);
+        $list->set_extratitleyeardata($cacheitem->[7]);
         $cache_flag = 1;
         last;
       }
     }
 
     unless ($cache_flag) {
-      $logger->debug("No sorting cache entry for scheme '$lssn'");
+      $logger->debug("No sorting cache entry for scheme '$lssn' with sorting name key scheme '$lsnksn'");
       # Sorting
       $self->generate_sortinfo($list);       # generate the sort information
       $self->sort_list($list);               # sort the list
       $self->generate_extra($list) unless Biber::Config->getoption('tool'); # generate the extra* fields
 
       # Cache the results
-      $logger->debug("Adding sorting cache entry for scheme '$lssn'");
+      $logger->debug("Adding sorting cache entry for scheme '$lssn' with sorting name key scheme '$lsnksn'");
       $section->add_sort_cache($list->get_listdata);
     }
 
     # Filtering
-    # This is not really used - filtering is more efficient to do on the biblatex
-    # side since we are filtering after sorting anyway. It is used to provide
-    # a field=shorthand filter for type=shorthand lists though.
     if (my $filters = $list->get_filters) {
       my $flist = [];
 KEYLOOP: foreach my $k ($list->get_keys) {
-        # Filter out skipbiblist entries as a special case in 'shorthand' type lists
-        if ($list->get_type eq 'list') {
-          next if Biber::Config->getblxoption('skipbiblist', $section->bibentry($k)->get_field('entrytype'), $k);
-        }
 
         $logger->debug("Checking key '$k' in list '$lname' against list filters");
         my $be = $section->bibentry($k);
@@ -2134,14 +2196,10 @@ sub check_list_filter {
 =cut
 
 sub generate_sortinfo {
-  my $self = shift;
-  my $list = shift;
+  my ($self, $list) = @_;
 
-  my $sortscheme = $list->get_sortscheme;
-  my $secnum = $self->get_current_section;
-  my $section = $self->sections->get_section($secnum);
   foreach my $key ($list->get_keys) {
-    $self->_generatesortinfo($key, $list, $sortscheme);
+    $self->_generatesortinfo($key, $list);
   }
   return;
 }
@@ -2216,24 +2274,24 @@ sub uniqueness {
     which are ignored. They serve only to accumulate repeated occurences with the context
     and we don't care about this and so the values are a useful sinkhole for such repetition.
 
-    For example, if we find in the global context a lastname "Smith" in two different entries
+    For example, if we find in the global context a family name "Smith" in two different entries
     under the same form "Alan Smith", the data structure will look like:
 
     {Smith}->{global}->{Alan Smith} = 2
 
     We don't care about the value as this means that there are 2 "Alan Smith"s in the global
     context which need disambiguating identically anyway. So, we just count the keys for the
-    lastname "Smith" in the global context to see how ambiguous the lastname itself is. This
+    family name "Smith" in the global context to see how ambiguous the family name itself is. This
     would be "1" and so "Alan Smith" would get uniquename=0 because it's unambiguous as just
     "Smith".
 
     The same goes for "minimal" list context disambiguation for uniquename=5 or 6.
-    For example, if we had the lastname "Smith" to disambiguate in two entries with labelname
+    For example, if we had the family name "Smith" to disambiguate in two entries with labelname
     "John Smith and Alan Jones", the data structure would look like:
 
     {Smith}->{Smith+Jones}->{John Smith+Alan Jones} = 2
 
-    Again, counting the keys of the context for the lastname gives us "1" which means we
+    Again, counting the keys of the context for the family name gives us "1" which means we
     have uniquename=0 for "John Smith" in both entries because it's the same list. This also works
     for repeated names in the same list "John Smith and Bert Smith". Disambiguating "Smith" in this:
 
@@ -2258,6 +2316,8 @@ sub create_uniquename_info {
     my $be = $bibentries->entry($citekey);
     my $bee = $be->get_field('entrytype');
 
+    my $useprefix = Biber::Config->getblxoption('useprefix', $bee, $citekey);
+
     next unless my $un = Biber::Config->getblxoption('uniquename', $bee, $citekey);
 
     $logger->trace("Generating uniquename information for '$citekey'");
@@ -2277,8 +2337,8 @@ sub create_uniquename_info {
       # we can't, were still processing entries at this point.
       # Here we are just recording seen combinations of:
       #
-      # lastname and how many name context keys contain this (uniquename = 0)
-      # lastnames+initials and how many name context keys contain this (uniquename = 1)
+      # family name and how many name context keys contain this (uniquename = 0)
+      # familynames+initials and how many name context keys contain this (uniquename = 1)
       # Full name and how many name context keys contain this (uniquename = 2)
       #
       # A name context can be either a complete single name or a list of names
@@ -2295,9 +2355,14 @@ sub create_uniquename_info {
       my $morenames = $nl->get_morenames ? 1 : 0;
 
       my @truncnames;
-      my @lastnames;
+      my @familynames;
       my @fullnames;
       my @initnames;
+
+      # Name list scope useprefix option
+      if (defined($nl->get_useprefix)) {
+        $useprefix = $nl->get_useprefix;
+      }
 
       foreach my $name (@$names) {
         # We need to track two types of uniquename disambiguation here:
@@ -2325,42 +2390,48 @@ sub create_uniquename_info {
 
           push @truncnames, $name;
           if ($un == 5 or $un == 6) {
-            push @lastnames, $name->get_lastname;
+            push @familynames, $name->get_namepart('family');
             push @fullnames, $name->get_namestring;
             push @initnames, $name->get_nameinitstring;
           }
         }
       }
       # Information for mininit ($un=5) or minfull ($un=6)
-      my $lastnames_string;
+      my $familynames_string;
       my $fullnames_string;
       my $initnames_string;
       if ($un == 5) {
-        $lastnames_string = join("\x{10FFFD}", @lastnames);
+        $familynames_string = join("\x{10FFFD}", @familynames);
         $initnames_string = join("\x{10FFFD}", @initnames);
-        if ($#lastnames + 1 < $num_names or
+        if ($#familynames + 1 < $num_names or
             $morenames) {
-          $lastnames_string .= "\x{10FFFD}et al"; # if truncated, record this
+          $familynames_string .= "\x{10FFFD}et al"; # if truncated, record this
           $initnames_string .= "\x{10FFFD}et al"; # if truncated, record this
         }
       }
       elsif ($un == 6) {
-        $lastnames_string = join("\x{10FFFD}", @lastnames);
+        $familynames_string = join("\x{10FFFD}", @familynames);
         $fullnames_string = join("\x{10FFFD}", @fullnames);
-        if ($#lastnames + 1 < $num_names or
+        if ($#familynames + 1 < $num_names or
             $morenames) {
-          $lastnames_string .= "\x{10FFFD}et al"; # if truncated, record this
+          $familynames_string .= "\x{10FFFD}et al"; # if truncated, record this
           $fullnames_string .= "\x{10FFFD}et al"; # if truncated, record this
         }
       }
 
       foreach my $name (@$names) {
+
+        # Name scope useprefix option
+        if (defined($name->get_useprefix)) {
+          $useprefix = $name->get_useprefix;
+        }
+
         # we have to differentiate here between last names with and without
         # prefices otherwise we end up falsely trying to disambiguate
         # "X" and "von X" using initials/first names when there is no need.
-        my $lastname = (Biber::Config->getblxoption('useprefix', $bee, $citekey) and
-                        $name->get_prefix ? $name->get_prefix : '') .
-                          $name->get_lastname;
+        my $familyname = ($useprefix and
+                          $name->get_namepart('prefix') ? $name->get_namepart('prefix') : '') .
+                          $name->get_namepart('family');
         my $nameinitstring = $name->get_nameinitstring;
         my $namestring     = $name->get_namestring;
         my $namecontext;
@@ -2376,22 +2447,22 @@ sub create_uniquename_info {
           $key = $namestring;
         }
         elsif ($un == 5) {
-          $namecontext = $lastnames_string;
+          $namecontext = $familynames_string;
           $key = $initnames_string;
-          $name->set_minimal_info($lastnames_string);
+          $name->set_minimal_info($familynames_string);
         }
         elsif ($un == 6) {
-          $namecontext = $lastnames_string;
+          $namecontext = $familynames_string;
           $key = $fullnames_string;
-          $name->set_minimal_info($lastnames_string);
+          $name->set_minimal_info($familynames_string);
         }
         if (first {Compare($_, $name)} @truncnames) {
-          # Record a uniqueness information entry for the lastname showing that
-          # this lastname has been seen in this name context
-          Biber::Config->add_uniquenamecount($lastname, $namecontext, $key);
+          # Record a uniqueness information entry for the family name showing that
+          # this family name has been seen in this name context
+          Biber::Config->add_uniquenamecount($familyname, $namecontext, $key);
 
-          # Record a uniqueness information entry for the lastname+initials showing that
-          # this lastname_initials has been seen in this name context
+          # Record a uniqueness information entry for the family name+initials showing that
+          # this familyname_initials has been seen in this name context
           Biber::Config->add_uniquenamecount($nameinitstring, $namecontext, $key);
 
           # Record a uniqueness information entry for the fullname
@@ -2402,7 +2473,7 @@ sub create_uniquename_info {
         # As above but here we are collecting (separate) information for all
         # names, regardless of visibility (needed to track uniquelist)
         if (Biber::Config->getblxoption('uniquelist', $bee, $citekey)) {
-          Biber::Config->add_uniquenamecount_all($lastname, $namecontext, $key);
+          Biber::Config->add_uniquenamecount_all($familyname, $namecontext, $key);
           Biber::Config->add_uniquenamecount_all($nameinitstring, $namecontext, $key);
           Biber::Config->add_uniquenamecount_all($namestring, $namecontext, $key);
         }
@@ -2432,6 +2503,8 @@ sub generate_uniquename {
     my $bee = $be->get_field('entrytype');
 
     next unless my $un = Biber::Config->getblxoption('uniquename', $bee, $citekey);
+
+    my $useprefix = Biber::Config->getblxoption('useprefix', $bee, $citekey);
 
     $logger->trace("Setting uniquename for '$citekey'");
 
@@ -2466,13 +2539,24 @@ sub generate_uniquename {
         }
       }
 
+      # Name list scope useprefix option
+      if (defined($nl->get_useprefix)) {
+        $useprefix = $nl->get_useprefix;
+      }
+
       foreach my $name (@$names) {
+
+        # Name scope useprefix option
+        if (defined($name->get_useprefix)) {
+          $useprefix = $name->get_useprefix;
+        }
+
         # we have to differentiate here between last names with and without
         # prefices otherwise we end up falsely trying to disambiguate
         # "X" and "von X" using initials/first names when there is no need.
-        my $lastname = (Biber::Config->getblxoption('useprefix', $bee, $citekey) and
-                        $name->get_prefix ? $name->get_prefix : '') .
-                          $name->get_lastname;
+        my $familyname = ($useprefix and
+                          $name->get_namepart('prefix') ? $name->get_namepart('prefix') : '') .
+                          $name->get_namepart('family');
         my $nameinitstring = $name->get_nameinitstring;
         my $namestring = $name->get_namestring;
         my $namecontext = 'global'; # default
@@ -2482,18 +2566,18 @@ sub generate_uniquename {
 
         if (first {Compare($_, $name)} @truncnames) {
 
-          # If there is one key for the lastname, then it's unique using just lastname
+          # If there is one key for the family name, then it's unique using just family name
           # because either:
-          # * There are no other identical lastnames
-          # * All identical lastnames have a lastname+init ($un=5) or fullname ($un=6)
+          # * There are no other identical family names
+          # * All identical family names have a family name+init ($un=5) or fullname ($un=6)
           #   which is identical and therefore can't be disambiguated any further anyway
-          if (Biber::Config->get_numofuniquenames($lastname, $namecontext) == 1) {
+          if (Biber::Config->get_numofuniquenames($familyname, $namecontext) == 1) {
             $name->set_uniquename(0);
           }
-          # Otherwise, if there is one key for the lastname+inits, then it's unique
+          # Otherwise, if there is one key for the family name+inits, then it's unique
           # using initials because either:
-          # * There are no other identical lastname+inits
-          # * All identical lastname+inits have a fullname ($un=6) which is identical
+          # * There are no other identical  familyname+inits
+          # * All identical family name+inits have a fullname ($un=6) which is identical
           #   and therefore can't be disambiguated any further anyway
           elsif (Biber::Config->get_numofuniquenames($nameinitstring, $namecontext) == 1) {
             $name->set_uniquename(1);
@@ -2523,7 +2607,7 @@ sub generate_uniquename {
 
         # As above but not just for visible names (needed for uniquelist)
         if (Biber::Config->getblxoption('uniquelist', $bee, $citekey)) {
-          if (Biber::Config->get_numofuniquenames_all($lastname, $namecontext) == 1) {
+          if (Biber::Config->get_numofuniquenames_all($familyname, $namecontext) == 1) {
             $name->set_uniquename_all(0);
           }
           elsif (Biber::Config->get_numofuniquenames_all($nameinitstring, $namecontext) == 1) {
@@ -2583,7 +2667,7 @@ sub create_uniquelist_info {
 
       foreach my $name (@{$nl->names}) {
 
-        my $lastname   = $name->get_lastname;
+        my $familyname   = $name->get_namepart('family');
         my $nameinitstring = $name->get_nameinitstring;
         my $namestring = $name->get_namestring;
         my $ulminyearflag = 0;
@@ -2597,17 +2681,17 @@ sub create_uniquelist_info {
           }
         }
 
-        # uniquename is not set so generate uniquelist based on just lastname
+        # uniquename is not set so generate uniquelist based on just family name
         if (not defined($name->get_uniquename_all)) {
-          push @$namelist, $lastname;
-          push @$ulminyear_namelist, $lastname if $ulminyearflag;
+          push @$namelist, $familyname;
+          push @$ulminyear_namelist, $familyname if $ulminyearflag;
         }
-        # uniquename indicates unique with just lastname
+        # uniquename indicates unique with just family name
         elsif ($name->get_uniquename_all == 0) {
-          push @$namelist, $lastname;
-          push @$ulminyear_namelist, $lastname if $ulminyearflag;
+          push @$namelist, $familyname;
+          push @$ulminyear_namelist, $familyname if $ulminyearflag;
         }
-        # uniquename indicates unique with lastname with initials
+        # uniquename indicates unique with family name with initials
         elsif ($name->get_uniquename_all == 1) {
           push @$namelist, $nameinitstring;
           push @$ulminyear_namelist, $nameinitstring if $ulminyearflag;
@@ -2668,19 +2752,19 @@ LOOP: foreach my $citekey ( $section->get_citekeys ) {
 
       foreach my $name (@{$nl->names}) {
 
-        my $lastname   = $name->get_lastname;
+        my $familyname   = $name->get_namepart('family');
         my $nameinitstring = $name->get_nameinitstring;
         my $namestring = $name->get_namestring;
 
-        # uniquename is not set so generate uniquelist based on just lastname
+        # uniquename is not set so generate uniquelist based on just family name
         if (not defined($name->get_uniquename_all)) {
-          push @$namelist, $lastname;
+          push @$namelist, $familyname;
         }
-        # uniquename indicates unique with just lastname
+        # uniquename indicates unique with just family name
         elsif ($name->get_uniquename_all == 0) {
-          push @$namelist, $lastname;
+          push @$namelist, $familyname;
         }
-        # uniquename indicates unique with lastname with initials
+        # uniquename indicates unique with family name with initials
         elsif ($name->get_uniquename_all == 1) {
           push @$namelist, $nameinitstring;
         }
@@ -3154,6 +3238,7 @@ sub fetch_data {
   my $self = shift;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
+  my $dm = Biber::Config->get_dm;
   # Only looking for static keys, dynamic key entries are not in any datasource ...
   my @citekeys = $section->get_static_citekeys;
   no strict 'refs'; # symbolic references below ...
@@ -3194,6 +3279,22 @@ sub fetch_data {
     my $type = $datasource->{type};
     my $name = $datasource->{name};
     my $datatype = $datasource->{datatype};
+    if ($datatype eq 'biblatexml') {
+      my $outfile;
+      if (Biber::Config->getoption('tool')) {
+        my $exts = join('|', values %DS_EXTENSIONS);
+        $outfile = Biber::Config->getoption('dsn') =~ s/\.(?:$exts)$/.rng/r;
+      }
+      else {
+        $outfile = Biber::Config->getoption('bcf') =~ s/bcf$/rng/r;
+      }
+      unless (Biber::Config->getoption('no_bltxml_schema')) {
+        $dm->generate_bltxml_schema($outfile);
+      }
+      if (Biber::Config->getoption('validate_bltxml')) {
+        validate_biber_xml($name, 'bltx', 'http://biblatex-biber.sourceforge.net/biblatexml', $outfile);
+      }
+    }
     my $package = 'Biber::Input::' . $type . '::' . $datatype;
     eval "require $package" or
       biber_error("Error loading data source package '$package': $@");
@@ -3527,7 +3628,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

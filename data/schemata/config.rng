@@ -308,6 +308,9 @@
           </element>
         </optional>
         <optional>
+          <ref name="sortingnamekey"/>
+        </optional>
+        <optional>
           <ref name="sorting"/>
         </optional>
         <optional>
@@ -332,8 +335,6 @@
                     <value>bibtex</value>
                     <value>biblatexml</value>
                     <value>ris</value>
-                    <value>zoterordfxml</value>
-                    <value>endnotexml</value>
                   </choice>
                 </attribute>
                 <optional>
@@ -429,6 +430,23 @@
   </start>
   <define name="datamodel">
     <element name="datamodel">
+      <!-- Constants -->
+      <element name="constants">
+        <oneOrMore>
+          <element name="constant">
+            <optional>
+              <attribute name="type">
+                <choice>
+                  <value>string</value>
+                  <value>list</value>
+                </choice>
+              </attribute>
+            </optional>
+            <attribute name="name"/>
+            <text/>
+          </element>
+        </oneOrMore>
+      </element>
       <!-- Valid entrytypes -->
       <element name="entrytypes">
         <oneOrMore>
@@ -802,6 +820,13 @@
           </choice>
         </attribute>
       </optional>
+      <optional>
+        <attribute name="map_foreach">
+          <data type="string">
+            <param name="minLength">1</param>
+          </data>
+        </attribute>
+      </optional>
       <zeroOrMore>
         <element name="per_datasource">
           <data type="string">
@@ -882,6 +907,25 @@
               </optional>
             </group>
             <group>
+              <optional>
+                <attribute name="map_entry_new">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+                <attribute name="map_entry_newtype">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+              </optional>
+              <optional>
+                <attribute name="map_entrytarget">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+              </optional>
               <attribute name="map_field_set">
                 <data type="string">
                   <param name="minLength">1</param>
@@ -919,6 +963,40 @@
             </group>
           </choice>
           <empty/>
+        </element>
+      </oneOrMore>
+    </element>
+  </define>
+  <define name="sortingnamekey">
+    <element name="sortingnamekey">
+      <attribute name="keyscheme"/>
+      <oneOrMore>
+        <element name="keypart">
+          <attribute name="order">
+            <data type="integer"/>
+          </attribute>
+          <oneOrMore>
+            <element name="part">
+              <attribute name="type">
+                <choice>
+                  <value>namepart</value>
+                  <value>literal</value>
+                </choice>
+              </attribute>
+              <attribute name="order">
+                <data type="integer"/>
+              </attribute>
+              <optional>
+                <attribute name="use">
+                  <choice>
+                    <value>0</value>
+                    <value>1</value>
+                  </choice>
+                </attribute>
+              </optional>
+              <text/>
+            </element>
+          </oneOrMore>
         </element>
       </oneOrMore>
     </element>
@@ -1067,7 +1145,7 @@
     </oneOrMore>
   </define>
 </grammar>
-<!-- Copyright 2009-2015 François Charette and Philip Kime, all rights reserved. -->
+<!-- Copyright 2009-2016 François Charette and Philip Kime, all rights reserved. -->
 <!--
   This code is free software.  You can redistribute it and/or
   modify it under the terms of the Artistic License 2.0.

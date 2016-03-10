@@ -1,5 +1,5 @@
 % $ biblatex auxiliary file $
-% $ biblatex bbl format version 2.5 $
+% $ biblatex bbl format version 2.6 $
 % Do not modify the above lines!
 %
 % This is an auxiliary file used by the 'biblatex' package.
@@ -18,13 +18,14 @@
 
 
 \refsection{0}
-  \sortlist{shorthands}{shorthands}
-    \key{F1}
-  \endsortlist
-  \sortlist{nty}{nty}
+  \sortlist[list]{shorthands/global}
     \entry{F1}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
+        {{uniquename=0,hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
+           family={Doe},
+           family_i={D\bibinitperiod},
+           given={John},
+           given_i={J\bibinitperiod}}}%
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
@@ -39,6 +40,29 @@
       \field{year}{1995}
     \endentry
   \endsortlist
+  \sortlist[entry]{nty/global}
+    \entry{F1}{book}{}
+      \name{author}{1}{}{%
+        {{uniquename=0,hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
+           family={Doe},
+           family_i={D\bibinitperiod},
+           given={John},
+           given_i={J\bibinitperiod}}}%
+      }
+      \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \field{labelalpha}{\emph{A}}
+      \field{sortinit}{A}
+      \field{sortinithash}{b685c7856330eaee22789815b49de9bb}
+      \true{singletitle}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{shorthand}{\emph{A}}
+      \field{title}{The Fullness of Times}
+      \field{year}{1995}
+    \endentry
+  \endsortlist
+  \keyalias{F1a}{F1}
   \missing{C1}
 \endrefsection
 \endinput

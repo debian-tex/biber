@@ -163,6 +163,9 @@
           h2,h3,h4 {
             font-family: Arial,sans-serif;
           }
+          .small {
+            font-size: 70%;
+          }
           .key {
             font-size: 70%;
             padding-top: 2ex;
@@ -181,6 +184,9 @@
           }
           .map_final {
             color: #FF0000;
+          }
+          .map_newentry {
+            color: #00BB00;
           }
           .map_origentrytype {
             color: #04FF04;
@@ -207,7 +213,7 @@
           .la_compound {
             color: #6699CC;
           }
-          .la_namecount {
+          .la_namerange {
             color: #04FF04;
           }
           .field_xor_coerce {
@@ -296,6 +302,27 @@
           </table>
         </xsl:for-each>
         <!-- DATASOURCE MAPPINGS -->
+        <hr/>
+        <h3>Option Scope</h3>
+        <xsl:for-each select="/bcf:controlfile/bcf:optionscope">
+          <table>
+            <thead>
+              <tr>
+                <td colspan="2"><b><xsl:value-of select="./@type"/></b></td>
+              </tr>
+              <tr>
+                <td>Option</td><td>Datatype</td>
+              </tr>
+            </thead>
+            <tbody>
+              <xsl:for-each select="./bcf:option">
+                <xsl:sort select="./text()"/>
+                <tr><td><xsl:value-of select="./text()"/></td><td><xsl:value-of select="./@datatype"/></td></tr>
+              </xsl:for-each>
+              </tbody>
+          </table>
+        </xsl:for-each>
+        <!-- DATASOURCE MAPPINGS -->
         <xsl:if test="/bcf:controlfile/bcf:sourcemap">
           <hr/>
           <h3>Datasource Mappings</h3>
@@ -328,6 +355,9 @@
                       <xsl:value-of select="./text()"/>
                       <xsl:if test="not(position()=last())">, </xsl:if>
                     </xsl:for-each>
+                  </xsl:if>
+                  <xsl:if test="./@map_foreach">
+                    , foreach loop field=<xsl:value-of select="./@map_foreach"/>
                   </xsl:if>)</td>
                   </tr>
                 </thead>
@@ -342,6 +372,10 @@
                         <xsl:if test="./@map_type_target">
                           <xsl:text disable-output-escaping="yes">&amp;rarr;</xsl:text>@<xsl:value-of select="./@map_type_target"/>
                         </xsl:if>
+                      </xsl:if>
+                      <xsl:if test="./@map_entry_new">
+                        <span><xsl:attribute name="class">map_newentry</xsl:attribute>NEW <xsl:value-of
+                        select="./@map_entry_newtype"/> created with key &quot;<xsl:value-of select="./@map_entry_new"/>&quot;</span>
                       </xsl:if>
                       <xsl:if test="./@map_field_source">
                         <span><xsl:if test="./@map_final='1'">
@@ -363,7 +397,14 @@
                         <xsl:if test="./@map_field_value">=&quot;<xsl:value-of select="./@map_field_value"/>&quot;</xsl:if>
                         <xsl:if test="./@map_origentrytype='1'">=<span class="map_origentrytype">TYPE</span></xsl:if>
                         <xsl:if test="./@map_origfield='1'">=<span class="map_origfield">FIELD</span></xsl:if>
-                        <xsl:if test="./@map_origfieldval='1'">=<span class="map_origfieldval">FIELDVAL</span></xsl:if></xsl:if></td></tr>
+                        <xsl:if test="./@map_origfieldval='1'">=<span
+                        class="map_origfieldval">FIELDVAL</span></xsl:if></xsl:if>
+                        <xsl:if test="./@map_entrytarget">
+                          <span><xsl:attribute
+                                    name="class">map_newentry</xsl:attribute>
+                          applied to target &quot;<xsl:value-of select="./@map_entrytarget"/>&quot;</span>
+                        </xsl:if>
+                    </td></tr>
                   </xsl:for-each>
                 </tbody>
               </table>
@@ -429,8 +470,8 @@
                                 </span>
                               </xsl:if>
                               <xsl:value-of select="./text()"/>
-                              <xsl:if test="./@namecount">
-                                <span><xsl:attribute name="class">la_namecount</xsl:attribute>=<xsl:value-of select="./@namecount"/></span>
+                              <xsl:if test="./@namerange">
+                                <span><xsl:attribute name="class">la_namerange</xsl:attribute>=<xsl:value-of select="./@namerange"/></span>
                               </xsl:if>
                               <!-- right substring -->
                               <xsl:if test="./@substring_side='right'">
@@ -450,6 +491,9 @@
                               <xsl:if test="./@substring_width='l'">
                                 <span class="la_substring">l</span>
                               </xsl:if>
+                              <xsl:if test="./@noalphaothers='1'">
+                                <span class="la_final"><xsl:text disable-output-escaping="yes">&amp;otimes;</xsl:text></span>
+                              </xsl:if>
                             </span>
                           </li>
                         </xsl:for-each>
@@ -463,7 +507,7 @@
           <div class="key"><u>Key</u>
           <ul>
             <li><b>Heading key</b>: Label parts are concatenated together in part order shown</li>
-            <li><b>Labelpart key</b>: <span class="la_final">Final label, no more parts are considered</span>. &quot;namecount&gt;n<xsl:text disable-output-escaping="yes">&amp;rarr;</xsl:text>field&quot; - conditional field part, only used if there are more than n names. Substring specification: <span class="la_substring">&gt;&gt;&gt;</span>field = use three chars from left side of field, field<span class="la_substring">&lt;&lt;</span> = use two chars from right side of field, field<span class="la_substring">v/n</span> = variable-width substring, max n chars, field<span class="la_substring">vf/n</span> = variable-width substring fixed to same length as longest string occuring at least n times, field<span class="la_substring">l</span> = list scope disambiguation where the label as a whole is unique, not necessarily the individual parts. <span class="la_compound">field with compound substring extraction enabled</span>. field<span class="la_namecount">=n</span> = only use the first n names to form the labelpart</li>
+            <li><b>Labelpart key</b>: <span class="la_final">Final label, no more parts are considered</span>. &quot;namecount&gt;n<xsl:text disable-output-escaping="yes">&amp;rarr;</xsl:text>field&quot; - conditional field part, only used if there are more than n names. Substring specification: <span class="la_substring">&gt;&gt;&gt;</span>field = use three chars from left side of field, field<span class="la_substring">&lt;&lt;</span> = use two chars from right side of field, field<span class="la_substring">v/n</span> = variable-width substring, max n chars, field<span class="la_substring">vf/n</span> = variable-width substring fixed to same length as longest string occuring at least n times, field<span class="la_substring">l</span> = list scope disambiguation where the label as a whole is unique, not necessarily the individual parts. <span class="la_compound">field with compound substring extraction enabled</span>. field<span class="la_namerange">=range</span> = only use the names in the specified range to form the labelpart, <span class="la_final"><xsl:text disable-output-escaping="yes">&amp;otimes;</xsl:text></span> = supress alphaothers</li>
           </ul>
           </div>
         </xsl:if>
@@ -683,13 +727,54 @@
             </xsl:for-each>
           </tbody>
         </table>
+        <h4>Sorting Name Key Specification</h4>
+        <xsl:for-each select="/bcf:controlfile/bcf:sortingnamekey">
+          <table>
+            <thead>
+              <tr><td colspan="2"><b><xsl:value-of select="./@keyscheme"/></b></td></tr>
+              <tr><td>Order</td><td>Keypart</td></tr>
+            </thead>
+            <tbody>
+              <xsl:for-each select="./bcf:keypart">
+                <xsl:sort select="./@order"/>
+                <tr>
+                  <td><xsl:value-of select="./@order"/></td>
+                  <td>
+                    <xsl:for-each select="./bcf:part">
+                      <xsl:sort select="./@order"/>
+                      <xsl:value-of select="./text()"/><xsl:if
+                      test="./@use"><span class="small"> (if use<xsl:value-of select="./text()"/>=<xsl:value-of select="./@use"/>)</span></xsl:if>
+                      <xsl:if test="not(position()=last())"> + </xsl:if>
+                    </xsl:for-each>
+                  </td>
+                </tr>
+              </xsl:for-each>
+            </tbody>
+          </table>
+          <br/>
+        </xsl:for-each>
         <h4>Sorting Specification</h4>
-	      <xsl:call-template name="sorting-spec">
+        <xsl:call-template name="sorting-spec">
 	        <xsl:with-param name="spec" select="/bcf:controlfile/bcf:sorting"/>
 	      </xsl:call-template>
         <xsl:if test="/bcf:controlfile/bcf:datamodel">
           <hr/>
           <h3>Data Model</h3>
+          <h4>Constants</h4>
+          <table>
+            <thead>
+              <tr><td>Name</td><td>Type</td><td>Value</td></tr>
+            </thead>
+            <tbody>
+              <xsl:for-each select="/bcf:controlfile/bcf:datamodel/bcf:constants/bcf:constant">
+                <tr>
+                  <td><xsl:value-of select="./@name"/></td>
+                  <td><xsl:value-of select="./@type"/></td>
+                  <td><xsl:value-of select="./text()"/></td>
+                </tr>
+              </xsl:for-each>
+              </tbody>
+          </table>
           <h4>Legal entrytypes</h4>
           <table>
             <thead>
@@ -978,6 +1063,7 @@
           </div>
           <div>
             <h6>Sorting Specification</h6>
+            <div class="small">Using sorting name key scheme: <xsl:value-of select="./@sortnamekeyscheme"/></div>
             <xsl:choose>
               <xsl:when test="./bcf:sorting">
                 <xsl:call-template name="sorting-spec">
@@ -995,7 +1081,7 @@
   </xsl:template>
 </xsl:stylesheet>
 <!--
-    Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+    Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
     
     This code is free software.  You can redistribute it and/or
     modify it under the terms of the Artistic License 2.0.
