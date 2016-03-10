@@ -4,7 +4,7 @@
       "Philip Kime <Philip@kime.org.uk>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.4007, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "Module::Build version 0.4214",
    "license" : [
       "perl_5"
    ],
@@ -30,8 +30,10 @@
             "Business::ISBN" : "0",
             "Business::ISMN" : "0",
             "Business::ISSN" : "0",
+            "Class::Accessor" : "0",
             "Data::Compare" : "0",
             "Data::Dump" : "0",
+            "Data::Uniqid" : "0",
             "Date::Simple" : "0",
             "Encode::EUCJPASCII" : "0",
             "Encode::HanExtra" : "0",
@@ -52,123 +54,99 @@
             "URI" : "0",
             "Unicode::Collate" : "1.14",
             "Unicode::GCString" : "0",
-            "Unicode::Normalize" : "1.23",
+            "Unicode::Normalize" : "1.25",
+            "XML::LibXML" : "1.7",
             "XML::LibXML::Simple" : "0",
             "XML::LibXSLT" : "0",
             "XML::Writer" : "0",
             "autovivification" : "0",
             "perl" : "v5.16.0"
          }
+      },
+      "test" : {
+         "requires" : {
+            "File::Which" : "0",
+            "Test::Differences" : "0",
+            "Test::More" : "0"
+         }
       }
    },
    "provides" : {
       "Biber" : {
-         "file" : "lib/Biber.pm",
-         "version" : 0
+         "file" : "lib/Biber.pm"
       },
       "Biber::Config" : {
          "file" : "lib/Biber/Config.pm",
-         "version" : "2.3"
+         "version" : "2.4"
       },
       "Biber::Constants" : {
-         "file" : "lib/Biber/Constants.pm",
-         "version" : 0
+         "file" : "lib/Biber/Constants.pm"
       },
       "Biber::DataModel" : {
-         "file" : "lib/Biber/DataModel.pm",
-         "version" : 0
+         "file" : "lib/Biber/DataModel.pm"
       },
       "Biber::Entries" : {
-         "file" : "lib/Biber/Entries.pm",
-         "version" : 0
+         "file" : "lib/Biber/Entries.pm"
       },
       "Biber::Entry" : {
-         "file" : "lib/Biber/Entry.pm",
-         "version" : 0
+         "file" : "lib/Biber/Entry.pm"
       },
       "Biber::Entry::Name" : {
-         "file" : "lib/Biber/Entry/Name.pm",
-         "version" : 0
+         "file" : "lib/Biber/Entry/Name.pm"
       },
       "Biber::Entry::Names" : {
-         "file" : "lib/Biber/Entry/Names.pm",
-         "version" : 0
+         "file" : "lib/Biber/Entry/Names.pm"
       },
       "Biber::Input::file::biblatexml" : {
-         "file" : "lib/Biber/Input/file/biblatexml.pm",
-         "version" : 0
+         "file" : "lib/Biber/Input/file/biblatexml.pm"
       },
       "Biber::Input::file::bibtex" : {
-         "file" : "lib/Biber/Input/file/bibtex.pm",
-         "version" : 0
-      },
-      "Biber::Input::file::endnotexml" : {
-         "file" : "lib/Biber/Input/file/endnotexml.pm",
-         "version" : 0
+         "file" : "lib/Biber/Input/file/bibtex.pm"
       },
       "Biber::Input::file::ris" : {
-         "file" : "lib/Biber/Input/file/ris.pm",
-         "version" : 0
-      },
-      "Biber::Input::file::zoterordfxml" : {
-         "file" : "lib/Biber/Input/file/zoterordfxml.pm",
-         "version" : 0
+         "file" : "lib/Biber/Input/file/ris.pm"
       },
       "Biber::Internals" : {
-         "file" : "lib/Biber/Internals.pm",
-         "version" : 0
+         "file" : "lib/Biber/Internals.pm"
       },
       "Biber::LaTeX::Recode" : {
-         "file" : "lib/Biber/LaTeX/Recode.pm",
-         "version" : 0
+         "file" : "lib/Biber/LaTeX/Recode.pm"
       },
       "Biber::Output::base" : {
-         "file" : "lib/Biber/Output/base.pm",
-         "version" : 0
+         "file" : "lib/Biber/Output/base.pm"
       },
       "Biber::Output::bbl" : {
-         "file" : "lib/Biber/Output/bbl.pm",
-         "version" : 0
+         "file" : "lib/Biber/Output/bbl.pm"
       },
       "Biber::Output::biblatexml" : {
-         "file" : "lib/Biber/Output/biblatexml.pm",
-         "version" : 0
+         "file" : "lib/Biber/Output/biblatexml.pm"
       },
       "Biber::Output::bibtex" : {
-         "file" : "lib/Biber/Output/bibtex.pm",
-         "version" : 0
+         "file" : "lib/Biber/Output/bibtex.pm"
       },
       "Biber::Output::dot" : {
-         "file" : "lib/Biber/Output/dot.pm",
-         "version" : 0
+         "file" : "lib/Biber/Output/dot.pm"
       },
       "Biber::Output::test" : {
-         "file" : "lib/Biber/Output/test.pm",
-         "version" : 0
+         "file" : "lib/Biber/Output/test.pm"
       },
       "Biber::Section" : {
-         "file" : "lib/Biber/Section.pm",
-         "version" : 0
+         "file" : "lib/Biber/Section.pm"
       },
       "Biber::Sections" : {
-         "file" : "lib/Biber/Sections.pm",
-         "version" : 0
+         "file" : "lib/Biber/Sections.pm"
       },
       "Biber::SortList" : {
-         "file" : "lib/Biber/SortList.pm",
-         "version" : 0
+         "file" : "lib/Biber/SortList.pm"
       },
       "Biber::SortLists" : {
-         "file" : "lib/Biber/SortLists.pm",
-         "version" : 0
+         "file" : "lib/Biber/SortLists.pm"
       },
       "Biber::UCollate" : {
-         "file" : "lib/Biber/UCollate.pm",
-         "version" : 0
+         "file" : "lib/Biber/UCollate.pm"
       },
       "Biber::Utils" : {
-         "file" : "lib/Biber/Utils.pm",
-         "version" : 0
+         "file" : "lib/Biber/Utils.pm"
       }
    },
    "release_status" : "stable",
@@ -177,12 +155,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "2.3",
-   "x_test_requires" : {
-      "File::Which" : "0",
-      "Test::Differences" : "0",
-      "Test::More" : "0",
-      "Test::Pod" : "0",
-      "Test::Pod::Coverage" : "0"
-   }
+   "version" : "2.4"
 }

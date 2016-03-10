@@ -31,7 +31,9 @@ Biber::Internals - Internal methods for processing the bibliographic data
 
 my $logger = Log::Log4perl::get_logger('main');
 
-
+# Hashes should not care about use* or sorting name key scheme etc. We want to generat hashes
+# unique to a name, not a particular representation of a name. So, always statically concatenate
+# nameparts from the data model list of valid nameparts
 sub _getnamehash {
   my ($self, $citekey, $names) = @_;
   my $secnum = $self->get_current_section;
@@ -41,31 +43,14 @@ sub _getnamehash {
   my $hashkey = '';
   my $count = $names->count_names;
   my $visible = $names->get_visible_cite;
+  my $dm = Biber::Config->get_dm;
 
   # namehash obeys list truncations but not uniquename
   foreach my $n (@{$names->first_n_names($visible)}) {
-    if ( $n->get_prefix and
-         Biber::Config->getblxoption('useprefix', $bee, $citekey)) {
-      $hashkey .= $n->get_prefix;
-    }
-    $hashkey .= $n->get_lastname;
-
-    if ( $n->get_suffix ) {
-      $hashkey .= $n->get_suffix;
-    }
-
-    if ( $n->get_firstname ) {
-      $hashkey .= $n->get_firstname;
-    }
-
-    if ( $n->get_middlename ) {
-      $hashkey .= $n->get_middlename;
-    }
-
-    # without useprefix, prefix is not first in the hash
-    if ($n->get_prefix and not
-        Biber::Config->getblxoption('useprefix', $bee, $citekey)) {
-      $hashkey .= $n->get_prefix;
+    foreach my $nt ($dm->get_constant_value('nameparts')) {# list type so returns list
+      if (my $np = $n->get_namepart($nt)) {
+        $hashkey .= $np;
+      }
     }
   }
 
@@ -90,38 +75,27 @@ sub _getnamehash_u {
   my $hashkey = '';
   my $count = $names->count_names;
   my $visible = $names->get_visible_cite;
+  my $dm = Biber::Config->get_dm;
 
-  # namehash obeys list truncations but not uniquename
+  # namehash obeys list truncations
   foreach my $n (@{$names->first_n_names($visible)}) {
-    if ( $n->get_prefix and
-         Biber::Config->getblxoption('useprefix', $bee, $citekey)) {
-      $hashkey .= $n->get_prefix;
-    }
-    $hashkey .= $n->get_lastname;
-
-    if ( $n->get_suffix ) {
-      $hashkey .= $n->get_suffix;
-    }
-
-    if ( $n->get_firstname and defined($n->get_uniquename)) {
-      if ($n->get_uniquename eq '2') {
-        $hashkey .= $n->get_firstname;
+    foreach my $nt ($dm->get_constant_value('nameparts')) {# list type so returns list
+      if (my $np = $n->get_namepart($nt)) {
+        if ($nt eq 'given') {
+          if (defined($n->get_uniquename)) {
+            if ($n->get_uniquename eq '2') {
+              $hashkey .= $np;
+            }
+            elsif ($n->get_uniquename eq '1') {
+              $hashkey .= join('', @{$n->get_namepart_initial('given')});
+            }
+          }
+        }
+        else {
+          $hashkey .= $np;
+        }
       }
-      elsif ($n->get_uniquename eq '1') {
-        $hashkey .= join('', @{$n->get_firstname_i});
-      }
     }
-
-    if ( $n->get_middlename ) {
-      $hashkey .= $n->get_middlename;
-    }
-
-    # without useprefix, prefix is not first in the hash
-    if ( $n->get_prefix and not
-         Biber::Config->getblxoption('useprefix', $bee, $citekey)) {
-      $hashkey .= $n->get_prefix;
-    }
-
   }
 
   # name list was truncated
@@ -134,38 +108,21 @@ sub _getnamehash_u {
   return md5_hex(encode_utf8(NFC($hashkey)));
 }
 
-
 sub _getfullhash {
   my ($self, $citekey, $names) = @_;
   my $hashkey = '';
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
+  my $bee = $be->get_field('entrytype');
+  my $dm = Biber::Config->get_dm;
+
   foreach my $n (@{$names->names}) {
-    if ( my $p = $n->get_prefix and
-      Biber::Config->getblxoption('useprefix', $be->get_field('entrytype'), $citekey ) ) {
-      $hashkey .= $p;
+    foreach my $nt ($dm->get_constant_value('nameparts')) {# list type so returns list
+      if (my $np = $n->get_namepart($nt)) {
+        $hashkey .= $np;
+      }
     }
-    $hashkey .= $n->get_lastname;
-
-    if ( $n->get_suffix ) {
-      $hashkey .= $n->get_suffix;
-    }
-
-    if ( $n->get_firstname ) {
-      $hashkey .= $n->get_firstname;
-    }
-
-    if ( $n->get_middlename ) {
-      $hashkey .= $n->get_middlename;
-    }
-
-    # without useprefix, prefix is not first in the hash
-    if ( my $p = $n->get_prefix and not
-         Biber::Config->getblxoption('useprefix', $be->get_field('entrytype'), $citekey ) ) {
-      $hashkey .= $p;
-    }
-
   }
 
   # If we had an "and others"
@@ -185,34 +142,18 @@ sub _genpnhash {
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
+  my $bee = $be->get_field('entrytype');
   my $hashkey = '';
+  my $dm = Biber::Config->get_dm;
 
-  if ( my $p = $n->get_prefix and
-       Biber::Config->getblxoption('useprefix', $be->get_field('entrytype'), $citekey ) ) {
-    $hashkey .= $p;
-  }
-  $hashkey .= $n->get_lastname;
-
-  if ( $n->get_suffix ) {
-    $hashkey .= $n->get_suffix;
-  }
-
-  if ( $n->get_firstname ) {
-    $hashkey .= $n->get_firstname;
-  }
-
-  if ( $n->get_middlename ) {
-    $hashkey .= $n->get_middlename;
-  }
-
-  # without useprefix, prefix is not first in the hash
-  if ( $n->get_prefix and not
-       Biber::Config->getblxoption('useprefix', $be->get_field('entrytype'), $citekey ) ) {
-    $hashkey .= $n->get_prefix;
+  foreach my $nt ($dm->get_constant_value('nameparts')) {# list type so returns list
+    if (my $np = $n->get_namepart($nt)) {
+      $hashkey .= $np;
+    }
   }
 
   $logger->trace("Creating MD5 pnhash using '$hashkey'");
-  # Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output") 
+  # Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output")
   return md5_hex(encode_utf8(NFC($hashkey)));
 }
 
@@ -246,8 +187,8 @@ sub _dispatch_table_label {
     return undef;
   }
   # Fields which are part of the datamodel
-  my ($t, $dt) = $dm->get_dm_for_field($field);
-  if ($t eq 'list' and $dt eq 'name') {
+  my $dmf = $dm->get_dm_for_field($field);
+  if ($dmf->{fieldtype} eq 'list' and $dmf->{datatype} eq 'name') {
     return [\&_label_name, [$field]];
   }
   else {
@@ -412,7 +353,7 @@ sub _label_name {
   return ['',''] unless defined($be->get_labelname_info);
 
   my $namename = $args->[0];
-  my $acc;
+  my $acc = '';# Must initialise to empty string as we need to return a string
   # This contains sortalphaothers instead of alphaothers, if defined
   # This is needed in cases where alphaothers is something like
   # '\textasteriskcentered' which would mess up sorting.
@@ -428,7 +369,7 @@ sub _label_name {
     $realname = $namename;
   }
 
-  my $nameval  = $be->get_field($realname);
+  my $names = $be->get_field($realname);
 
   # Account for labelname set to short* when testing use* options
   my $lnameopt;
@@ -440,28 +381,44 @@ sub _label_name {
   }
 
   if (Biber::Config->getblxoption("use$lnameopt", $be->get_field('entrytype'), $citekey) and
-    $nameval) {
-    my $numnames  = $nameval->count_names;
-    my $visibility = $nameval->get_visible_alpha;
+    $names) {
 
-    my @lastnames = map { normalise_string_label($_->get_lastname, $realname) } @{$nameval->names};
-    my @prefices  = map { $_->get_prefix } @{$nameval->names};
-    my $loopnames;
+    if (defined($names->get_useprefix)) {
+      $useprefix = $names->get_useprefix;
+    }
 
-    # loopnames is the number of names to loop over in the name list when constructing the label
-    if (my $lc = $labelattrs->{namecount}) {
-      if ($lc > $numnames) { # cap at numnames, of course
-        $lc = $numnames;
+    my $numnames  = $names->count_names;
+    my $visibility = $names->get_visible_alpha;
+
+    my @familynames = map { normalise_string_label($_->get_namepart('family'), $realname) } @{$names->names};
+    my @prefices  = map { $_->get_namepart('prefix') } @{$names->names};
+    my @useprefices  = map { if (defined($_->get_useprefix)) {$_->get_useprefix} else {$useprefix} } @{$names->names};
+
+    # Use name range override, if any
+    my $nr_start;
+    my $nr_end;
+    if (exists($labelattrs->{namerange})) {
+      my $nr = parse_range($labelattrs->{namerange});
+      $nr_start = $nr->[0];
+      $nr_end = $nr->[1];
+
+      if (defined($nr_end) and
+          $nr_end eq '+') {# minalphanames cap marker
+        $nr_end = $visibility;
       }
-      $loopnames = $lc; # Only look at as many names as specified
+      elsif (not defined($nr_end) or
+          $nr_end > $numnames) { # cap at numnames, of course
+        $nr_end = $numnames;
+      }
     }
     else {
-      $loopnames = $visibility; # Else use bib visibility
+      $nr_start = 1;
+      $nr_end = $visibility; # Else use bib visibility
     }
-
-    for (my $i = 0; $i < $loopnames; $i++) {
+    $logger->trace("$realname/numnames=$numnames/visibility=$visibility/nr_start=$nr_start/nr_end=$nr_end");
+    for (my $i = $nr_start-1; $i < $nr_end; $i++) {
       # Deal with prefix options
-      if ($useprefix and $prefices[$i]) {
+      if ($useprefices[$i] and $prefices[$i]) {
         my $w = $labelattrs->{substring_pwidth} // 1;
         if ($labelattrs->{substring_pcompound}) {
           my $tmpstring;
@@ -475,17 +432,18 @@ sub _label_name {
           $acc .= Unicode::GCString->new($prefices[$i])->substr(0, $w)->as_string;
         }
       }
-      $acc .= _process_label_attributes($self, $citekey, $lastnames[$i], $labelattrs, $realname, 'lastname', $i);
+      $acc .= _process_label_attributes($self, $citekey, $familynames[$i], $labelattrs, $realname, 'family', $i);
     }
 
     $sortacc = $acc;
 
-    # Add alphaothers if name list is truncated
-    if ($numnames > $loopnames or $nameval->get_morenames) {
-      $acc .= $alphaothers // ''; # alphaothers can be undef
-      $sortacc .= $sortalphaothers // ''; # sortalphaothers can be undef
+    # Add alphaothers if name list is truncated unless noalphaothers is specified
+    unless ($labelattrs->{noalphaothers}) {
+      if ($numnames > $nr_end or $names->get_morenames) {
+        $acc .= $alphaothers // ''; # alphaothers can be undef
+        $sortacc .= $sortalphaothers // ''; # sortalphaothers can be undef
+      }
     }
-
     return [$acc, unescape_label($sortacc)];
   }
   else {
@@ -914,29 +872,29 @@ sub _dispatch_table_sorting {
     return undef;
   }
   # Fields which are part of the datamodel
-  my ($t, $dt) = $dm->get_dm_for_field($field);
-  if ($t eq 'list' and $dt eq 'name') {
+  my $dmf = $dm->get_dm_for_field($field);
+  if ($dmf->{fieldtype} eq 'list' and $dmf->{datatype} eq 'name') {
     return [\&_sort_name, [$field]];
   }
-  elsif ($t eq 'field' and $dt eq 'literal') {
+  elsif ($dmf->{fieldtype} eq 'field' and $dmf->{datatype} eq 'literal') {
     return [\&_sort_literal, [$field]];
   }
-  elsif ($t eq 'field' and
-         ($dt eq 'integer' or $dt eq 'datepart')) {
+  elsif ($dmf->{fieldtype} eq 'field' and
+         ($dmf->{datatype} eq 'integer' or $dmf->{datatype} eq 'datepart')) {
     return [\&_sort_integer, [$field]];
   }
-  elsif ($t eq 'list' and
-         ($dt eq 'literal' or $dt eq 'key')) {
+  elsif ($dmf->{fieldtype} eq 'list' and
+         ($dmf->{datatype} eq 'literal' or $dmf->{datatype} eq 'key')) {
     return [\&_sort_list, [$field]];
   }
-  elsif ($t eq 'field' and $dt eq 'key') {
+  elsif ($dmf->{fieldtype} eq 'field' and $dmf->{datatype} eq 'key') {
     return [\&_sort_literal, [$field]];
   }
 }
 
 # Main sorting dispatch method
 sub _dispatch_sorting {
-  my ($self, $sortfield, $citekey, $sortelementattributes) = @_;
+  my ($self, $sortfield, $citekey, $sortlist, $sortelementattributes) = @_;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
@@ -960,12 +918,13 @@ sub _dispatch_sorting {
     $code_ref = ${_dispatch_table_sorting($sortfield, $dm)}[0];
     $code_args_ref  = ${_dispatch_table_sorting($sortfield, $dm)}[1];
   }
-  return &{$code_ref}($self, $citekey, $sortelementattributes, $code_args_ref);
+  return &{$code_ref}($self, $citekey, $sortlist, $sortelementattributes, $code_args_ref);
 }
 
 # Conjunctive set of sorting sets
 sub _generatesortinfo {
-  my ($self, $citekey, $list, $sortscheme) = @_;
+  my ($self, $citekey, $sortlist) = @_;
+  my $sortscheme = $sortlist->get_sortscheme;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
@@ -973,7 +932,7 @@ sub _generatesortinfo {
   $BIBER_SORT_FINAL = 0;
   $BIBER_SORT_FINAL = '';
   foreach my $sortset (@{$sortscheme->{spec}}) {
-    my $s = $self->_sortset($sortset, $citekey);
+    my $s = $self->_sortset($sortset, $citekey, $sortlist);
     # We have already found a "final" item so if this item returns null,
     # copy in the "final" item string as it's the master key for this entry now
     if ($BIBER_SORT_FINAL and not $BIBER_SORT_NULL) {
@@ -988,7 +947,7 @@ sub _generatesortinfo {
   # sortstring isn't actually used to sort, it's used to generate sortinit and
   # for debugging purposes
   my $ss = join($sorting_sep, @$sortobj);
-  $list->set_sortdata($citekey, [$ss, $sortobj]);
+  $sortlist->set_sortdata($citekey, [$ss, $sortobj]);
   $logger->debug("Sorting object for key '$citekey' -> " . Data::Dump::pp($sortobj));
 
   # Generate sortinit. Skip if there is no sortstring, which is possible in tests
@@ -1005,18 +964,18 @@ sub _generatesortinfo {
     # and if this was locally different to the global sorting, something would be very strange.
     my $Collator = Unicode::Collate::Locale->new(locale => Biber::Config->getoption('sortlocale'), level => 1);
     my $inithash = md5_hex($Collator->viewSortKey($init));
-    $list->set_sortinitdata_for_key($citekey, $init, $inithash);
+    $sortlist->set_sortinitdata_for_key($citekey, $init, $inithash);
   }
   return;
 }
 
 # Process sorting set
 sub _sortset {
-  my ($self, $sortset, $citekey) = @_;
+  my ($self, $sortset, $citekey, $sortlist) = @_;
   foreach my $sortelement (@$sortset[1..$#$sortset]) {
     my ($sortelementname, $sortelementattributes) = %$sortelement;
     $BIBER_SORT_NULL = 0; # reset this per sortset
-    my $string = $self->_dispatch_sorting($sortelementname, $citekey, $sortelementattributes);
+    my $string = $self->_dispatch_sorting($sortelementname, $citekey, $sortlist, $sortelementattributes);
     if ($string) { # sort returns something for this key
       if ($sortset->[0]{final}) {
         # If we encounter a "final" element, we return an empty sort
@@ -1040,7 +999,7 @@ sub _sortset {
 ##############################################
 
 sub _sort_citeorder {
-  my ($self, $citekey, $sortelementattributes) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes) = @_;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   # Pad the numbers so that they sort with "cmp" properly. Assume here max of
@@ -1068,7 +1027,7 @@ sub _sort_citeorder {
 }
 
 sub _sort_integer {
-  my ($self, $citekey, $sortelementattributes, $args) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes, $args) = @_;
   my $dmtype = $args->[0]; # get day/month field type
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
@@ -1082,7 +1041,7 @@ sub _sort_integer {
 }
 
 sub _sort_editort {
-  my ($self, $citekey, $sortelementattributes, $args) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes, $args) = @_;
   my $edtypeclass = $args->[0]; # get editor type/class field
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
@@ -1098,12 +1057,12 @@ sub _sort_editort {
 }
 
 sub _sort_entrykey {
-  my ($self, $citekey, $sortelementattributes) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes) = @_;
   return _process_sort_attributes($citekey, $sortelementattributes);
 }
 
 sub _sort_labelalpha {
-  my ($self, $citekey, $sortelementattributes, $args) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes, $args) = @_;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
@@ -1112,14 +1071,14 @@ sub _sort_labelalpha {
 }
 
 sub _sort_labelname {
-  my ($self, $citekey, $sortelementattributes, $args) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes, $args) = @_;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
   # re-direct to the right sorting routine for the labelname
   if (my $lni = $be->get_labelname_info) {
     # Don't process attributes as they will be processed in the real sub
-    return $self->_dispatch_sorting($lni, $citekey, $sortelementattributes);
+    return $self->_dispatch_sorting($lni, $citekey, $sortlist, $sortelementattributes);
   }
   else {
     return '';
@@ -1127,14 +1086,14 @@ sub _sort_labelname {
 }
 
 sub _sort_labeltitle {
-  my ($self, $citekey, $sortelementattributes, $args) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes, $args) = @_;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
   # re-direct to the right sorting routine for the labeltitle
   if (my $lti = $be->get_labeltitle_info) {
     # Don't process attributes as they will be processed in the real sub
-    return $self->_dispatch_sorting($lti, $citekey, $sortelementattributes);
+    return $self->_dispatch_sorting($lti, $citekey, $sortlist, $sortelementattributes);
   }
   else {
     return '';
@@ -1143,7 +1102,7 @@ sub _sort_labeltitle {
 
 sub _sort_labeldate {
   no autovivification;
-  my ($self, $citekey, $sortelementattributes, $args) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes, $args) = @_;
   my $ldc = $args->[0]; # labeldate component
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
@@ -1152,7 +1111,7 @@ sub _sort_labeldate {
   if (my $ldi = $be->get_labeldate_info) {
     if (my $ldf = $ldi->{field}{$ldc}) {
       # Don't process attributes as they will be processed in the real sub
-      return $self->_dispatch_sorting($ldf, $citekey, $sortelementattributes);
+      return $self->_dispatch_sorting($ldf, $citekey, $sortlist, $sortelementattributes);
     }
     elsif (exists($ldi->{string})) { # labelyear fallback string
       return '';
@@ -1166,7 +1125,7 @@ sub _sort_labeldate {
 # This is a meta-sub which uses the optional arguments to the dispatch code
 # It's done to avoid having many repetitions of almost identical sorting code
 sub _sort_list {
-  my ($self, $citekey, $sortelementattributes, $args) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes, $args) = @_;
   my $list = $args->[0]; # get list field
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
@@ -1184,7 +1143,7 @@ sub _sort_list {
 # It's done to avoid having many repetitions of almost identical sorting code
 # for literal strings which need normalising
 sub _sort_literal {
-  my ($self, $citekey, $sortelementattributes, $args) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes, $args) = @_;
   my $literal = $args->[0]; # get actual field
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
@@ -1202,18 +1161,18 @@ sub _sort_literal {
 # It's done to avoid having many repetitions of almost identical sorting code
 # for the editor roles
 sub _sort_name {
-  my ($self, $citekey, $sortelementattributes, $args) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes, $args) = @_;
   my $name = $args->[0]; # get name field name
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
   # If there is a biblatex option which controls the use of this name, check it
-  if ($CONFIG_SCOPE_BIBLATEX{"use$name"} and
+  if ($CONFIG_OPTSCOPE_BIBLATEX{"use$name"} and
       not Biber::Config->getblxoption("use$name", $be->get_field('entrytype'), $citekey)) {
     return '';
     }
   if ($be->get_field($name)) {
-    my $string = $self->_namestring($citekey, $name);
+    my $string = $self->_namestring($citekey, $name, $sortlist);
     return _process_sort_attributes($string, $sortelementattributes);
   }
   else {
@@ -1222,7 +1181,7 @@ sub _sort_name {
 }
 
 sub _sort_presort {
-  my ($self, $citekey, $sortelementattributes) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes) = @_;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
@@ -1231,7 +1190,7 @@ sub _sort_presort {
 }
 
 sub _sort_sortname {
-  my ($self, $citekey, $sortelementattributes) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes) = @_;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
@@ -1240,7 +1199,7 @@ sub _sort_sortname {
   # sortname is ignored if no use<name> option is defined - see biblatex manual
   if ($be->get_field('sortname') and
       grep {Biber::Config->getblxoption("use$_", $be->get_field('entrytype'), $citekey)} @{$dm->get_fields_of_type('list', 'name')}) {
-    my $string = $self->_namestring($citekey, 'sortname');
+    my $string = $self->_namestring($citekey, 'sortname', $sortlist);
     return _process_sort_attributes($string, $sortelementattributes);
   }
   else {
@@ -1249,7 +1208,7 @@ sub _sort_sortname {
 }
 
 sub _sort_string {
-  my ($self, $citekey, $sortelementattributes, $args) = @_;
+  my ($self, $citekey, $sortlist, $sortelementattributes, $args) = @_;
   my $string = $args->[0]; # get literal string
   return _process_sort_attributes($string, $sortelementattributes);
 }
@@ -1301,7 +1260,7 @@ sub _process_sort_attributes {
 # This is used to generate sorting string for names
 sub _namestring {
   my $self = shift;
-  my ($citekey, $field) = @_;
+  my ($citekey, $field, $sortlist) = @_;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
@@ -1310,6 +1269,21 @@ sub _namestring {
   my $str = '';
   my $count = $names->count_names;
   my $visible = $names->get_visible_bib; # get visibility for bib - can be different to cite
+  my $useprefix = Biber::Config->getblxoption('useprefix', $bee, $citekey);
+
+  # Get the sorting name key scheme for this list context
+  my $snkname = $sortlist->get_sortnamekeyschemename;
+
+  # Override with any entry-specific sorting name key scheme option
+  $snkname = Biber::Config->getblxoption('sortnamekeyscheme', undef, $citekey) // $snkname;
+
+  # Override with any namelist scope sorting name key scheme option
+  $snkname = $names->get_sortnamekeyscheme // $snkname;
+
+  # Name list scope useprefix option
+  if (defined($names->get_useprefix)) {
+    $useprefix = $names->get_useprefix;
+  }
 
   # These should be symbols which can't appear in names and which sort before all alphanum
   # so that "Alan Smith" sorts after "Al Smith". This means, symbols which normalise_string_sort()
@@ -1325,30 +1299,55 @@ sub _namestring {
   # We strip each individual component instead of the whole thing so we can use
   # as name separators things which would otherwise be stripped. This way we
   # guarantee that the separators are never in names
+
   foreach my $n (@{$names->first_n_names($visible)}) {
-    # If useprefix is true, use prefix at start of name for sorting
-    if ( $n->get_prefix and
-         Biber::Config->getblxoption('useprefix', $bee, $citekey ) ) {
-      $str .= normalise_string_sort($n->get_prefix, $field) . $nsi;
-    }
-    # Append last name
-    $str .= normalise_string_sort($n->get_lastname, $field) . $nsi;
 
-    # Append first name or inits if sortfirstinits is set
-    if (Biber::Config->getoption('sortfirstinits')) {
-      $str .=  normalise_string_sort(join('', @{$n->get_firstname_i}), $field) . $nsi if $n->get_firstname_i;
-    }
-    else {
-      $str .= normalise_string_sort($n->get_firstname, $field) . $nsi if $n->get_firstname;
+    # Name scope useprefix option
+    if (defined($n->get_useprefix)) {
+      $useprefix = $n->get_useprefix;
     }
 
-    # Append suffix
-    $str .= normalise_string_sort($n->get_suffix, $field) . $nsi if $n->get_suffix;
+    # Override with any name scope sorting name key scheme option
+    $snkname = $n->get_sortnamekeyscheme // $snkname;
 
-    # If useprefix is false, use prefix at end of name
-    if ( $n->get_prefix and not
-         Biber::Config->getblxoption('useprefix', $be->get_field('entrytype'), $citekey ) ) {
-      $str .= normalise_string_sort($n->get_prefix, $field) . $nsi;
+    # Now get the actual sorting name key scheme
+    my $snk = Biber::Config->getblxoption('sortingnamekey')->{$snkname};
+
+    # Get the sorting name key specification and use it to construct a sorting key for each name
+    foreach my $kp (@$snk) {
+      my $kps;
+      foreach my $np (@$kp) {
+        if ($np->{type} eq 'namepart') {
+          my $namepart = $np->{value};
+          my $useopt = exists($np->{use}) ? "use$namepart" : undef;
+          my $useoptval = Biber::Config->getblxoption($useopt, $bee, $citekey);
+
+          # useprefix can be name list or name local
+          if ($useopt and $useopt eq 'useprefix') {
+            $useoptval = $useprefix;
+          }
+
+          if (my $npstring = $n->get_namepart($namepart)) {
+            # No use attribute conditionals or the attribute is specified and matches the option
+            if (not $useopt or
+                ($useopt and $useoptval == $np->{use})) {
+              # Given name part can be modified by sortgiveninits option
+              if ($namepart eq 'given' and Biber::Config->getoption('sortgiveninits')) {
+                my $npistring = $n->get_namepart_initial($namepart);
+                $kps .= normalise_string_sort(join('', @{$npistring}), $field);
+              }
+              else {
+                $kps .= normalise_string_sort($npstring, $field);
+              }
+            }
+          }
+        }
+        elsif ($np->{type} eq 'literal') {
+          $kps .= $np->{value};
+        }
+      }
+      # Now append the key part string plus internal name sep if the string is not empty
+      $str .= $kps . $nsi if $kps;
     }
 
     $str =~ s/\Q$nsi\E\z//xms;       # Remove any trailing internal separator
@@ -1414,7 +1413,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

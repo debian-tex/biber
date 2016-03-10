@@ -41,13 +41,15 @@ Biber::Config->setoption('fastsort', 1);
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $shs = $biber->sortlists->get_list(0, 'shorthands', 'list', 'shorthands');
-my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+my $shs = $biber->sortlists->get_list(0, 'shorthands/global', 'list', 'shorthands', 'global');
+my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 my $bibentries = $section->bibentries;
 
 my $k1 = q|    \entry{key1}{article}{}
       \name{author}{1}{}{%
-        {{hash=a517747c3d12f99244ae598910d979c5}{Author}{A\bibinitperiod}{}{}{}{}{}{}}%
+        {{hash=a517747c3d12f99244ae598910d979c5}{%
+           family={Author},
+           family_i={A\bibinitperiod}}}%
       }
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
@@ -72,7 +74,9 @@ my $k1 = q|    \entry{key1}{article}{}
 
 my $k2 = q|    \entry{key2}{inbook}{}
       \name{author}{1}{}{%
-        {{hash=a517747c3d12f99244ae598910d979c5}{Author}{A\bibinitperiod}{}{}{}{}{}{}}%
+        {{hash=a517747c3d12f99244ae598910d979c5}{%
+           family={Author},
+           family_i={A\bibinitperiod}}}%
       }
       \list{location}{1}{%
         {Location}%
@@ -103,7 +107,9 @@ my $k2 = q|    \entry{key2}{inbook}{}
 
 my $kck1 = q|    \entry{c2add694bf942dc77b376592d9c862cd}{article}{dataonly}
       \name{author}{1}{}{%
-        {{hash=a517747c3d12f99244ae598910d979c5}{Author}{A\bibinitperiod}{}{}{}{}{}{}}%
+        {{hash=a517747c3d12f99244ae598910d979c5}{%
+           family={Author},
+           family_i={A\bibinitperiod}}}%
       }
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
@@ -127,7 +133,9 @@ my $kck1 = q|    \entry{c2add694bf942dc77b376592d9c862cd}{article}{dataonly}
 
 my $kck2 = q|    \entry{78f825aaa0103319aaa1a30bf4fe3ada}{inbook}{dataonly}
       \name{author}{1}{}{%
-        {{hash=a517747c3d12f99244ae598910d979c5}{Author}{A\bibinitperiod}{}{}{}{}{}{}}%
+        {{hash=a517747c3d12f99244ae598910d979c5}{%
+           family={Author},
+           family_i={A\bibinitperiod}}}%
       }
       \list{location}{1}{%
         {Location}%
@@ -156,7 +164,9 @@ my $kck2 = q|    \entry{78f825aaa0103319aaa1a30bf4fe3ada}{inbook}{dataonly}
 
 my $kck3 = q|    \entry{3631578538a2d6ba5879b31a9a42f290}{inbook}{dataonly}
       \name{author}{1}{}{%
-        {{hash=a517747c3d12f99244ae598910d979c5}{Author}{A\bibinitperiod}{}{}{}{}{}{}}%
+        {{hash=a517747c3d12f99244ae598910d979c5}{%
+           family={Author},
+           family_i={A\bibinitperiod}}}%
       }
       \list{location}{1}{%
         {Location}%
@@ -184,7 +194,9 @@ my $kck3 = q|    \entry{3631578538a2d6ba5879b31a9a42f290}{inbook}{dataonly}
 
 my $kck4 = q|    \entry{caf8e34be07426ae7127c1b4829983c1}{inbook}{dataonly}
       \name{author}{1}{}{%
-        {{hash=a517747c3d12f99244ae598910d979c5}{Author}{A\bibinitperiod}{}{}{}{}{}{}}%
+        {{hash=a517747c3d12f99244ae598910d979c5}{%
+           family={Author},
+           family_i={A\bibinitperiod}}}%
       }
       \list{location}{1}{%
         {Location}%
@@ -244,7 +256,14 @@ eq_or_diff( $out->get_output_entry('caf8e34be07426ae7127c1b4829983c1', $main), $
 # Key k4 is used only to create a related entry clone but since it isn't cited itself
 # it shouldn't be in the .bbl
 eq_or_diff( $out->get_output_entry('key4', $main), undef, 'Related entry test 8' ) ;
-is_deeply([$shs->get_keys], ['key1', 'key2'], 'Related entry test 9');
+is_deeply([$shs->get_keys], [
+    "caf8e34be07426ae7127c1b4829983c1",
+    "78f825aaa0103319aaa1a30bf4fe3ada",
+    "3631578538a2d6ba5879b31a9a42f290",
+    "c2add694bf942dc77b376592d9c862cd",
+    "key1",
+    "key2",
+  ], 'Related entry test 9');
 # Testing circular dependencies
 eq_or_diff( $out->get_output_entry('c1', $main), $c1, 'Related entry test 10' ) ;
 eq_or_diff( $out->get_output_entry('9ab62b5ef34a985438bfdf7ee0102229', $main), $c2k, 'Related entry test 11' ) ;

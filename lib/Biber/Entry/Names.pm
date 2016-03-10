@@ -2,12 +2,21 @@ package Biber::Entry::Names;
 use v5.16;
 use strict;
 use warnings;
+use parent qw(Class::Accessor);
+__PACKAGE__->follow_best_practice;
+no autovivification;
 
 use Data::Dump;
 use Biber::Config;
 use Log::Log4perl qw( :no_extra_logdie_message );
-use Storable qw( dclone );
 my $logger = Log::Log4perl::get_logger('main');
+
+# Names of simple package accessor attributes
+__PACKAGE__->mk_accessors(qw (
+                              visible_alpha
+                              visible_cite
+                              visible_bib
+                            ));
 
 =encoding utf-8
 
@@ -183,81 +192,6 @@ sub count_uniquelist {
   return $#$namelist + 1;
 }
 
-=head2 set_visible_cite
-
-    Set the number of cite visible names as per the different uniquelist, max/mincitenames etc
-
-=cut
-
-sub set_visible_cite {
-  my $self = shift;
-  my $visibility = shift;
-  $self->{visibility} = $visibility;
-  return
-}
-
-=head2 set_visible_bib
-
-    Set the number of bib visible names as per the different uniquelist, max/minbibnames etc
-
-=cut
-
-sub set_visible_bib {
-  my $self = shift;
-  my $visibility = shift;
-  $self->{visibility_bib} = $visibility;
-  return
-}
-
-=head2 set_visible_alpha
-
-    Set the number of alpha visible names as per the different uniquelist, max/minalphanames etc
-
-=cut
-
-sub set_visible_alpha {
-  my $self = shift;
-  my $visibility = shift;
-  $self->{visibility_alpha} = $visibility;
-  return
-}
-
-
-=head2 get_visible_cite
-
-    Get the number of visible names as per the different uniquelist, max/mincitenames etc
-
-=cut
-
-sub get_visible_cite {
-  my $self = shift;
-  return $self->{visibility};
-}
-
-=head2 get_visible_bib
-
-    Get the number of bib visible names as per the different uniquelist, max/minbibnames etc
-
-=cut
-
-sub get_visible_bib {
-  my $self = shift;
-  return $self->{visibility_bib};
-}
-
-=head2 get_visible_alpha
-
-    Get the number of alpha visible names as per the different uniquelist, max/minalphanames etc
-
-=cut
-
-sub get_visible_alpha {
-  my $self = shift;
-  return $self->{visibility_alpha};
-}
-
-
-
 =head2 add_name
 
     Add a Biber::Entry::Name object to the Biber::Entry::Names
@@ -295,8 +229,6 @@ sub get_morenames {
   my $self = shift;
   return $self->{morenames} ? 1 : 0;
 }
-
-
 
 =head2 count_names
 
@@ -388,7 +320,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

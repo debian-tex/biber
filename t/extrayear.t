@@ -45,7 +45,7 @@ Biber::Config->setblxoption('maxbibnames', 1);
 # Now generate the information
 $biber->prepare;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 my $bibentries = $section->bibentries;
 
 eq_or_diff($main->get_extrayeardata('L1'), '1', 'Entry L1 - one name, first in 1995');
@@ -63,8 +63,8 @@ ok(is_undef($main->get_extrayeardata('L10')), 'Entry L10 - No name, same year as
 eq_or_diff($main->get_extrayeardata('companion1'), '1', 'Entry companion1 - names truncated to same as another entry in same year');
 eq_or_diff($main->get_extrayeardata('companion2'), '2', 'Entry companion2 - names truncated to same as another entry in same year');
 ok(is_undef($main->get_extrayeardata('companion3')), 'Entry companion3 - one name, same year as truncated names');
-ok(is_undef($main->get_extrayeardata('vangennep')), 'Entry vangennep - prefix makes it different');
-ok(is_undef($main->get_extrayeardata('gennep')), 'Entry gennep - different from prefix name');
+eq_or_diff($main->get_extrayeardata('vangennep'), '2', 'Entry vangennep - useprefix does makes it different');
+eq_or_diff($main->get_extrayeardata('gennep'), '1', 'Entry gennep - different from prefix name');
 ok(is_undef($main->get_extrayeardata('LY1')), 'Date range means no extrayear - 1');
 ok(is_undef($main->get_extrayeardata('LY2')), 'Date range means no extrayear - 2');
 ok(is_undef($main->get_extrayeardata('LY3')), 'Date range means no extrayear - 3');

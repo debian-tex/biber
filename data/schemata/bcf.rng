@@ -27,7 +27,7 @@
         <ref name="debug"/>
         <ref name="mincrossrefs"/>
         <ref name="sortcase"/>
-        <ref name="sortfirstinits"/>
+        <ref name="sortgiveninits"/>
         <ref name="sortupper"/>
       </element>
       <!--
@@ -161,12 +161,22 @@
           <attribute name="type">
             <choice>
               <value>GLOBAL</value>
-              <value>PER_TYPE</value>
-              <value>PER_ENTRY</value>
+              <value>ENTRYTYPE</value>
+              <value>ENTRY</value>
+              <value>NAMELIST</value>
+              <value>NAME</value>
             </choice>
           </attribute>
           <oneOrMore>
             <element name="bcf:option">
+              <attribute name="datatype">
+                <choice>
+                  <value>boolean</value>
+                  <value>integer</value>
+                  <value>string</value>
+                  <value>xml</value>
+                </choice>
+              </attribute>
               <data type="string"/>
             </element>
           </oneOrMore>
@@ -182,8 +192,6 @@
                   <value>bibtex</value>
                   <value>biblatexml</value>
                   <value>ris</value>
-                  <value>zoterordfxml</value>
-                  <value>endnotexml</value>
                 </choice>
               </attribute>
               <optional>
@@ -260,6 +268,11 @@
                     </attribute>
                   </optional>
                   <optional>
+                    <attribute name="substring_pwidth">
+                      <data type="integer"/>
+                    </attribute>
+                  </optional>
+                  <optional>
                     <attribute name="substring_fixed_threshold">
                       <data type="integer"/>
                     </attribute>
@@ -286,22 +299,26 @@
                     </attribute>
                   </optional>
                   <optional>
+                    <attribute name="substring_pcompound">
+                      <choice>
+                        <value>0</value>
+                        <value>1</value>
+                      </choice>
+                    </attribute>
+                  </optional>
+                  <optional>
                     <attribute name="ifnamecount">
                       <data type="integer"/>
                     </attribute>
                   </optional>
                   <optional>
-                    <attribute name="namecount">
-                      <data type="integer"/>
-                    </attribute>
+                    <attribute name="namerange"/>
                   </optional>
                   <optional>
-                    <attribute name="form">
+                    <attribute name="noalphaothers">
                       <choice>
-                        <value>original</value>
-                        <value>translated</value>
-                        <value>romanised</value>
-                        <value>uniform</value>
+                        <value>0</value>
+                        <value>1</value>
                       </choice>
                     </attribute>
                   </optional>
@@ -483,11 +500,30 @@
           </oneOrMore>
         </element>
       </optional>
+      <!-- Sorting name key specification -->
+      <ref name="sortingnamekey"/>
       <!-- Global sorting specification -->
       <ref name="sorting"/>
       <optional>
         <!-- Data model specification -->
         <element name="bcf:datamodel">
+          <!-- Constants -->
+          <element name="bcf:constants">
+            <oneOrMore>
+              <element name="bcf:constant">
+                <optional>
+                  <attribute name="type">
+                    <choice>
+                      <value>string</value>
+                      <value>list</value>
+                    </choice>
+                  </attribute>
+                </optional>
+                <attribute name="name"/>
+                <text/>
+              </element>
+            </oneOrMore>
+          </element>
           <!-- Valid entrytypes -->
           <element name="bcf:entrytypes">
             <oneOrMore>
@@ -751,6 +787,11 @@
             <param name="minLength">1</param>
           </data>
         </attribute>
+        <attribute name="sortnamekeyscheme">
+          <data type="string">
+            <param name="minLength">1</param>
+          </data>
+        </attribute>
         <!-- name is only needed for list types -->
         <attribute name="name">
           <data type="string">
@@ -780,6 +821,42 @@
         </optional>
       </element>
     </zeroOrMore>
+  </define>
+  <define name="sortingnamekey">
+    <oneOrMore>
+      <element name="bcf:sortingnamekey">
+        <attribute name="keyscheme"/>
+        <oneOrMore>
+          <element name="bcf:keypart">
+            <attribute name="order">
+              <data type="integer"/>
+            </attribute>
+            <oneOrMore>
+              <element name="bcf:part">
+                <attribute name="type">
+                  <choice>
+                    <value>namepart</value>
+                    <value>literal</value>
+                  </choice>
+                </attribute>
+                <attribute name="order">
+                  <data type="integer"/>
+                </attribute>
+                <optional>
+                  <attribute name="use">
+                    <choice>
+                      <value>0</value>
+                      <value>1</value>
+                    </choice>
+                  </attribute>
+                </optional>
+                <text/>
+              </element>
+            </oneOrMore>
+          </element>
+        </oneOrMore>
+      </element>
+    </oneOrMore>
   </define>
   <define name="sorting">
     <element name="bcf:sorting">
@@ -908,16 +985,6 @@
                 </data>
               </attribute>
             </optional>
-            <optional>
-              <attribute name="form">
-                <choice>
-                  <value>original</value>
-                  <value>translated</value>
-                  <value>romanised</value>
-                  <value>uniform</value>
-                </choice>
-              </attribute>
-            </optional>
             <text/>
           </element>
         </oneOrMore>
@@ -944,8 +1011,6 @@
                   <value>bibtex</value>
                   <value>biblatexml</value>
                   <value>ris</value>
-                  <value>zoterordfxml</value>
-                  <value>endnotexml</value>
                 </choice>
               </attribute>
             </optional>
@@ -1099,16 +1164,6 @@
           <attribute name="order">
             <data type="integer"/>
           </attribute>
-          <optional>
-            <attribute name="form">
-              <choice>
-                <value>original</value>
-                <value>translated</value>
-                <value>romanised</value>
-                <value>uniform</value>
-              </choice>
-            </attribute>
-          </optional>
           <optional>
             <attribute name="lang"/>
           </optional>
@@ -1449,16 +1504,6 @@
             <data type="integer"/>
           </attribute>
           <optional>
-            <attribute name="form">
-              <choice>
-                <value>original</value>
-                <value>translated</value>
-                <value>romanised</value>
-                <value>uniform</value>
-              </choice>
-            </attribute>
-          </optional>
-          <optional>
             <attribute name="lang"/>
           </optional>
           <text/>
@@ -1550,13 +1595,13 @@
       </element>
     </element>
   </define>
-  <define name="sortfirstinits">
+  <define name="sortgiveninits">
     <element name="bcf:option">
       <attribute name="type">
         <value>singlevalued</value>
       </attribute>
       <element name="bcf:key">
-        <value>sortfirstinits</value>
+        <value>sortgiveninits</value>
       </element>
       <element name="bcf:value">
         <choice>
@@ -1622,6 +1667,13 @@
           </choice>
         </attribute>
       </optional>
+      <optional>
+        <attribute name="map_foreach">
+          <data type="string">
+            <param name="minLength">1</param>
+          </data>
+        </attribute>
+      </optional>
       <zeroOrMore>
         <element name="bcf:per_datasource">
           <data type="string">
@@ -1639,6 +1691,18 @@
       <oneOrMore>
         <element name="bcf:map_step">
           <choice>
+            <group>
+              <attribute name="map_entry_new">
+                <data type="string">
+                  <param name="minLength">1</param>
+                </data>
+              </attribute>
+              <attribute name="map_entry_newtype">
+                <data type="string">
+                  <param name="minLength">1</param>
+                </data>
+              </attribute>
+            </group>
             <attribute name="map_entry_null">
               <value>1</value>
             </attribute>
@@ -1695,18 +1759,32 @@
               </optional>
               <optional>
                 <attribute name="map_replace">
+                  <data type="string"/>
+                </attribute>
+              </optional>
+            </group>
+            <group>
+              <optional>
+                <attribute name="map_field_source">
                   <data type="string">
                     <param name="minLength">1</param>
                   </data>
                 </attribute>
               </optional>
-            </group>
-            <group>
-              <attribute name="map_field_set">
-                <data type="string">
-                  <param name="minLength">1</param>
-                </data>
-              </attribute>
+              <optional>
+                <attribute name="map_entrytarget">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+              </optional>
+              <optional>
+                <attribute name="map_field_set">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+              </optional>
               <optional>
                 <attribute name="map_append">
                   <value>1</value>
@@ -1744,7 +1822,7 @@
     </element>
   </define>
 </grammar>
-<!-- Copyright 2009-2015 François Charette and Philip Kime, all rights reserved. -->
+<!-- Copyright 2009-2016 François Charette and Philip Kime, all rights reserved. -->
 <!--
   This code is free software.  You can redistribute it and/or
   modify it under the terms of the Artistic License 2.0.

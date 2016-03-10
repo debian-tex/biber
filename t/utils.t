@@ -5,7 +5,7 @@ use utf8;
 no warnings 'utf8' ;
 use open qw/:std :utf8/;
 
-use Test::More tests => 60;
+use Test::More tests => 70;
 use Test::Differences;
 unified_diff;
 
@@ -42,11 +42,11 @@ Log::Log4perl->init(\$l4pconf);
 # Using File::Spec->canonpath() to normalise path separators so these tests work
 # on Windows/non-Windows
 # Absolute path
-eq_or_diff(File::Spec->canonpath(locate_biber_file("$cwd/t/tdata/general1.bcf")), File::Spec->canonpath("$cwd/t/tdata/general1.bcf"), 'File location - 1');
+eq_or_diff(File::Spec->canonpath(locate_biber_file("$cwd/t/tdata/general.bcf")), File::Spec->canonpath("$cwd/t/tdata/general.bcf"), 'File location - 1');
 # Relative path
-eq_or_diff(File::Spec->canonpath(locate_biber_file('t/tdata/general1.bcf')), File::Spec->canonpath('t/tdata/general1.bcf'), 'File location - 2');
+eq_or_diff(File::Spec->canonpath(locate_biber_file('t/tdata/general.bcf')), File::Spec->canonpath('t/tdata/general.bcf'), 'File location - 2');
 # Same place as control file
-Biber::Config->set_ctrlfile_path('t/tdata/general1.bcf');
+Biber::Config->set_ctrlfile_path('t/tdata/general.bcf');
 eq_or_diff(File::Spec->canonpath(locate_biber_file('t/tdata/examples.bib')), File::Spec->canonpath('t/tdata/examples.bib'), 'File location - 3');
 
 # The \cM* is there because if cygwin picks up miktex kpsewhich, it will return a path
@@ -60,7 +60,7 @@ SKIP: {
 
 # In output_directory
 Biber::Config->setoption('output_directory', 't/tdata');
-eq_or_diff(File::Spec->canonpath(locate_biber_file('general1.bcf')), File::Spec->canonpath("t/tdata/general1.bcf"), 'File location - 5');
+eq_or_diff(File::Spec->canonpath(locate_biber_file('general.bcf')), File::Spec->canonpath("t/tdata/general.bcf"), 'File location - 5');
 
 # String normalising
 eq_or_diff(normalise_string('"a, b–c: d" ', 1),  'a bc d', 'normalise_string' );
@@ -143,3 +143,16 @@ eq_or_diff(rangelen([[10,15],['ⅥⅠ', 'ⅻ']]), 12, 'Rangelen test 8');
 eq_or_diff(rangelen([['I-II', 'III-IV']]), -1, 'Rangelen test 9');
 eq_or_diff(rangelen([[22,4],[123,7],[113,15]]), 11, 'Rangelen test 10');
 
+# Test boolean mappings
+eq_or_diff(map_boolean('true', 'tonum'), 1, 'Boolean conversion - 1');
+eq_or_diff(map_boolean('False', 'tonum'), 0, 'Boolean conversion - 2');
+eq_or_diff(map_boolean(1, 'tostring'), 'true', 'Boolean conversion - 3');
+eq_or_diff(map_boolean(0, 'tostring'), 'false', 'Boolean conversion - 4');
+eq_or_diff(map_boolean(0, 'tonum'), 0, 'Boolean conversion - 5');
+
+# Range parsing
+eq_or_diff(parse_range('1--2'), [1,2], 'Range parsing - 1');
+eq_or_diff(parse_range('-2'), [1,2], 'Range parsing - 2');
+eq_or_diff(parse_range('3-'), [3,undef], 'Range parsing - 3');
+eq_or_diff(parse_range('5'), [1,5], 'Range parsing - 4');
+eq_or_diff(parse_range('3--+'), [3,'+'], 'Range parsing - 5');

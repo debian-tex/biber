@@ -2,7 +2,6 @@ package Biber::Input::file::ris;
 use v5.16;
 use strict;
 use warnings;
-use base 'Exporter';
 
 use Carp;
 use Biber::Constants;
@@ -579,51 +578,51 @@ sub _name {
   foreach my $name (@$names) {
     $logger->debug('Parsing RIS name');
     if ($name =~ m|\A([^,]+)\s*,?\s*([^,]+)?\s*,?\s*([^,]+)?\z|xms) {
-      my $lastname = _join_name_parts(split(/\s+/, $1)) if $1;
-      my $firstname = _join_name_parts(split(/\s+/, $2)) if $2;
+      my $familyname = _join_name_parts(split(/\s+/, $1)) if $1;
+      my $givenname = _join_name_parts(split(/\s+/, $2)) if $2;
       my $suffix = _join_name_parts(split(/\s+/, $3)) if $3;
-      $logger->debug("Found name component 'lastname': $lastname") if $lastname;
-      $logger->debug("Found name component 'firstname': $firstname") if $firstname;
+      $logger->debug("Found name component 'family': $familyname") if $familyname;
+      $logger->debug("Found name component 'given': $givenname") if $givenname;
       $logger->debug("Found name component 'suffix': $suffix") if $suffix;
 
-      my @lni = _gen_initials(split(/\s/, $1)) if $lastname;
-      my @fni = _gen_initials(split(/\s/, $2)) if $firstname;
+      my @lni = _gen_initials(split(/\s/, $1)) if $familyname;
+      my @fni = _gen_initials(split(/\s/, $2)) if $givenname;
       my @si = _gen_initials(split(/\s/, $3)) if $suffix;
 
       my $namestring = '';
 
       # Don't add suffix to namestring or nameinitstring as these are used
-      # for uniquename disambiguation which should only care about lastname
+      # for uniquename disambiguation which should only care about family name
       # + any prefix (if useprefix=true). See biblatex github tracker #306.
 
-      # lastname
-      $namestring .= "$lastname, ";
+      # family name
+      $namestring .= "$familyname, ";
 
-      # firstname
-      $namestring .= $firstname if $firstname;
+      # given name
+      $namestring .= $givenname if $givenname;
 
-      # Remove any trailing comma and space if, e.g. missing firstname
+      # Remove any trailing comma and space if, e.g. missing given name
       # Replace any nbspes
       $namestring =~ s/,\s+\z//xms;
       $namestring =~ s/~/ /gxms;
 
       # Construct $nameinitstring
       my $nameinitstr = '';
-      $nameinitstr .= $lastname if $lastname;
-      $nameinitstr .= '_' . join('', @fni) if $firstname;
+      $nameinitstr .= $familyname if $familyname;
+      $nameinitstr .= '_' . join('', @fni) if $givenname;
       $nameinitstr =~ s/\s+/_/g;
       $nameinitstr =~ s/~/_/g;
 
       my $name_obj = Biber::Entry::Name->new(
-        firstname       => $firstname || undef,
-        firstname_i     => $firstname ? \@fni : undef,
-        lastname        => $lastname,
-        lastname_i      => \@lni,
-        suffix          => $suffix || undef,
-        suffix_i        => $suffix ? \@si : undef,
-        namestring      => $namestring,
-        nameinitstring  => $nameinitstr
-      );
+                                             given  => {string  => $givenname || undef,
+                                                        initial => $givenname ? \@fni : undef},
+                                             family => {string  => $familyname,
+                                                        initial => \@lni},
+                                             suffix => {string  => $suffix || undef,
+                                                        initial => $suffix ? \@si : undef},
+                                             namestring      => $namestring,
+                                             nameinitstring  => $nameinitstr
+                                            );
       $names_obj->add_name($name_obj);
       $bibentry->set_datafield($f, $names_obj);
 
@@ -743,7 +742,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

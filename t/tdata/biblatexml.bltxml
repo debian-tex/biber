@@ -1,53 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?oxygen RNGSchema="../../data/schemata/biblatexml.rnc" type="compact"?>
+<?xml-model href="biblatexml.rng" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
 <bltx:entries xmlns:bltx="http://biblatex-biber.sourceforge.net/biblatexml">
   <bltx:entry id="bltx1" entrytype="book">
+    <bltx:options>useprefix=false</bltx:options>
     <bltx:ids>
-      <bltx:item>bltx1a1</bltx:item>
-      <bltx:item>bltx1a2</bltx:item>
+      <bltx:key>bltx1a1</bltx:key>
+      <bltx:key>bltx1a2</bltx:key>
     </bltx:ids>
-    <bltx:author morenames="1">
-      <bltx:person gender="sm">
-        <bltx:first>
+    <bltx:names type="author" morenames="1" useprefix="true">
+      <bltx:name gender="sm">
+        <bltx:namepart type="given">
           <bltx:namepart initial="П">Павел</bltx:namepart>
           <bltx:namepart initial="Г">Георгиевич</bltx:namepart>
-        </bltx:first>
-        <bltx:last>Булгаков</bltx:last>
-      </bltx:person>
-      <bltx:person>
-        <bltx:first>
+        </bltx:namepart>
+        <bltx:namepart type="family">Булгаков</bltx:namepart>
+        <bltx:namepart type="prefix" initial="v">von</bltx:namepart>
+      </bltx:name>
+      <bltx:name>
+        <bltx:namepart type="given">
           <bltx:namepart>Борис-ZZ</bltx:namepart>
           <bltx:namepart>Aбрамович</bltx:namepart>
-        </bltx:first>
-        <bltx:last>Розенфельд</bltx:last>
-        <bltx:middle initial="Б">Билл</bltx:middle>
-      </bltx:person>
-      <bltx:person>
-        <bltx:first>
+        </bltx:namepart>
+        <bltx:namepart type="family">Розенфельд</bltx:namepart>
+        <bltx:namepart type="prefix" initial="v">von</bltx:namepart>
+      </bltx:name>
+      <bltx:name>
+        <bltx:namepart type="given">
           <bltx:namepart initial="A">Ашраф</bltx:namepart>
           <bltx:namepart>Ахмедович</bltx:namepart>
-        </bltx:first>
-        <bltx:last>Aхмедов</bltx:last>
-      </bltx:person>
-    </bltx:author>
+        </bltx:namepart>
+        <bltx:namepart type="family">Aхмедов</bltx:namepart>
+      </bltx:name>
+    </bltx:names>
+    <bltx:names type="editor">
+      <bltx:name gender="sm">
+        <bltx:namepart type="given">Paul</bltx:namepart>
+        <bltx:namepart type="family">Smith</bltx:namepart>
+      </bltx:name>
+    </bltx:names>
+    <bltx:names type="translator">
+      <bltx:name gender="sm">
+        <bltx:namepart type="given">John </bltx:namepart>
+        <bltx:namepart type="family">Brown</bltx:namepart>
+      </bltx:name>
+    </bltx:names>
+    <bltx:names type="afterword">
+      <bltx:name gender="sm">
+        <bltx:namepart type="given">John </bltx:namepart>
+        <bltx:namepart type="family">Brown</bltx:namepart>
+      </bltx:name>
+    </bltx:names>
     <bltx:title>Мухаммад ибн муса ал-Хорезми. Около 783 – около 850</bltx:title>
-    <bltx:title form="romanised">Mukhammad al-Khorezmi. Okolo 783 – okolo 850</bltx:title>
-    <bltx:title form="translated" xml:lang="en">Mukhammad al-Khorezmi. Ca. 783 – ca. 850</bltx:title>
     <bltx:location>Москва</bltx:location>
     <bltx:publisher>Наука</bltx:publisher>
-    <bltx:language>Russian</bltx:language>
+    <bltx:language>
+      <bltx:item>russian</bltx:item>
+    </bltx:language>
     <bltx:series>Научно-биографическая литература</bltx:series>
+    <bltx:usera>usera</bltx:usera>
+    <bltx:userb>userb</bltx:userb>
+    <bltx:userc>userc</bltx:userc>
+    <bltx:userd>userd</bltx:userd>
+    <bltx:usere>a</bltx:usere>
     <bltx:date>1983</bltx:date>
-    <bltx:date datetype="orig">1985-04-02</bltx:date>
-    <bltx:date datetype ="event">
+    <bltx:date type="orig">1985-04-02</bltx:date>
+    <bltx:date type ="event">
       <bltx:start>1990-05-16</bltx:start>
       <bltx:end>1990-05-17</bltx:end>
     </bltx:date>
-    <bltx:date datetype="url">
+    <bltx:date type="url">
       <bltx:start>1991-07-01</bltx:start>
       <bltx:end></bltx:end>
     </bltx:date>
     <bltx:pagetotal>240</bltx:pagetotal>
+    <bltx:pages>
+      <bltx:item>
+        <bltx:start>1</bltx:start>
+        <bltx:end>10</bltx:end>
+      </bltx:item>
+      <bltx:item>
+        <bltx:start>30</bltx:start>
+        <bltx:end>34</bltx:end>
+      </bltx:item>
+    </bltx:pages>
     <bltx:related>
       <bltx:item type="reprint" string="Somestring" ids="rel1,rel2"/>
     </bltx:related>

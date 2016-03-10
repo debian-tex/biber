@@ -2,7 +2,7 @@ package Biber::LaTeX::Recode;
 use v5.16;
 use strict;
 use warnings;
-use base qw(Exporter);
+use parent qw(Exporter);
 use Biber::Config;
 use Encode;
 use File::Slurp;
@@ -111,10 +111,9 @@ sub init_sets {
   }
 
   # Read driver config file
-  my $parser = XML::LibXML->new();
   my $xml = File::Slurp::read_file($mapdata) or biber_error("Can't read file $mapdata");
-  my $recodexml = $parser->parse_string(decode('UTF-8', $xml));
-  my $xpc = XML::LibXML::XPathContext->new($recodexml);
+  my $doc = XML::LibXML->load_xml(string => decode('UTF-8', $xml));
+  my $xpc = XML::LibXML::XPathContext->new($doc);
 
   my @types = qw(letters diacritics punctuation symbols negatedsymbols superscripts cmdsuperscripts dings greek);
 
@@ -385,7 +384,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

@@ -29,8 +29,8 @@
 \newcommand*{\biblatex}{Biblatex\xspace}
 \MakeAutoQuote{«}{»}
 
-\gdef\biberversion{2.3}    % BIBER VERSION
-\gdef\biblatexversion{3.2}   % BIBLATEX VERSION
+\gdef\biberversion{2.4}    % BIBER VERSION
+\gdef\biblatexversion{3.3}   % BIBLATEX VERSION
 
 % colour for tables
 \definecolor{Gray}{gray}{0.85}
@@ -237,6 +237,7 @@ compatibility matrix for the recent versions.
 \toprule
 \biber\ version & \biblatex\ version\\
 \midrule
+2.4 & 3.3\\
 2.3 & 3.2\\
 2.2 & 3.1\\
 2.1 & 3.0\\
@@ -423,7 +424,7 @@ way performance-wise. \biber\ is written in Perl and does a
 \emph{great} deal more than \BibTeX\ which is written in C. One of
 \biber's test cases is a 2150 entry, 15,000 line \verb+.bib+ file
 which references a 630 entry macros file with a resulting 160 or so page (A4)
-formatted bibliography. This takes \biber\ under 3 minutes to process on
+formatted bibliography. This takes \biber\ under 2 minutes to process on
 a reasonable computer. This is perfectly acceptable, especially for a
 batch program.
 
@@ -597,6 +598,7 @@ an example config file which displays the \biber\ defaults:
   </collate_options>
   <debug>0</debug>
   <decodecharsset>base</decodecharsset>
+  <dieondatamodel>0</dieondatamodel>
   <fastsort>0</fastsort>
   <graph>0</graph>
   <input_encoding>UTF-8</input_encoding>
@@ -637,6 +639,7 @@ an example config file which displays the \biber\ defaults:
   <sortupper>true</sortupper>
   <tool>false</tool>
   <trace>false</trace>
+  <validate_bltxml>0</validate_bltxml>
   <validate_config>0</validate_config>
   <validate_control>0</validate_control>
   <validate_structure>0</validate_structure>
@@ -770,11 +773,11 @@ allows you to do a particular thing or combination of things:
 examples. A \opt{map} element looks like this:
 
 \begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
-<map +\textcolor{blue}{map\_overwrite="0|1"}+>
+<map +\textcolor{blue}{map\_overwrite="0|1"} \textcolor{blue}{map\_foreach="\textcolor{red}{loopfield}"}+>
   +\textcolor{blue}{<per\_datasource>\textcolor{red}{datasource}</per\_datasource>}+
   +\textcolor{blue}{<per\_type>\textcolor{red}{entrytype}</per\_type>}+
   +\textcolor{blue}{<per\_nottype>\textcolor{red}{entrytype}</per\_nottype>}+
-  <map_step +\textcolor{blue}{map\_type\_source="\textcolor{red}{source-entrytype}"}+
+  <map_step  +\textcolor{blue}{map\_type\_source="\textcolor{red}{source-entrytype}"}+
              +\textcolor{blue}{map\_field\_source="\textcolor{red}{source-field}"}+
              +\textcolor{blue}{map\_type\_target="\textcolor{red}{target-entrytype}"}+
              +\textcolor{blue}{map\_field\_target="\textcolor{red}{target-field}"}+
@@ -783,6 +786,9 @@ examples. A \opt{map} element looks like this:
              +\textcolor{blue}{map\_replace="\textcolor{red}{replace-regexp}"}+
              +\textcolor{blue}{map\_field\_set="\textcolor{red}{set-field}"}+
              +\textcolor{blue}{map\_field\_value="\textcolor{red}{set-value}"}+
+             +\textcolor{blue}{map\_entry\_new="\textcolor{red}{newentrykey}"}+
+             +\textcolor{blue}{map\_entry\_newtype="\textcolor{red}{newentrykeytype}"}+
+             +\textcolor{blue}{map\_entry\_entrytarget="\textcolor{red}{newentrykey}"}+
              +\textcolor{blue}{map\_append="1"}+
              +\textcolor{blue}{map\_null="1"}+
              +\textcolor{blue}{map\_entry\_null="1"}+
@@ -809,12 +815,34 @@ examples. A \opt{map} element looks like this:
 \item The \texttt{map\_overwrite} attribute can be used to override the
   value for this attribute set on the parent \opt{maps} element. If
   omitted, it defaults to the parent \opt{maps} attribute value.
+\item The \texttt{map\_foreach} attribute loops over all \cmd{step}s in
+  this \cmd{map}, setting the special variable \verb+$MAPLOOP+ to each of
+  the comma-separated values contained in the entry field
+  \textcolor{red}{\texttt{loopfield}}. This allows the user to repeat a
+  group of \opt{map\_step}s for each value of another CSV field. Using
+  regexp maps, it is possible to create a CSV field for use with this
+  functionality. The special variable \verb+$MAPUNIQ+ may also be used the
+  \opt{map\_step}s to generate a random unique string. This can be useful when
+  creating keys for new entries.
 \end{itemize}
 
 \noindent Each \opt{map\_step} is looked at in turn and compared with the
 datasource entry being processed. A \opt{map\_step} works like this:
 
 \begin{itemize}
+\item If \textcolor{blue}{\texttt{map\_entry\_new}} is set, a new entry is
+  created with the entry key \textcolor{red}{\texttt{newentrykey}} and the
+  entry type \textcolor{red}{\texttt{newentrykeytype}} given in the option
+  \textcolor{blue}{\texttt{map\_entry\_newtype}}. This entry is only
+  in-scope during the processing of the current entry and can be referenced
+  by \textcolor{red}{\texttt{newentrykeytype}} given as the value to
+  \textcolor{blue}{\texttt{map\_entrytarget}}.
+\item When a \textcolor{blue}{\texttt{map\_field\_set}} step has
+  \textcolor{blue}{\texttt{map\_entrytarget}} set to the entrykey of an
+  entry created by \textcolor{blue}{\texttt{map\_entry\_new}}, the target
+  for the field set will be the \textcolor{blue}{\texttt{map\_entrytarget}}
+  entry rather than the entry being currently processed. This allows users
+  to create new entries and set fields in them.
 \item If \textcolor{blue}{\texttt{map\_entry\_null}} is set,
   processing of the \opt{map} immediately terminates and the current
   entry is not created. It is as if it did not exist in the
@@ -887,7 +915,7 @@ be changed (used as \textcolor{red}{\texttt{set-field}},
 \textcolor{red}{\texttt{target-field}} or changed using
 \textcolor{blue}{\texttt{map\_replace}}).
 
-Note that for XML datasources (Endnote, Zotero RDF/XML etc.), the names of
+Note that for XML datasources like BibLaTeXML, the names of
 fields and entrytypes are matched in a case sensitive manner. For all other
 datasource types (\BibTeX, RIS etc.) entrytype and field name matching is
 case insensitive.
@@ -1071,37 +1099,11 @@ particular name, which presumably has some variants in the datasource.
 will be completely ignored.
 \bigskip
 \minisec{Other datasource types}
-For datasources other than \BibTeX, (e.g. \verb+ris+, \verb+endnotexml+
-and \verb+zoterordfxml+), the source entrytypes and fields are usually very
-differently modelled and named. For example, here is how to drop
-\verb+dc:subject+ fields from various entrytypes in Zotero XML RDF format data
-sources:
-
-\begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
-<maps datatype="zoterordfxml" map_overwrite="1">
-  <map>
-    <per_type>journalArticle</per_type>
-    <per_type>book</per_type>
-    <per_type>bookSection</per_type>
-    <map_step map_field_set="dc:subject" map_null="1"/>
-  </map>
-</maps>
-\end{lstlisting}
-
-\noindent Or here, mapping journal articles into \bibtype{Report} entries for
-Endnote XML format datasources within a particular datasource.
-
-\begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
-<maps datatype="endnotexml" map_overwrite="1">
-  <map>
-    <per_datasource>endnote.xml</per_datasource>
-    <map_step map_type_source="Journal Article" map_type_target="Report"/>
-  </map>
-</maps>
-\end{lstlisting}
-
-\noindent Or here, dropping the \bibfield{N2} field from \verb+RIS+
-datasources, which are commonly used for abstracts:
+For datasources other than \BibTeX, (e.g. \verb+ris+ and
+\verb+biblatexml+), the source entrytypes and fields are usually very
+differently modelled and named. For example, here, dropping the
+\bibfield{N2} field from \verb+RIS+ datasources, which are commonly used
+for abstracts:
 
 \begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
 <maps datatype="ris" map_overwrite="1">
@@ -2124,9 +2126,8 @@ drivers are:
 
 \begin{itemize}
 \item \BibTeX\ --- \BibTeX\ data files
-\item \verb+endnotexml+ --- Endnote XML export format, version $\geq$ Endnote X1
+\item \verb+biblatexml+ --- Experimental \biblatex\ XML format
 \item \verb+ris+ --- Research Information Systems format
-\item \verb+zoterordfxml+ --- Zotero RDF XML format, version 2.0.9
 \end{itemize}
 
 \subsection{Visualising the Output}\label{ref:vis}
@@ -2295,7 +2296,7 @@ and defaults. For example, the command:
 
 \begin{verbatim}
 biber --tool --output-fieldcase=title --output-indent=4 \
-      --output-align=true file.bib
+      --output-align file.bib
 \end{verbatim}
 %
 results in \file{.bib} entries which look like this:
@@ -2311,8 +2312,7 @@ results in \file{.bib} entries which look like this:
 %
 another example:
 \begin{verbatim}
-biber --tool --output-fieldcase=upper --output-indent=2 \
-      --output-align=false file.bib
+biber --tool --output-fieldcase=upper --output-indent=2 file.bib
 \end{verbatim}
 %
 results in entries like this:
@@ -2619,15 +2619,17 @@ Binaries are available for many architectures, directly on SourceForge and
 also via \TeX Live:
 
 \begin{itemize}
+\item \verb+darwin_x86_64+
+\item \verb+darwin_x86_i386+
 \item \verb+linux_x86_32+
 \item \verb+linux_x86_64+
 \item \verb+MSWin32+
-\item \verb+cygwin32+
-\item \verb+darwin_x86_64+
-\item \verb+darwin_x86_i386+
+\item \verb+MSWin64+
+\item \verb+cygwin32+\tpb
 \item \verb+freebsd_x86+\tpb
 \item \verb+freebsd_amd64+\tpb
-\item \verb+solaris_x86+\tpb
+\item \verb+solaris_i386+\tpb
+\item \verb+solaris_x86_64+\tpb
 \end{itemize}
 
 \noindent If you want to run development versions, they are usually only
@@ -2671,7 +2673,7 @@ sudo chmod +x /opt/local/bin/biber
 \subsubsection{Windows}
 
 The easiest way is to just move the executable into your \verb+C:\Windows+ directory since
-that is always in your path. A more elegant is to put it somewhere in
+that is always in your path. A more elegant way is to put it somewhere in
 your \TeX\ distribution that is already in your path. For example if you
 are using MiK\TeX:
 
@@ -2704,7 +2706,7 @@ the following modules:
 
 \noindent You should have the latest CPAN versions of all required modules
 as \biber\ is very specific in some cases about module versions and
-depends on recent fixes in many cases. You can see if you have the
+sometimes depends on recent fixes. You can see if you have the
 \biber\ Perl dependencies by the usual
 
 \begin{verbatim}
@@ -2749,15 +2751,14 @@ define these two things as part of constructing new build scripts:
 
 \begin{itemize}
 \item Make a new sub-folder in the \verb+dist+ directory named after the
-  architecture you are building for. This name is arbitrary but should
-  be fairly obvious like «\verb+solaris-sparc-64+», for example.
+  architecture you are building for.
 \item Copy the \verb+biber.files+ file from an existing build
   architecture into this directory.
 \item For all of the files with absolute pathnames in there (that is,
   ones we are not pulling from the \biber\ tree itself), locate these
   files in your Perl installation tree and put the correct path in the
   file.
-\item Copy the build script from a vaguely similar architecture
+\item Copy the build script from a similar architecture
   (i.e. Windows/non-Windows \ldots) to your new architecture
   directory. 
 \item Change the \opt{--link} options to point to where the required
@@ -2810,7 +2811,7 @@ of \biber\ version and locale of course but there should be no errors
 or warnings).
 
 \begin{verbatim}
-INFO - This is Biber 2.3
+INFO - This is Biber 2.4
 INFO - Logfile is 'test.blg'
 INFO - BibLaTeX control file 'test.bcf' validates
 INFO - Converted BibLaTeX control file 'test.bcf' to 'test.bcf.html'
@@ -2820,9 +2821,9 @@ INFO - Processing bib section 0
 INFO - Looking for BibTeX format file 'test.bib' for section 0
 INFO - Found BibTeX data file 'test.bib'
 INFO - Decoding LaTeX character macros into UTF-8
-INFO - Sorting list 'MAIN' keys
+INFO - Sorting list 'nyt/global' keys
 INFO - No sort tailoring available for locale 'en_GB.UTF-8'
-INFO - Sorting list 'SHORTHANDS' keys
+INFO - Sorting list 'shorthands/global' keys
 INFO - No sort tailoring available for locale 'en_GB.UTF-8'
 INFO - Writing 'test.bbl' with encoding 'UTF-8'
 INFO - Output to test.bbl

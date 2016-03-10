@@ -50,12 +50,16 @@ Biber::Config->setoption('nodieonerror', 1); # because there is a cyclic xdata c
 # Now generate the information
 my ($stdout, $stderr) = capture { $biber->prepare };
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 my $out = $biber->get_output_obj;
 
 my $xd1 = q|    \entry{xd1}{book}{}
       \name{author}{1}{}{%
-        {{hash=51db4bfd331cba22959ce2d224c517cd}{Ellington}{E\bibinitperiod}{Edward}{E\bibinitperiod}{}{}{}{}}%
+        {{hash=51db4bfd331cba22959ce2d224c517cd}{%
+           family={Ellington},
+           family_i={E\bibinitperiod},
+           given={Edward},
+           given_i={E\bibinitperiod}}}%
       }
       \list{location}{2}{%
         {New York}%
@@ -78,7 +82,11 @@ my $xd1 = q|    \entry{xd1}{book}{}
 
 my $xd2 = q|    \entry{xd2}{book}{}
       \name{author}{1}{}{%
-        {{hash=68539e0ce4922cc4957c6cabf35e6fc8}{Pillington}{P\bibinitperiod}{Peter}{P\bibinitperiod}{}{}{}{}}%
+        {{hash=68539e0ce4922cc4957c6cabf35e6fc8}{%
+           family={Pillington},
+           family_i={P\bibinitperiod},
+           given={Peter},
+           given_i={P\bibinitperiod}}}%
       }
       \list{location}{2}{%
         {New York}%

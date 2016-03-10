@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 118;
+use Test::More tests => 119;
 use Test::Differences;
 unified_diff;
 
@@ -48,7 +48,7 @@ Biber::Config->setblxoption('labeldate', undef);
 # Now generate the information
 $biber->prepare;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 my $bibentries = $section->bibentries;
 
 
@@ -92,7 +92,7 @@ foreach my $k ($section->get_citekeys) {
 
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 $bibentries = $section->bibentries;
 
 eq_or_diff($bibentries->entry('L1')->get_field('sortlabelalpha'), 'Doe95', 'maxalphanames=2 minalphanames=1 entry L1 labelalpha');
@@ -126,7 +126,7 @@ foreach my $k ($section->get_citekeys) {
 
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 $bibentries = $section->bibentries;
 
 eq_or_diff($bibentries->entry('L1')->get_field('sortlabelalpha'), 'Doe95', 'maxalphanames=2 minalphanames=2 entry L1 labelalpha');
@@ -160,7 +160,7 @@ foreach my $k ($section->get_citekeys) {
 
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 $bibentries = $section->bibentries;
 
 eq_or_diff($bibentries->entry('L1')->get_field('sortlabelalpha'), 'Doe95', 'maxalphanames=3 minalphanames=1 entry L1 labelalpha');
@@ -199,7 +199,7 @@ foreach my $k ($section->get_citekeys) {
 $biber->prepare;
 my $out = $biber->get_output_obj;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 $bibentries = $section->bibentries;
 
 eq_or_diff($bibentries->entry('L11')->get_field('sortlabelalpha'), 'vRan22', 'prefix labelalpha 1');
@@ -237,7 +237,7 @@ Biber::Config->setblxoption('labelalphatemplate', {
              },
            ],
   type  => "unpublished",
-}, 'PER_TYPE', 'unpublished');
+}, 'ENTRYTYPE', 'unpublished');
 
 
 foreach my $k ($section->get_citekeys) {
@@ -248,7 +248,7 @@ foreach my $k ($section->get_citekeys) {
 
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 $bibentries = $section->bibentries;
 
 # "Agas" and not "Aga" because the Schmidt/Schnee below need 4 chars to disambiguate
@@ -271,7 +271,7 @@ Biber::Config->setblxoption('labelalphatemplate', {
              },
            ],
   type  => "unpublished",
-}, 'PER_TYPE', 'unpublished');
+}, 'ENTRYTYPE', 'unpublished');
 
 foreach my $k ($section->get_citekeys) {
   $bibentries->entry($k)->del_field('sortlabelalpha');
@@ -281,7 +281,7 @@ foreach my $k ($section->get_citekeys) {
 
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 $bibentries = $section->bibentries;
 
 eq_or_diff($bibentries->entry('L18')->get_field('sortlabelalpha'), 'AChL', 'labelalpha list disambiguation 1');
@@ -334,7 +334,7 @@ foreach my $k ($section->get_citekeys) {
 
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 $bibentries = $section->bibentries;
 
 eq_or_diff($bibentries->entry('Schmidt2007')->get_field('sortlabelalpha'), 'Sch+07', 'extraalpha ne extrayear 1');
@@ -372,7 +372,7 @@ foreach my $k ($section->get_citekeys) {
 
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 $bibentries = $section->bibentries;
 
 eq_or_diff($bibentries->entry('Schmidt2007')->get_field('sortlabelalpha'), 'SCH', 'entrykey label 1');
@@ -415,7 +415,7 @@ foreach my $k ($section->get_citekeys) {
 
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 $bibentries = $section->bibentries;
 
 eq_or_diff($bibentries->entry('labelstest')->get_field('sortlabelalpha'), '20050302', 'labeldate test - 1');
@@ -460,9 +460,108 @@ foreach my $k ($section->get_citekeys) {
 Biber::Config->setoption('nolabelwidthcount', [ {value => q/o+/} ] );
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 $bibentries = $section->bibentries;
 
 eq_or_diff($bibentries->entry('skipwidthtest1')->get_field('sortlabelalpha'), 'OToolOToole', 'Skip width test - 1');
 eq_or_diff($bibentries->entry('prefix1')->get_field('sortlabelalpha'), 'vadeVaaThin', 'compound and string length entry prefix1 labelalpha');
+
+
+Biber::Config->setblxoption('labelalphatemplate', {
+  labelelement => [
+                   {
+                    labelpart => [
+                                  {
+                   content         => "author",
+                   namerange       => "2-7"
+                                  },
+                   ],
+                   order => 1,
+                   },
+                   {
+                    labelpart => [
+                                  {
+                   content         => ".",
+                                  },
+                   ],
+                   order => 2,
+                   },
+                   {
+                    labelpart => [
+                                  {
+                   content         => "editor",
+                   namerange       => "--3"
+                                  },
+                   ],
+                   order => 3,
+                   },
+                   {
+                    labelpart => [
+                                  {
+                   content         => ".",
+                                  },
+                   ],
+                   order => 4,
+                   },
+                   {
+                    labelpart => [
+                                  {
+                   content         => "translator",
+                   namerange       => "2",
+                   noalphaothers   => "1"
+                                  },
+                   ],
+                   order => 5,
+                   },
+                   {
+                    labelpart => [
+                                  {
+                   content         => ".",
+                                  },
+                   ],
+                   order => 6,
+                   },
+                   {
+                    labelpart => [
+                                  {
+                   content         => "foreword",
+                   namerange       => "3--"
+                                  },
+                   ],
+                   order => 7,
+                   },
+                   {
+                    labelpart => [
+                                  {
+                   content         => ".",
+                                  },
+                   ],
+                   order => 8,
+                   },
+                   {
+                    labelpart => [
+                                  {
+                   content         => "holder",
+                   namerange       => "2-+"
+                                  },
+                   ],
+                   order => 9,
+                   },
+                  ],
+  type  => "global",
+});
+Biber::Config->setblxoption('minalphanames', 2);
+
+foreach my $k ($section->get_citekeys) {
+  $bibentries->entry($k)->del_field('sortlabelalpha');
+  $bibentries->entry($k)->del_field('labelalpha');
+  $main->set_extraalphadata_for_key($k, undef);
+}
+$biber->prepare;
+$section = $biber->sections->get_section(0);
+$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+$bibentries = $section->bibentries;
+
+eq_or_diff($bibentries->entry('rangetest1')->get_field('sortlabelalpha'), 'WAXAYAZA.VEWEXE+.VTWT.XFYFZF.WH+', 'Name range test - 1');
+
 

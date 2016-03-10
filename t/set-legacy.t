@@ -40,13 +40,17 @@ Biber::Config->setoption('fastsort', 1);
 # Now generate the information
 $biber->prepare;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 my $out = $biber->get_output_obj;
 
 my $string1 = q|    \entry{Elias1955}{set}{}
       \set{Elias1955a,Elias1955b}
       \name{author}{1}{}{%
-        {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{Elias}{E\bibinitperiod}{P.}{P\bibinitperiod}{}{}{}{}}%
+        {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{%
+           family={Elias},
+           family_i={E\bibinitperiod},
+           given={P.},
+           given_i={P\bibinitperiod}}}%
       }
       \strng{namehash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \strng{fullhash}{bdd4981ffb5a62685c993d6f9dec4c23}
@@ -76,7 +80,11 @@ my $string1 = q|    \entry{Elias1955}{set}{}
 my $string2 = q|    \entry{Elias1955a}{article}{}
       \inset{Elias1955}
       \name{author}{1}{}{%
-        {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{Elias}{E\bibinitperiod}{P.}{P\bibinitperiod}{}{}{}{}}%
+        {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{%
+           family={Elias},
+           family_i={E\bibinitperiod},
+           given={P.},
+           given_i={P\bibinitperiod}}}%
       }
       \strng{namehash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \strng{fullhash}{bdd4981ffb5a62685c993d6f9dec4c23}
@@ -103,7 +111,11 @@ my $string2 = q|    \entry{Elias1955a}{article}{}
 my $string3 = q|    \entry{Elias1955b}{article}{}
       \inset{Elias1955}
       \name{author}{1}{}{%
-        {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{Elias}{E\bibinitperiod}{P.}{P\bibinitperiod}{}{}{}{}}%
+        {{hash=bdd4981ffb5a62685c993d6f9dec4c23}{%
+           family={Elias},
+           family_i={E\bibinitperiod},
+           given={P.},
+           given_i={P\bibinitperiod}}}%
       }
       \strng{namehash}{bdd4981ffb5a62685c993d6f9dec4c23}
       \strng{fullhash}{bdd4981ffb5a62685c993d6f9dec4c23}

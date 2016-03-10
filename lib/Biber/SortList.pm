@@ -75,6 +75,31 @@ sub get_sortschemename {
   return $self->{sortschemename};
 }
 
+=head2 set_sortnamekeyschemename
+
+    Sets the sortnamekeyscheme name of a sort list
+
+=cut
+
+sub set_sortnamekeyschemename {
+  my $self = shift;
+  my $snksn = shift;
+  $self->{sortnamekeyschemename} = lc($snksn);
+  return;
+}
+
+=head2 get_sortnamekeyschemename
+
+    Gets the sortnamekeyschemename of a sort list
+
+=cut
+
+sub get_sortnamekeyschemename {
+  my $self = shift;
+  return $self->{sortnamekeyschemename};
+}
+
+
 =head2 set_name
 
     Sets the name of a sort list
@@ -168,10 +193,13 @@ sub count_keys {
 sub get_listdata {
   my $self = shift;
   return [ $self->{sortscheme},
+           $self->{sortnamekeyschemename},
            $self->{keys},
            $self->{sortinitdata},
            $self->{extrayeardata},
-           $self->{extraalphadata} ];
+           $self->{extraalphadata},
+           $self->{extratitledata},
+           $self->{extratitleyeardata} ];
 }
 
 =head2 set_extrayeardata_for_key
@@ -465,8 +493,11 @@ sub get_filters {
   Currently this means:
 
   * sortinit
+  * sortinithash
   * extrayear
   * extraalpha
+  * extratitle
+  * extratitleyear
 
 =cut
 
@@ -484,6 +515,9 @@ sub instantiate_entry {
     my $str = "\\field{sortinit}{$sinit}";
     $entry_string =~ s|<BDS>SORTINIT</BDS>|$str|gxms;
   }
+  else {# might not be defined if sortscheme returns nothing at all
+    $entry_string =~ s|<BDS>SORTINIT</BDS>||gxms;
+  }
 
   # sortinithash
   my $sinithash = $self->get_sortinithash_for_key($key);
@@ -491,32 +525,31 @@ sub instantiate_entry {
     my $str = "\\field{sortinithash}{$sinithash}";
     $entry_string =~ s|<BDS>SORTINITHASH</BDS>|$str|gxms;
   }
+  else {# might not be defined if sortscheme returns nothing at all
+    $entry_string =~ s|<BDS>SORTINITHASH</BDS>||gxms;
+  }
 
   # extrayear
-  my $eys;
   if (my $e = $self->get_extrayeardata($key)) {
-    $eys = "      \\field{extrayear}{$e}\n";
+    my $eys = "      \\field{extrayear}{$e}\n";
     $entry_string =~ s|^\s*<BDS>EXTRAYEAR</BDS>\n|$eys|gxms;
   }
 
   # extratitle
-  my $ets;
   if (my $e = $self->get_extratitledata($key)) {
-    $ets = "      \\field{extratitle}{$e}\n";
+    my $ets = "      \\field{extratitle}{$e}\n";
     $entry_string =~ s|^\s*<BDS>EXTRATITLE</BDS>\n|$ets|gxms;
   }
 
   # extratitle
-  my $etys;
   if (my $e = $self->get_extratitleyeardata($key)) {
-    $etys = "      \\field{extratitleyear}{$e}\n";
+    my $etys = "      \\field{extratitleyear}{$e}\n";
     $entry_string =~ s|^\s*<BDS>EXTRATITLEYEAR</BDS>\n|$etys|gxms;
   }
 
   # extraalpha
-  my $eas;
   if (my $e = $self->get_extraalphadata($key)) {
-    $eas = "      \\field{extraalpha}{$e}\n";
+    my $eas = "      \\field{extraalpha}{$e}\n";
     $entry_string =~ s|^\s*<BDS>EXTRAALPHA</BDS>\n|$eas|gxms;
   }
 
@@ -539,7 +572,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

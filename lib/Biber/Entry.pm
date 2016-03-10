@@ -10,7 +10,6 @@ use Data::Dump qw( pp );
 use Digest::MD5 qw( md5_hex );
 use Log::Log4perl qw( :no_extra_logdie_message );
 use List::Util qw( first );
-use Storable qw( dclone );
 
 my $logger = Log::Log4perl::get_logger('main');
 
@@ -768,7 +767,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

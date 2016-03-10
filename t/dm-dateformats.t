@@ -46,7 +46,7 @@ Biber::Config->setblxoption('labeldatespec', [ {content => 'date', type => 'fiel
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
+my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
 my $bibentries = $section->bibentries;
 my $l1 = [ "Datamodel: Entry 'L1' (dm-dateformats.bib): Invalid format '1985-1030' of date field 'origdate' - ignoring",
            "Datamodel: Entry 'L1' (dm-dateformats.bib): Invalid format '1.5.1998' of date field 'urldate' - ignoring",
@@ -64,8 +64,16 @@ my $l12 = [ "Overwriting field 'month' with month value from field 'date' for en
 
 my $l13c = q|    \entry{L13}{book}{}
       \name{author}{2}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{Abrahams}{A\bibinitperiod}{Albert}{A\bibinitperiod}{}{}{}{}}%
+        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
+           family={Doe},
+           family_i={D\bibinitperiod},
+           given={John},
+           given_i={J\bibinitperiod}}}%
+        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{%
+           family={Abrahams},
+           family_i={A\bibinitperiod},
+           given={Albert},
+           given_i={A\bibinitperiod}}}%
       }
       \list{publisher}{1}{%
         {Oxford}%
@@ -90,8 +98,16 @@ my $l13c = q|    \entry{L13}{book}{}
 
 my $l14 = q|    \entry{L14}{book}{}
       \name{author}{2}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{Abrahams}{A\bibinitperiod}{Albert}{A\bibinitperiod}{}{}{}{}}%
+        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
+           family={Doe},
+           family_i={D\bibinitperiod},
+           given={John},
+           given_i={J\bibinitperiod}}}%
+        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{%
+           family={Abrahams},
+           family_i={A\bibinitperiod},
+           given={Albert},
+           given_i={A\bibinitperiod}}}%
       }
       \list{publisher}{1}{%
         {Oxford}%
@@ -119,8 +135,16 @@ my $l14 = q|    \entry{L14}{book}{}
 
 my $l15 = q|    \entry{L15}{book}{}
       \name{author}{2}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{Abrahams}{A\bibinitperiod}{Albert}{A\bibinitperiod}{}{}{}{}}%
+        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
+           family={Doe},
+           family_i={D\bibinitperiod},
+           given={John},
+           given_i={J\bibinitperiod}}}%
+        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{%
+           family={Abrahams},
+           family_i={A\bibinitperiod},
+           given={Albert},
+           given_i={A\bibinitperiod}}}%
       }
       \list{publisher}{1}{%
         {Oxford}%
@@ -139,8 +163,16 @@ my $l15 = q|    \entry{L15}{book}{}
 
 my $l16 = q|    \entry{L16}{proceedings}{}
       \name{editor}{2}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{Abrahams}{A\bibinitperiod}{Albert}{A\bibinitperiod}{}{}{}{}}%
+        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
+           family={Doe},
+           family_i={D\bibinitperiod},
+           given={John},
+           given_i={J\bibinitperiod}}}%
+        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{%
+           family={Abrahams},
+           family_i={A\bibinitperiod},
+           given={Albert},
+           given_i={A\bibinitperiod}}}%
       }
       \list{publisher}{1}{%
         {Oxford}%
@@ -166,8 +198,16 @@ my $l16 = q|    \entry{L16}{proceedings}{}
 
 my $l17 = q|    \entry{L17}{proceedings}{}
       \name{editor}{2}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{Abrahams}{A\bibinitperiod}{Albert}{A\bibinitperiod}{}{}{}{}}%
+        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
+           family={Doe},
+           family_i={D\bibinitperiod},
+           given={John},
+           given_i={J\bibinitperiod}}}%
+        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{%
+           family={Abrahams},
+           family_i={A\bibinitperiod},
+           given={Albert},
+           given_i={A\bibinitperiod}}}%
       }
       \list{publisher}{1}{%
         {Oxford}%
@@ -208,8 +248,16 @@ my $l17 = q|    \entry{L17}{proceedings}{}
 
 my $l17c = q|    \entry{L17}{proceedings}{}
       \name{editor}{2}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{Abrahams}{A\bibinitperiod}{Albert}{A\bibinitperiod}{}{}{}{}}%
+        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
+           family={Doe},
+           family_i={D\bibinitperiod},
+           given={John},
+           given_i={J\bibinitperiod}}}%
+        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{%
+           family={Abrahams},
+           family_i={A\bibinitperiod},
+           given={Albert},
+           given_i={A\bibinitperiod}}}%
       }
       \list{publisher}{1}{%
         {Oxford}%
@@ -249,8 +297,16 @@ my $l17c = q|    \entry{L17}{proceedings}{}
 
 my $l17e = q|    \entry{L17}{proceedings}{}
       \name{editor}{2}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{Doe}{D\bibinitperiod}{John}{J\bibinitperiod}{}{}{}{}}%
-        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{Abrahams}{A\bibinitperiod}{Albert}{A\bibinitperiod}{}{}{}{}}%
+        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
+           family={Doe},
+           family_i={D\bibinitperiod},
+           given={John},
+           given_i={J\bibinitperiod}}}%
+        {{hash=df9bf04cd41245e6d23ad7543e7fd90d}{%
+           family={Abrahams},
+           family_i={A\bibinitperiod},
+           given={Albert},
+           given_i={A\bibinitperiod}}}%
       }
       \list{publisher}{1}{%
         {Oxford}%
@@ -341,7 +397,7 @@ eq_or_diff($out->get_output_entry('L17', $main), $l17c, 'Date values test 17c - 
 # reset options and regenerate information
 Biber::Config->setblxoption('labeldatespec', [ {content => 'eventdate', type => 'field'},
                                                {content => 'date', type => 'field'},
-                                               {content => 'origdate', type => 'field'} ], 'PER_TYPE', 'proceedings');
+                                               {content => 'origdate', type => 'field'} ], 'ENTRYTYPE', 'proceedings');
 $bibentries->del_entry('L17');
 $biber->prepare;
 $out = $biber->get_output_obj;
@@ -351,7 +407,7 @@ eq_or_diff($bibentries->entry('L17')->get_labeldate_info->{field}{source}, 'even
 eq_or_diff($out->get_output_entry('L17', $main), $l17e, 'Date values test 17e - labelyear = ORIGYEAR-ORIGENDYEAR' ) ;
 
 # reset options and regenerate information
-Biber::Config->setblxoption('labeldatespec', [ {content => 'pubstate', type => 'field'} ], 'PER_TYPE', 'proceedings');
+Biber::Config->setblxoption('labeldatespec', [ {content => 'pubstate', type => 'field'} ], 'ENTRYTYPE', 'proceedings');
 
 $bibentries->del_entry('L17');
 $biber->prepare;

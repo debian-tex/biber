@@ -1,2 +1,32 @@
-* Sample XSLT transform but not in biber
-* bltxml either should have no schema or it should be dynamically created from the data model. A static schema is pointless
+* DONE biblatex firstinits option to giveninits
+* DONE useprefix per names/name?
+* DONE More flexible sorting allowing arbitrary name part order?
+* DONE name taxonomy (first, middle, last) needs to be generalised. Internally in Biber too
+** firstname -> given
+** lastname -> family
+** middlename -> middle
+** prefix -> prefix
+** suffix -> suffix
+* DONE lastname mandatory relaxed? How about just mandatory that some part is defined since sorting isn't always on lastname first?
+* DONE name parts and gender types in data model as constants
+* DONE \keypart round \namepart
+* DONE make namepart specs
+** DONE named
+** DONE selectable per sortlist
+*** TODO abx@aux@sortscheme etc. probably this needs to be generalised to mentioned refcontexts
+** DONE per-entry
+** DONE per-namelist, per name
+* DONE hashes use static construction from DM name constants - problem with uniquelist
+* DONE tool mode bltx output should write schema but controlled by option (normal output uses same option)
+* DONE per-names/name options are not in .bcf - matters?
+* DONE per-namelists/per-name options
+** DONE needs per names/name support in biblatex and in bbl
+** DONE sortnamekeyscheme needs per entry/names/name in bbl
+** DONE biblatex macro support in formats for sortnamekeyscheme
+** DONE What to do with gender attribute on name?
+* DONE Document example in biblatex manual of compound keypart
+* DONE implement patronymic namepart example
+* TODO Document year/month (datepart fields) are not allowed in bltxml
+
+
+

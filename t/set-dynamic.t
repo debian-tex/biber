@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 8;
+use Test::More tests => 7;
 use Test::Differences;
 unified_diff;
 
@@ -40,17 +40,21 @@ Biber::Config->setoption('fastsort', 1);
 # Now generate the information
 $biber->prepare;
 my $section0 = $biber->sections->get_section(0);
-my $main0 = $biber->sortlists->get_list(0, 'nty', 'entry', 'nty');
-my $sh0 = $biber->sortlists->get_list(0, 'shorthands', 'list', 'shorthands');
+my $main0 = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+my $sh0 = $biber->sortlists->get_list(0, 'shorthands/global', 'list', 'shorthands', 'global');
 my $section1 = $biber->sections->get_section(1);
-my $main1 = $biber->sortlists->get_list(1, 'nty', 'entry', 'nty');
-my $sh1 = $biber->sortlists->get_list(1, 'shorthands', 'list', 'shorthands');
+my $main1 = $biber->sortlists->get_list(1, 'nty/global', 'entry', 'nty', 'global');
+my $sh1 = $biber->sortlists->get_list(1, 'shorthands/global', 'list', 'shorthands', 'global');
 my $out = $biber->get_output_obj;
 
 my $string1 = q|    \entry{DynSet}{set}{}
       \set{Dynamic1,Dynamic2,Dynamic3}
       \name{author}{1}{}{%
-        {{hash=252caa7921a061ca92087a1a52f15b78}{Dynamism}{D\bibinitperiod}{Derek}{D\bibinitperiod}{}{}{}{}}%
+        {{hash=252caa7921a061ca92087a1a52f15b78}{%
+           family={Dynamism},
+           family_i={D\bibinitperiod},
+           given={Derek},
+           given_i={D\bibinitperiod}}}%
       }
       \strng{namehash}{252caa7921a061ca92087a1a52f15b78}
       \strng{fullhash}{252caa7921a061ca92087a1a52f15b78}
@@ -70,7 +74,11 @@ my $string1 = q|    \entry{DynSet}{set}{}
 my $string2 = q|    \entry{Dynamic1}{book}{}
       \inset{DynSet}
       \name{author}{1}{}{%
-        {{hash=252caa7921a061ca92087a1a52f15b78}{Dynamism}{D\bibinitperiod}{Derek}{D\bibinitperiod}{}{}{}{}}%
+        {{hash=252caa7921a061ca92087a1a52f15b78}{%
+           family={Dynamism},
+           family_i={D\bibinitperiod},
+           given={Derek},
+           given_i={D\bibinitperiod}}}%
       }
       \strng{namehash}{252caa7921a061ca92087a1a52f15b78}
       \strng{fullhash}{252caa7921a061ca92087a1a52f15b78}
@@ -88,7 +96,11 @@ my $string2 = q|    \entry{Dynamic1}{book}{}
 my $string3 = q|    \entry{Dynamic2}{book}{}
       \inset{DynSet}
       \name{author}{1}{}{%
-        {{hash=894a5fe6de820f5dcce84a65581667f4}{Bunting}{B\bibinitperiod}{Brian}{B\bibinitperiod}{}{}{}{}}%
+        {{hash=894a5fe6de820f5dcce84a65581667f4}{%
+           family={Bunting},
+           family_i={B\bibinitperiod},
+           given={Brian},
+           given_i={B\bibinitperiod}}}%
       }
       \strng{namehash}{894a5fe6de820f5dcce84a65581667f4}
       \strng{fullhash}{894a5fe6de820f5dcce84a65581667f4}
@@ -105,7 +117,11 @@ my $string3 = q|    \entry{Dynamic2}{book}{}
 my $string4 = q|    \entry{Dynamic3}{book}{}
       \inset{DynSet}
       \name{author}{1}{}{%
-        {{hash=fc3cc97631ceaecdde2aee6cc60ab42b}{Regardless}{R\bibinitperiod}{Roger}{R\bibinitperiod}{}{}{}{}}%
+        {{hash=fc3cc97631ceaecdde2aee6cc60ab42b}{%
+           family={Regardless},
+           family_i={R\bibinitperiod},
+           given={Roger},
+           given_i={R\bibinitperiod}}}%
       }
       \strng{namehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{fullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
@@ -123,7 +139,11 @@ my $string4 = q|    \entry{Dynamic3}{book}{}
 # without citation of a set it is a member of
 my $string5 = q|    \entry{Dynamic3}{book}{}
       \name{author}{1}{}{%
-        {{hash=fc3cc97631ceaecdde2aee6cc60ab42b}{Regardless}{R\bibinitperiod}{Roger}{R\bibinitperiod}{}{}{}{}}%
+        {{hash=fc3cc97631ceaecdde2aee6cc60ab42b}{%
+           family={Regardless},
+           family_i={R\bibinitperiod},
+           given={Roger},
+           given_i={R\bibinitperiod}}}%
       }
       \strng{namehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{fullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
@@ -139,6 +159,7 @@ my $string5 = q|    \entry{Dynamic3}{book}{}
     \endentry
 |;
 
+
 # Make sure allkeys works with dynamic sets
 my @allkeys = qw(dynamic1 dynamic2 dynamic3 dynset elias1955 elias1955a elias1955b static1 static2 static3 static4);
 my @keys = sort map {lc()} $section0->get_citekeys;
@@ -149,6 +170,7 @@ eq_or_diff($out->get_output_entry('Dynamic1', $main0), $string2, 'Dynamic set te
 eq_or_diff($out->get_output_entry('Dynamic2', $main0), $string3, 'Dynamic set test 3');
 eq_or_diff($out->get_output_entry('Dynamic3', $main0), $string4, 'Dynamic set test 4');
 eq_or_diff($out->get_output_entry('Dynamic3', $main0, 1), $string5, 'Dynamic set test 5');
-is_deeply([$sh0->get_keys], ['DynSet'], 'Dynamic set skipbiblist 1');
-is_deeply([$sh1->get_keys], ['Dynamic3'], 'Dynamic set skipbiblist 2');
+
+eq_or_diff($out->get_output_entry('Dynamic1', $sh0), $string2, 'Dynamic set skipbiblist 1');
+
 

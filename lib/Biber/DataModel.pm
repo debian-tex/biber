@@ -73,6 +73,12 @@ sub new {
     }
   }
 
+  my $constants;
+  foreach my $constant (@{$dm->{constants}{constant}}) {
+    $self->{constants}{$constant->{name}}{type} = $constant->{type};
+    $self->{constants}{$constant->{name}}{value} = $constant->{content};
+  }
+
   my $leg_ents;
   foreach my $et (@{$dm->{entrytypes}{entrytype}}) {
     my $es = $et->{content};
@@ -162,6 +168,68 @@ sub new {
   return $self;
 }
 
+=head2 constants
+
+    Returns array ref of constant names
+
+=cut
+
+sub constants {
+  my $self = shift;
+  return [ keys %{$self->{constants}} ];
+}
+
+=head2 get_constant_type
+
+    Returns a constant type
+
+=cut
+
+sub get_constant_type {
+  my ($self, $name) = @_;
+  return $self->{constants}{$name}{type};
+}
+
+=head2 get_constant_value
+
+    Returns a constant value
+
+=cut
+
+sub get_constant_value {
+  my ($self, $name) = @_;
+  if ($self->{constants}{$name}{type} eq 'list') {
+    return split(/\s*,\s*/, $self->{constants}{$name}{value});
+  }
+  elsif ($self->{constants}{$name}{type} eq 'string') {
+    return $self->{constants}{$name}{value};
+  }
+}
+
+
+=head2 fieldtypes
+
+    Returns array ref of legal fieldtypes
+
+=cut
+
+sub fieldtypes {
+  my $self = shift;
+  return [ keys %{$self->{fieldsbyfieldtype}} ];
+}
+
+=head2 datatypes
+
+    Returns array ref of legal datatypes
+
+=cut
+
+sub datatypes {
+  my $self = shift;
+  return [ keys %{$self->{fieldsbydatatype}} ];
+}
+
+
 =head2 is_field
 
     Returns boolean to say if a field is a legal field
@@ -183,6 +251,17 @@ sub is_field {
   else {
     return $self->{fieldsbyname}{$field} ? 1 : 0;
   }
+}
+
+=head2 entrytypes
+
+    Returns array ref of legal entrytypes
+
+=cut
+
+sub entrytypes {
+  my $self = shift;
+  return [ keys %{$self->{entrytypesbyname}} ];
 }
 
 
@@ -292,6 +371,23 @@ sub get_fields_of_type {
   return $f ? [ sort @$f ] : [];
 }
 
+=head2 is_fields_of_type
+
+  Returns boolean to say if the given fieldtype/datatype/format is a valid combination
+
+=cut
+
+sub is_fields_of_type {
+  my ($self, $fieldtype, $datatype, $format) = @_;
+  my $f;
+  if ($format) {
+    return exists($self->{fieldsbytype}{$fieldtype}{$datatype}{$format}) ? 1 : 0;
+  }
+  else {
+    return exists($self->{fieldsbytype}{$fieldtype}{$datatype}) ? 1 : 0;
+  }
+}
+
 =head2 get_fieldtype
 
     Returns the fieldtype of a field
@@ -328,13 +424,15 @@ sub get_fieldformat {
 
 =head2 get_dm_for_field
 
-    Returns the fieldtype and datatype of a field
+    Returns the fieldtype, datatype and format of a field
 
 =cut
 
 sub get_dm_for_field {
   my ($self, $field) = @_;
-  return ($self->{fieldsbyname}{$field}{fieldtype}, $self->{fieldsbyname}{$field}{datatype});
+  return {'fieldtype' =>  $self->{fieldsbyname}{$field}{fieldtype},
+          'datatype'  => $self->{fieldsbyname}{$field}{datatype},
+          'format'    => $self->{fieldsbyname}{$field}{format}};
 }
 
 =head2 field_is_fieldtype
@@ -705,6 +803,350 @@ sub dump {
   return pp($self);
 }
 
+=head2 generate_bltxml_schema
+
+    Generate a RelaxNG XML schema from the datamodel for BibLaTeXML datasources
+
+=cut
+
+sub generate_bltxml_schema {
+  my ($dm, $outfile) = @_;
+  return if $dm->{bltxml_schema_gen_done};
+  my $rng = IO::File->new($outfile, '>:encoding(UTF-8)');
+  $rng->autoflush;# Needed for running tests to string refs
+  $logger->info("Writing BibLaTeXML RNG schema '$outfile' for datamodel");
+  require XML::Writer;
+  my $bltx_ns = 'http://biblatex-biber.sourceforge.net/biblatexml';
+  my $bltx = 'bltx';
+  my $default_ns = 'http://relaxng.org/ns/structure/1.0';
+  my $writer = new XML::Writer(NAMESPACES   => 1,
+                               ENCODING     => 'UTF-8',
+                               DATA_MODE    => 1,
+                               DATA_INDENT  => 2,
+                               OUTPUT       => $rng,
+                               PREFIX_MAP   => {$bltx_ns    => $bltx,
+                                                $default_ns => ''});
+
+  $writer->xmlDecl();
+  $writer->comment('Auto-generated from .bcf Datamodel');
+  $writer->forceNSDecl($default_ns);
+  $writer->forceNSDecl($bltx_ns);
+  $writer->startTag('grammar',
+                    'datatypeLibrary' => 'http://www.w3.org/2001/XMLSchema-datatypes');
+  $writer->startTag('start');
+  $writer->startTag('element', 'name' => "$bltx:entries");
+  $writer->startTag('oneOrMore');
+  $writer->startTag('element', 'name' => "$bltx:entry");
+  $writer->emptyTag('attribute', 'name' => 'id');
+  $writer->startTag('attribute', 'name' => 'entrytype');
+  $writer->startTag('choice');
+  foreach my $entrytype (@{$dm->entrytypes}) {
+    $writer->dataElement('value', $entrytype);
+  }
+  $writer->endTag();# choice
+  $writer->endTag();# attribute
+  $writer->startTag('interleave');
+
+  foreach my $ft (@{$dm->fieldtypes()}) {
+    foreach my $dt (@{$dm->datatypes()}) {
+      if ($dm->is_fields_of_type($ft, $dt)) {
+        next if $dt eq 'datepart'; # not legal in input, only output
+        $writer->comment("$dt ${ft}s");
+        $writer->emptyTag('ref', 'name' => "$dt$ft");
+      }
+    }
+  }
+
+  $writer->endTag();# interleave
+  $writer->endTag();# entry element
+  $writer->endTag();# oneOrMore
+  $writer->endTag();# entries element
+  $writer->endTag();# start
+
+  foreach my $ft (@{$dm->fieldtypes()}) {
+    foreach my $dt (@{$dm->datatypes()}) {
+      if ($dm->is_fields_of_type($ft, $dt)) {
+        next if $dt eq 'datepart'; # not legal in input, only output
+        $writer->comment("$dt ${ft}s definition");
+        $writer->startTag('define', 'name' => "$dt$ft");
+
+        # Name lists element definition
+        # =============================
+        if ($ft eq 'list' and $dt eq 'name') {
+          $writer->startTag('optional');
+          $writer->startTag('element', 'name' => "$bltx:names");
+
+          # useprefix attribute
+          $writer->comment('useprefix option');
+          $writer->startTag('optional');
+          $writer->startTag('attribute', 'name' => 'useprefix');
+          $writer->emptyTag('data', 'type' => 'boolean');
+          $writer->endTag();    # attribute
+          $writer->endTag();    # optional
+
+          # sortnamekeyscheme attribute
+          $writer->comment('sortnamekeyscheme option');
+          $writer->startTag('optional');
+          $writer->startTag('attribute', 'name' => 'sortnamekeyscheme');
+          $writer->emptyTag('data', 'type' => 'string');
+          $writer->endTag();    # attribute
+          $writer->endTag();    # optional
+
+          # type attribute
+          $writer->comment('types of names elements');
+          $writer->startTag('attribute', 'name' => 'type');
+          $writer->startTag('choice');
+          foreach my $name (@{$dm->get_fields_of_type($ft, $dt)}) {
+            $writer->dataElement('value', $name);
+          }
+          $writer->endTag();    # choice
+          $writer->endTag();    # attribute
+
+          # morenames attribute
+          $writer->startTag('optional');
+          $writer->startTag('attribute', 'name' => 'morenames');
+          $writer->emptyTag('data', 'type' => 'boolean');
+          $writer->endTag();    # attribute
+          $writer->endTag();    # optional
+
+          $writer->startTag('oneOrMore');
+
+          # Individual name element
+          $writer->startTag('element', 'name' => "$bltx:name");
+
+          # useprefix attribute
+          $writer->comment('useprefix option');
+          $writer->startTag('optional');
+          $writer->startTag('attribute', 'name' => 'useprefix');
+          $writer->emptyTag('data', 'type' => 'boolean');
+          $writer->endTag();    # attribute
+          $writer->endTag();    # optional
+
+          # sortnamekeyscheme attribute
+          $writer->comment('sortnamekeyscheme option');
+          $writer->startTag('optional');
+          $writer->startTag('attribute', 'name' => 'sortnamekeyscheme');
+          $writer->emptyTag('data', 'type' => 'string');
+          $writer->endTag();    # attribute
+          $writer->endTag();    # optional
+
+          # gender attribute ref
+          $writer->emptyTag('ref', 'name' => 'gender');
+
+          # namepart element
+          $writer->startTag('oneOrMore');
+          $writer->startTag('element', 'name' => "$bltx:namepart");
+          $writer->startTag('attribute', 'name' => 'type');
+          $writer->startTag('choice');
+          foreach my $np ($dm->get_constant_value('nameparts')) {# list type so returns list
+            $writer->dataElement('value', $np);
+          }
+          $writer->endTag();    # choice
+          $writer->endTag();    # attribute
+          $writer->startTag('optional');
+          $writer->emptyTag('attribute', 'name' => 'initial');
+          $writer->endTag();    # optional
+          $writer->startTag('choice');
+          $writer->emptyTag('text');# text
+          $writer->startTag('oneOrMore');
+          $writer->startTag('element', 'name' => "$bltx:namepart");
+          $writer->startTag('optional');
+          $writer->emptyTag('attribute', 'name' => 'initial');
+          $writer->endTag();    # optional
+          $writer->emptyTag('text');# text
+          $writer->endTag();    # (sub)namepart element
+          $writer->endTag();    # oneOrMore
+          $writer->endTag();    # choice
+          $writer->endTag();    # namepart element
+          $writer->endTag();    # oneOrMore
+          $writer->endTag();    # name element
+          $writer->endTag();    # oneOrMore
+          $writer->endTag();    # names element
+          $writer->endTag();# optional
+          # ========================
+        }
+        elsif ($ft eq 'list') {
+          # lists element definition
+          # ========================
+          $writer->startTag('interleave');
+          foreach my $list (@{$dm->get_fields_of_type($ft, $dt)}) {
+            $writer->startTag('optional');
+            $writer->startTag('element', 'name' => "$bltx:$list");
+            $writer->startTag('choice');
+            $writer->emptyTag('text');# text
+            $writer->startTag('oneOrMore');
+            $writer->startTag('element', 'name' => "$bltx:item");
+            $writer->emptyTag('text');# text
+            $writer->endTag(); # item element
+            $writer->endTag(); # oneOrMore element
+            $writer->endTag(); # choice
+            $writer->endTag(); # $list element
+            $writer->endTag(); # optional
+          }
+          $writer->endTag();# interleave
+          # ========================
+        }
+        elsif ($ft eq 'field' and $dt eq 'uri') {
+          # uri field element definition
+          # ============================
+          $writer->startTag('interleave');
+          foreach my $field (@{$dm->get_fields_of_type($ft, $dt)}) {
+            $writer->startTag('optional');
+            $writer->startTag('element', 'name' => "$bltx:$field");
+            $writer->emptyTag('data', 'type' => 'anyURI');
+            $writer->endTag();   # $field element
+            $writer->endTag();# optional
+          }
+          $writer->endTag();# interleave
+          # ============================
+        }
+        elsif ($ft eq 'field' and $dt eq 'range') {
+          # range field element definition
+          # ==============================
+          $writer->startTag('interleave');
+          foreach my $field (@{$dm->get_fields_of_type($ft, $dt)}) {
+            $writer->startTag('optional');
+            $writer->startTag('element', 'name' => "$bltx:$field");
+            $writer->startTag('oneOrMore');
+            $writer->startTag('element', 'name' => "$bltx:item");
+            $writer->startTag('element', 'name' => "$bltx:start");
+            $writer->emptyTag('text');
+            $writer->endTag();  # start element
+            $writer->startTag('element', 'name' => "$bltx:end");
+            $writer->startTag('choice');
+            $writer->emptyTag('text');
+            $writer->emptyTag('empty');
+            $writer->endTag();  # choice
+            $writer->endTag();  # end element
+            $writer->endTag(); # item element
+            $writer->endTag();   # oneOrMore element
+            $writer->endTag();   # $field element
+            $writer->endTag();# optional
+          }
+          $writer->endTag();# interleave
+          # ==============================
+        }
+        elsif ($ft eq 'field' and $dt eq 'entrykey') {
+          # entrykey field element definition
+          # =================================
+          $writer->startTag('interleave');
+          foreach my $field (@{$dm->get_fields_of_type($ft, $dt)}) {
+            $writer->startTag('optional');
+            # related field is special
+            if ($field eq 'related') {
+              $writer->startTag('element', 'name' => "$bltx:$field");
+              $writer->startTag('oneOrMore');
+              $writer->startTag('element', 'name' => "$bltx:item");
+              $writer->emptyTag('attribute', 'name' => 'type');
+              $writer->emptyTag('attribute', 'name' => 'ids');
+              $writer->startTag('optional');
+              $writer->emptyTag('attribute', 'name' => 'options');
+              $writer->endTag(); # optional
+              $writer->startTag('optional');
+              $writer->emptyTag('attribute', 'name' => 'string');
+              $writer->endTag(); # optional
+              $writer->endTag(); # item element
+              $writer->endTag(); # oneOrMore
+              $writer->endTag(); # $field element
+            }
+            else {
+              $writer->startTag('element', 'name' => "$bltx:$field");
+              $writer->startTag('choice');
+              $writer->startTag('list');
+              $writer->startTag('oneOrMore');
+              $writer->emptyTag('data', 'type' => 'string');
+              $writer->endTag(); # oneOrMore
+              $writer->endTag();    # list
+              $writer->startTag('oneOrMore');
+              $writer->startTag('element', 'name' => "$bltx:key");
+              $writer->emptyTag('text');# text
+              $writer->endTag(); # key element
+              $writer->endTag(); # oneOrMore
+              $writer->endTag(); # choice
+              $writer->endTag(); # $field element
+            }
+            $writer->endTag(); # optional
+          }
+          $writer->endTag();# interleave
+        }
+        elsif ($ft eq 'field' and $dt eq 'date') {
+          # date field element definition
+          # =============================
+          my @types = map { s/date$//r } @{$dm->get_fields_of_type($ft, $dt)};
+          $writer->startTag('zeroOrMore');
+          $writer->startTag('element', 'name' => "$bltx:date");
+          $writer->startTag('optional');
+          $writer->startTag('attribute', 'name' => 'type');
+          $writer->startTag('choice');
+          foreach my $datetype(@types) {
+            next unless $datetype;
+            $writer->dataElement('value', $datetype);
+          }
+          $writer->endTag(); # choice
+          $writer->endTag(); # attribute
+          $writer->endTag(); # optional
+          $writer->startTag('choice');
+          $writer->emptyTag('data', 'type' => 'date');
+          $writer->emptyTag('data', 'type' => 'gYear');
+          $writer->startTag('group');
+          $writer->startTag('element', 'name' => "$bltx:start");
+          $writer->emptyTag('data', 'type' => 'date');
+          $writer->endTag(); # start element
+          $writer->startTag('element', 'name' => "$bltx:end");
+          $writer->startTag('choice');
+          $writer->emptyTag('data', 'type' => 'date');
+          $writer->emptyTag('empty');
+          $writer->endTag(); # choice
+          $writer->endTag(); # end element
+          $writer->endTag(); # group
+          $writer->endTag(); # choice
+          $writer->endTag(); # $field element
+          $writer->endTag(); # zeroOrMore
+          # =============================
+        }
+        elsif ($ft eq 'field') {
+          # field element definition
+          # ========================
+          $writer->startTag('interleave');
+          foreach my $field (@{$dm->get_fields_of_type($ft, $dt)}) {
+            $writer->startTag('optional');
+            $writer->startTag('element', 'name' => "$bltx:$field");
+            $writer->emptyTag('text');# text
+            $writer->endTag(); # $field element
+            $writer->endTag();# optional
+          }
+          $writer->endTag();# interleave
+          # ========================
+        }
+        $writer->endTag(); # define
+      }
+    }
+  }
+
+  # gender attribute definition
+  # ===========================
+  $writer->comment('gender attribute definition');
+  $writer->startTag('define', 'name' => 'gender');
+  $writer->startTag('zeroOrMore');
+  $writer->startTag('attribute', 'name' => 'gender');
+  $writer->startTag('choice');
+  foreach my $gender ($dm->get_constant_value('gender')) {# list type so returns list
+    $writer->dataElement('value', $gender);
+  }
+  $writer->endTag();# choice
+  $writer->endTag();# attribute
+  $writer->endTag();# zeroOrMore
+  $writer->endTag();# define
+  # ===========================
+
+  $writer->endTag();# grammar
+  $writer->end();
+  $rng->close();
+  # So we only do this one for potentially multiple .bltxml datasources
+  $dm->{bltxml_schema_gen_done} = 1;
+}
+
+
 1;
 
 __END__
@@ -721,7 +1163,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2015 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
