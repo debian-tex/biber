@@ -6,12 +6,12 @@ Last-Update: 2013-08-29
 
 ---
  lib/Biber.pm        |    2 +-
- lib/Biber/Config.pm |    4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ lib/Biber/Config.pm |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
 --- biber.orig/lib/Biber/Config.pm
 +++ biber/lib/Biber/Config.pm
-@@ -1224,7 +1224,7 @@
+@@ -1251,7 +1251,7 @@
  
      Increment the count of an labelname/labelyear combination for extrayear
  
@@ -20,18 +20,9 @@ Last-Update: 2013-08-29
      be careful and only increment this counter beyond 1 if there is
      a name component. Otherwise, extrayear gets defined for all
      entries with no name but the same year etc.
-@@ -1701,7 +1701,7 @@
-     setdisplaymode(['entrytype'], ['field'], ['citekey'], $value)
- 
-     This sets the desired displaymode to use for some data in the bib.
--    Of course, this is entirey seperate semantically from the
-+    Of course, this is entirey separate semantically from the
-     displaymodes *defined* in the bib which just tell you what to return
-     for a particular displaymode request for some data.
- 
 --- biber.orig/lib/Biber.pm
 +++ biber/lib/Biber.pm
-@@ -2620,7 +2620,7 @@
+@@ -2704,7 +2704,7 @@
  
          Biber::Config->add_uniquelistcount($namelist);
        }
