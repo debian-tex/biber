@@ -2,11 +2,11 @@ biber (2.4-1) unstable; urgency=medium
 
   * Imported Upstream version 2.4
   * update patches to new release
-  * add libdata-uniqid-perl to deps
+  * add libdata-uniqid-perl, libclass-accessor-perl to deps
   * bump standards version, no changes necessary
   * update watch file
 
- -- Norbert Preining <preining@debian.org>  Thu, 17 Mar 2016 14:28:00 +0900
+ -- Norbert Preining <preining@debian.org>  Thu, 17 Mar 2016 14:31:19 +0900
 
 biber (2.3-1) unstable; urgency=medium
 
