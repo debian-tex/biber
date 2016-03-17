@@ -41,7 +41,7 @@ Build-Depends: debhelper (>= 9),
 		libtest-differences-perl,
 		libtext-roman-perl,
 		tex-common
-Standards-Version: 3.9.6
+Standards-Version: 3.9.7
 Vcs-Git: git://anonscm.debian.org/debian-tex/biber.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=debian-tex/biber.git
 Homepage: http://biblatex-biber.sourceforge.net/
