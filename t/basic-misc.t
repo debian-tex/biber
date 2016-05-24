@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 60;
+use Test::More tests => 67;
 use Test::Differences;
 unified_diff;
 
@@ -55,9 +55,9 @@ Biber::Config->setoption('isbn13', 1);
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+my $main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 my @keys = sort $section->get_citekeys;
-my @citedkeys = sort qw{ alias1 alias2 alias5 anon1 anon2 murray t1 kant:ku kant:kpv t2 shore u1 u2 us1 list1 isbn1 isbn2};
+my @citedkeys = sort qw{ alias1 alias2 alias5 anon1 anon2 murray t1 kant:ku kant:kpv t2 shore u1 u2 us1 list1 isbn1 isbn2 m1 m2 m3};
 
 # entry "loh" is missing as the biber.conf map removes it with map_entry_null
 my @allkeys = sort map {lc()} qw{ anon1 anon2 stdmodel aristotle:poetics vazques-de-parga t1
@@ -71,7 +71,7 @@ piccato hasan hyman stdmodel:glashow stdmodel:ps_sc kant:kpv companion almendro
 sigfridsson ctan baez/online aristotle:rhetoric pimentel00 pines knuth:ct:c moraux cms
 angenendt angenendtsk markey cotton vangennepx kant:ku nussbaum nietzsche:ksa1
 vangennep knuth:ct angenendtsa spiegelberg bertram brandt set:aksin chiu nietzsche:ksa
-set:yoon maron coleridge tvonb t2 u1 u2 i1 i2 tmn1 tmn2 tmn3 tmn4 lne1 alias1 alias2 alias5 url1 ol1 pages1 pages2 pages3 pages4 pages5 pages6 pages7 pages8 us1 labelstest list1 sn1 pages9 isbn1 isbn2 snk1 newtestkey } ;
+set:yoon maron coleridge tvonb t2 u1 u2 i1 i2 tmn1 tmn2 tmn3 tmn4 lne1 alias1 alias2 alias5 url1 ol1 pages1 pages2 pages3 pages4 pages5 pages6 pages7 pages8 us1 labelstest list1 sn1 pages9 isbn1 isbn2 snk1 clone-snk1 newtestkey m1 m2 m3} ;
 
 my $u1 = q|    \entry{u1}{misc}{}
       \name{author}{4}{uniquelist=4}{%
@@ -104,7 +104,7 @@ my $u1 = q|    \entry{u1}{misc}{}
 eq_or_diff( $out->get_output_entry('u1', $main), $u1, 'uniquelist 1' ) ;
 
 is_deeply( \@keys, \@citedkeys, 'citekeys 1') ;
-is_deeply( [ $biber->sortlists->get_list(0, 'shorthands/global', 'list', 'shorthands', 'global')->get_keys ], [ 'kant:kpv', 'kant:ku' ], 'shorthands' ) ;
+is_deeply( [ $biber->sortlists->get_list(0, 'shorthands/global/', 'list', 'shorthands', 'global', '')->get_keys ], [ 'kant:kpv', 'kant:ku' ], 'shorthands' ) ;
 
 # reset some options and re-generate information
 
@@ -494,7 +494,7 @@ $section->del_everykeys;
 Biber::Input::file::bibtex->init_cache;
 $biber->prepare ;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+$main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 $out = $biber->get_output_obj;
 
 eq_or_diff($out->get_output_entry('murray', $main), $murray2, 'bbl with > maxcitenames, empty alphaothers');
@@ -549,7 +549,7 @@ $section->del_everykeys;
 Biber::Input::file::bibtex->init_cache;
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+$main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 
 eq_or_diff($bibentries->entry('tmn1')->get_field($bibentries->entry('tmn1')->get_labelname_info)->get_visible_cite, '1', 'per_type maxcitenames - 1');
 eq_or_diff($bibentries->entry('tmn2')->get_field($bibentries->entry('tmn2')->get_labelname_info)->get_visible_cite, '3', 'per_type maxcitenames - 2');
@@ -644,5 +644,63 @@ my $new1 = q|    \entry{newtestkey}{book}{}
     \endentry
 |;
 
+my $clone1 = q|    \entry{snk1}{book}{}
+      \name{author}{1}{}{%
+        {{uniquename=0,hash=628a4e272572f13a643dc1039e67a9a8}{%
+           prefix={von},
+           prefix_i={v\\bibinitperiod},
+           family={Doe},
+           family_i={D\\bibinitperiod},
+           suffix={Jr},
+           suffix_i={J\\bibinitperiod},
+           given={John},
+           given_i={J\\bibinitperiod}}}%
+      }
+      \strng{namehash}{628a4e272572f13a643dc1039e67a9a8}
+      \strng{fullhash}{628a4e272572f13a643dc1039e67a9a8}
+      \field{labelalpha}{vDoe}
+      \field{sortinit}{v}
+      \field{sortinithash}{d18f5ce25ce0b5ca7f924e3f6c04870e}
+      \field{extraalpha}{2}
+      \field{labelnamesource}{author}
+    \endentry
+|;
+
+my $clone2 = q|    \entry{clone-snk1}{book}{}
+      \name{author}{1}{}{%
+        {{uniquename=0,hash=628a4e272572f13a643dc1039e67a9a8}{%
+           prefix={von},
+           prefix_i={v\\bibinitperiod},
+           family={Doe},
+           family_i={D\\bibinitperiod},
+           suffix={Jr},
+           suffix_i={J\\bibinitperiod},
+           given={John},
+           given_i={J\\bibinitperiod}}}%
+      }
+      \strng{namehash}{628a4e272572f13a643dc1039e67a9a8}
+      \strng{fullhash}{628a4e272572f13a643dc1039e67a9a8}
+      \field{labelalpha}{vDoe}
+      \field{sortinit}{v}
+      \field{sortinithash}{d18f5ce25ce0b5ca7f924e3f6c04870e}
+      \field{extraalpha}{1}
+      \field{labelnamesource}{author}
+      \field{addendum}{add}
+    \endentry
+|;
+
+# clone test
+eq_or_diff($out->get_output_entry('snk1', $main), $clone1, 'Clone - 1');
+eq_or_diff($out->get_output_entry('clone-snk1', $main), $clone2, 'Clone - 2');
+
 # New entry map test
 eq_or_diff($out->get_output_entry('newtestkey', $main), $new1, 'New key mapping - 1');
+
+# Should be three new ids in here with random keys
+is(3, scalar(grep {$_ =~ m/^loopkey:/} $section->get_citekeys), 'New key loop mapping - 1');
+eq_or_diff($bibentries->entry([grep {$_ =~ m/^loopkey:/} $section->get_citekeys]->[0])->get_field('note'), 'NOTEreplaced', 'New key loop mapping - 2');
+
+# uniquetitle test
+eq_or_diff($bibentries->entry('m1')->get_field('uniquetitle'), '1', 'uniquetitle test - 1');
+ok(is_undef($bibentries->entry('m2')->get_field('uniquetitle')),  'uniquetitle test - 2');
+ok(is_undef($bibentries->entry('m3')->get_field('uniquetitle')),  'uniquetitle test - 3');

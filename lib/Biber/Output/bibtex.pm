@@ -38,6 +38,7 @@ sub set_output_target_file {
   my $self = shift;
   my $outfile = shift;
   $self->{output_target_file} = $outfile;
+  return undef;
 }
 
 =head2 set_output_comment
@@ -164,7 +165,7 @@ sub set_output_entry {
 
 =head2 output
 
-    Tool output method
+    output method
 
 =cut
 
@@ -200,7 +201,7 @@ sub output {
   $logger->debug("Writing entries in bibtex format");
 
   # Bibtex output uses just one special section, always sorted by global sorting spec
-  foreach my $key ($Biber::MASTER->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme') . '/global', 'entry', Biber::Config->getblxoption('sortscheme'), 'global')->get_keys) {
+  foreach my $key ($Biber::MASTER->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme') . '/global/', 'entry', Biber::Config->getblxoption('sortscheme'), 'global', '')->get_keys) {
     out($target, ${$data->{ENTRIES}{99999}{index}{$key}});
   }
 

@@ -5,6 +5,7 @@ start =
     # This is usually the same as the biblatex version string but not necessarily.
     # Sometimes the BCF format version doesn't change between biblatex releases
     attribute version { xsd:string {minLength="1"}},
+    attribute bltxversion { xsd:string {minLength="1"}},
 
     # "Global" Biber options. It's not clear what a non-global biber option
     # would be but just in case, we have the option ...
@@ -15,6 +16,7 @@ start =
       input_encoding,
       debug,
       mincrossrefs,
+      minxrefs,
       sortcase,
       sortgiveninits,
       sortupper
@@ -47,6 +49,8 @@ start =
       sortscheme,
       uniquelist,
       uniquename,
+      uniqueprimaryauthor,
+      uniquetitle,
       useprefix,
       usenames
     },
@@ -79,6 +83,7 @@ start =
       sortalphaothers?,
       uniquelist?,
       uniquename?,
+      uniquetitle?,
       useprefix?,
       usenames?
     }*,
@@ -90,8 +95,19 @@ start =
         attribute datatype { "boolean" | "integer" | "string" | "xml" },
         xsd:string
       }+
-    }+,
+    }*,
     
+    # datafield sets
+    element bcf:datafieldset {
+      attribute name { text },
+      element bcf:member {
+        ((attribute fieldtype { dmfieldtype }?,
+          attribute datatype { dmdatatype }?) |
+        attribute field { text }?),
+        empty
+      }+
+    }+,
+
     # user field/entrytype mapping
     element bcf:sourcemap {
       element bcf:maps {
@@ -118,8 +134,9 @@ start =
           attribute substring_side { "left" | "right" }?,
           attribute substring_compound { "0" | "1" }?,
           attribute substring_pcompound { "0" | "1" }?,
-          attribute ifnamecount { xsd:integer }?,
-          attribute namerange { text }?,
+          attribute ifnames { text }?,
+          attribute names { text }?,
+          attribute namessep { string }?,
           attribute noalphaothers { "0" | "1" }?,
           xsd:string
         }+
@@ -189,6 +206,8 @@ start =
         empty
       }+
     }?,
+    # Transliteration specification(s)
+    translit*,
     # Sorting name key specification
     sortingnamekey,
     # Global sorting specification
@@ -216,12 +235,12 @@ start =
       element bcf:fields {
         element bcf:field {
           # fieldtype is "field" or "list"
-          attribute fieldtype { "field" | "list" },
+          attribute fieldtype { dmfieldtype },
           # format is a specification of the format of the field. If not specified, field contents
           # are just as is. 
           attribute format { "xsv" }?,
           # datatype of field content
-          attribute datatype { "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "code" | "uri" | "datepart" | "keyword" | "option" },
+          attribute datatype { dmdatatype },
           # Are we allowed to output a null field value to the .bbl for this field?
           attribute nullok { "true" }?,
           # Should this field be skipped and not output to the .bbl?
@@ -306,6 +325,7 @@ listspec =
       attribute type { "entry" | "list" },
       attribute sortscheme { xsd:string {minLength="1"}},
       attribute sortnamekeyscheme { xsd:string {minLength="1"}},
+      attribute labelprefix { xsd:string },
       # name is only needed for list types
       attribute name { xsd:string {minLength="1"}},
       (filter | filteror )*,
@@ -315,6 +335,16 @@ listspec =
         sort+
       }?
     }*
+
+translit =
+  element bcf:transliteration {
+    attribute entrytype { "*" | xsd:string {minLength="1"} },
+    element bcf:translit {
+      attribute target { "*" | xsd:string {minLength="1"} },
+      attribute from { xsd:string {minLength="1"} },
+      attribute to { xsd:string {minLength="1"} }
+    }+
+  }
 
 sortingnamekey = 
   element bcf:sortingnamekey {
@@ -521,6 +551,18 @@ uniquename =
     element bcf:key { "uniquename" },
     element bcf:value { "0" | "1" | "2" | "3" | "4" | "5" | "6" }
   }
+uniqueprimaryauthor =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "uniqueprimaryauthor" },
+    element bcf:value { "0" | "1" }
+  }
+uniquetitle =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "uniquetitle" },
+    element bcf:value { "0" | "1" }
+  }
 maxitems =
   element bcf:option {
     attribute type { "singlevalued" },
@@ -597,6 +639,12 @@ mincrossrefs =
     element bcf:key { "mincrossrefs" },
     element bcf:value { xsd:integer }
   }
+minxrefs =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "minxrefs" },
+    element bcf:value { xsd:integer }
+  }
 debug =
   element bcf:option {
     attribute type { "singlevalued" },
@@ -664,41 +712,37 @@ map =
     element bcf:per_type { xsd:string {minLength="1"} }*,
     element bcf:map_step {
       (
+        ( attribute map_entry_clone { xsd:string {minLength="1"} }
+        ) |
         ( attribute map_entry_new { xsd:string {minLength="1"} },
           attribute map_entry_newtype { xsd:string {minLength="1"} }
         ) |
-        (
-          attribute map_entry_null { "1" }
-        ) |
-        (
-          attribute map_type_source { xsd:string {minLength="1"} },
+        ( attribute map_type_source { xsd:string {minLength="1"} }?,
           attribute map_type_target { xsd:string {minLength="1"} }?,
-          attribute map_final { "1" }?
-        ) |
-        (
-          attribute map_field_source { xsd:string {minLength="1"} },
+          attribute map_field_source { xsd:string {minLength="1"} }?,
           attribute map_field_target { xsd:string {minLength="1"} }?,
+          attribute map_entrytarget { xsd:string {minLength="1"} }?,
+          attribute map_field_set { xsd:string {minLength="1"} }?,
+          attribute map_entry_null { "1" }?,
+          attribute map_append { "1" }?,
           attribute map_final { "1" }?,
           attribute map_match { xsd:string {minLength="1"} }?,
           attribute map_notmatch { xsd:string {minLength="1"} }?,
-          attribute map_replace { xsd:string }?
-        ) |
-        (
-          attribute map_field_source { xsd:string {minLength="1"} }?,
-          attribute map_entrytarget { xsd:string {minLength="1"} }?,
-          attribute map_field_set { xsd:string {minLength="1"} }?,
-          attribute map_append { "1" }?,
-          attribute map_final { "1" }?,
+          attribute map_replace { xsd:string }?,
           ( attribute map_null { "1" } |
             attribute map_origfield { "1" } |
             attribute map_origfieldval { "1" } |
             attribute map_origentrytype { "1" } |
-            attribute map_field_value { xsd:string {minLength="1"} } )
+            attribute map_field_value { xsd:string {minLength="1"} } )?
         )
       ),
       empty
     }+
   }
+
+dmfieldtype =  "field" | "list"
+dmdatatype =  "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "code" | "uri" | "datepart" | "keyword" | "option"
+
 # Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
 
 # This code is free software.  You can redistribute it and/or

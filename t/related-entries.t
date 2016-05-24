@@ -41,8 +41,8 @@ Biber::Config->setoption('fastsort', 1);
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $shs = $biber->sortlists->get_list(0, 'shorthands/global', 'list', 'shorthands', 'global');
-my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+my $shs = $biber->sortlists->get_list(0, 'shorthands/global/', 'list', 'shorthands', 'global', '');
+my $main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 my $bibentries = $section->bibentries;
 
 my $k1 = q|    \entry{key1}{article}{}
@@ -243,6 +243,7 @@ my $c3k = q|    \entry{0a3d72134fb3d6c024db4c510bc1605b}{book}{dataonly}
     \endentry
 |;
 
+my $m1 = q||;
 
 eq_or_diff( $out->get_output_entry('key1', $main), $k1, 'Related entry test 1' ) ;
 eq_or_diff( $out->get_output_entry('key2', $main), $k2, 'Related entry test 2' ) ;

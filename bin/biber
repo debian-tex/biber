@@ -24,6 +24,7 @@ use Getopt::Long qw/:config no_ignore_case/;
 my $opts = {};
 GetOptions(
            $opts,
+           'annotation_marker|annotation-marker=s',
            'bibencoding=s', # legacy alias for input_encoding
            'bblencoding=s', # legacy alias for output_encoding
            'bblsafechars',  # legacy alias for output_safechars
@@ -51,6 +52,7 @@ GetOptions(
            'logfile=s',
            'mincrossrefs|m=s',
            'namesep=s',
+           'no_bblxml_schema|no-bblxml-schema',
            'no_bltxml_schema|no-bltxml-schema',
            'noconf',
            'nodieonerror',
@@ -91,9 +93,10 @@ GetOptions(
            'trace|T',
            'u',                   # alias for input_encoding=UTF-8
            'U',                   # alias for output_encoding=UTF-8
+           'validate_bblxml|validate-bblxml',
+           'validate_bltxml|validate-bltxml',
            'validate_config|validate-config',
            'validate_control|validate-control',
-           'validate_bltxml|validate-bltxml',
            'validate_datamodel|validate-datamodel|V',
            'version|v',
            'wraplines|w',
@@ -201,8 +204,8 @@ if ($opts->{U}) {
 
 # Check the output_format option
 if (my $of = $opts->{output_format}) {
-  unless ($opts->{output_format} =~ /\A(?:bbl|dot|bibtex|biblatexml)\z/xms) {
-    say STDERR "Biber: Unknown output format '$of', must be one of 'bbl', 'dot', 'bibtex', 'biblatexml'";
+  unless ($opts->{output_format} =~ /\A(?:bbl|dot|bibtex|biblatexml|bblxml)\z/xms) {
+    say STDERR "Biber: Unknown output format '$of', must be one of 'bbl', 'dot', 'bibtex', 'biblatexml', 'bblxml'";
     exit EXIT_ERROR;
   }
 }
@@ -210,7 +213,7 @@ if (my $of = $opts->{output_format}) {
 if (exists($opts->{tool}) and
     exists($opts->{output_format}) and
     $opts->{output_format} !~ /\A(?:bibtex|biblatexml)\z/xms) {
-    say STDERR "Biber: Output format in tool mode must be one of 'bbl' or 'biblatexml'";
+    say STDERR "Biber: Output format in tool mode must be one of 'bibtex' or 'biblatexml'";
     exit EXIT_ERROR;
 }
 
@@ -310,6 +313,9 @@ else {
     elsif (Biber::Config->getoption('output_format') eq 'bbl') { # bbl output
       $outfile = $bcf =~ s/bcf$/bbl/r;
     }
+    elsif (Biber::Config->getoption('output_format') eq 'bblxml') { # bblxml output
+      $outfile = $bcf =~ s/bcf$/bblxml/r;
+    }
     else {
       say "output_format option '" . Biber::Config->getoption('output_format') . "' only makes sense in tool mode (--tool)";
       exit EXIT_ERROR;
@@ -324,18 +330,17 @@ if (my $outdir = Biber::Config->getoption('output_directory')) {
 }
 
 # Set the output class. Should be a subclass of Biber::Output::base
-if (Biber::Config->getoption('output_format') eq 'dot') { # .dot output
-  require Biber::Output::dot;
-  $biber->set_output_obj(Biber::Output::dot->new());
-}
-else {
-  my $package = 'Biber::Output::' . Biber::Config->getoption('output_format');
-  eval "require $package" or biber_error("Error loading data source package '$package': $@");
-  $biber->set_output_obj(eval "${package}->new()");
-}
+my $package = 'Biber::Output::' . Biber::Config->getoption('output_format');
+eval "require $package" or biber_error("Error loading data source package '$package': $@");
+$biber->set_output_obj(eval "${package}->new()");
 
 # Get reference to output object
 my $biberoutput = $biber->get_output_obj;
+
+# Set the output filename and get ref to output object This has to come
+# before .bcf parsing so that we can detect .bcf parsing errors
+# early and clean up
+my $outfileobj = $biberoutput->set_output_target_file($outfile);
 
 # Fake some necessary .bcf parts if in tool mode
 if (Biber::Config->getoption('tool')) {
@@ -346,12 +351,16 @@ else {
   $biber->parse_ctrlfile($bcf);
 }
 
+# Reset output filename now we have the output coding from the .bcf
+# because set_output_target_file() set output encoding from information in .bcf
+$outfileobj = $biberoutput->set_output_target_file($outfile);
+
 # Postprocess biber options now that they are all read from the various places
 Biber::Config->postprocess_biber_opts;
 
-# Set the output target file name
+# Set the output target obj
 # Must come after ctrlfile/option parsing otherwise output encoding is not set
-$biberoutput->set_output_target_file($outfile);
+$biberoutput->set_output_target($outfileobj);
 
 # Check to see if the .bcf set debug=1. If so, increase logging level
 # We couldn't set this on logger init as the .bcf hadn't been read then
@@ -419,6 +428,11 @@ C<biber> provides a replacement of the bibtex processor for users of biblatex.
 =head1 OPTIONS
 
 =over 4
+
+=item B<--annotation-marker=[marker]>
+
+Sets the suffix which can be appended to a BibTeX data source field name to
+indicate that the value of the field is a data annotation. The default is C<+an>.
 
 =item B<--cache>
 
@@ -555,6 +569,10 @@ Use F<sep> as the separator for BibTeX data source name fields. Defaults to BibT
 'and'.
 
 
+=item B<--no-bblxml-schema>
+
+When writing bblxml output, don't generate an RNG XML schema from the data model.
+
 =item B<--no-bltxml-schema>
 
 When reading or writing biblatexml data sources, don't generate an RNG XML schema from the data
@@ -626,14 +644,18 @@ paths in this case are stripped to filename only). F<file> can
 be absolute if B<--output_directory> is not set.
 The legacy option B<--outfile> is supported as an alias.
 
-=item B<--output-format=dot|bibtex|biblatexml|bbl>
+=item B<--output-format=dot|bibtex|biblatexml|bbl|bblxml>
 
 Biber output format. Default if not specified is of course, F<bbl>. Use F<dot>
 to output a GraphViz DOT file instead of F<.bbl>. This is a directed graph of
 the bibliography data showing entries and, as requested, sections and fields.
 You must process this file with C<dot>, e.g. C<dot -Tsvg test.dot -o test.svg> to
 render the graph. See the B<--dot_include> option to select what is included in
-the DOT output.
+the DOT output. F<bblxml> is an XML version of the F<bbl> format which you could
+transform using XSLT. By default, when outputting F<bblxml>, a RelaxNG XML schema
+is generated from the active data modeal and saved with a F<rng> extension along
+with the output file name (unless the B<--no-bblxml-schema> option is specified). You
+may validate the F<bblxml> using the schema with the B<--validate-bblxml> option.
 The legacy option B<--outformat> is supported as an alias.
 
 =item B<--output-macro-fields=[field1, ... fieldn]>
@@ -751,13 +773,12 @@ Alias for B<--input-encoding=UTF-8>
 
 Alias for B<--output-encoding=UTF-8>
 
-=item B<--validate-config>
+=item B<--validate-bblxml>
 
-Schema validate the biber config file.
-
-=item B<--validate-control>
-
-Schema validate the F<.bcf> biblatex control file.
+Schema validate bblXML output against a schema auto-generated from the BibLaTeX
+datamodel. The schema will be auto-generated with the name of the F<.bbl> file with a F<.rng>
+extension. The generated schema can be kept and used with standard XML editors to validate the
+output during XSL development.
 
 =item B<--validate-bltxml>
 
@@ -767,6 +788,14 @@ extension. The generated schema can be kept and used with standard XML editors t
 datasource during datasource development. The schema validation does not validate all
 semantic aspects of the datamodel (i.e. the data model constraints)---for this use the
 C<--validate-datamodel> option.
+
+=item B<--validate-config>
+
+Schema validate the biber config file.
+
+=item B<--validate-control>
+
+Schema validate the F<.bcf> biblatex control file.
 
 =item B<--validate-datamodel|-V>
 

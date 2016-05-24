@@ -4,11 +4,12 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 31;
+use Test::More tests => 33;
 use Test::Differences;
 unified_diff;
 
 use Biber;
+use Biber::Constants;
 use Biber::Output::bbl;
 use Log::Log4perl;
 use Capture::Tiny qw(capture);
@@ -39,6 +40,8 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 # Options - we could set these in the control file but it's nice to see what we're
 # relying on here for tests
 
+$DATAFIELD_SETS{'nobtitle'} = ['booktitle'];
+
 # Biber options
 Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 Biber::Config->setoption('fastsort', 1);
@@ -47,9 +50,9 @@ Biber::Config->setoption('nodieonerror', 1); # because there is a failing cyclic
 # Now generate the information
 my (undef, $stderr) = capture { $biber->prepare };
 my $section0 = $biber->sections->get_section(0);
-my $main0 = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+my $main0 = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 my $section1 = $biber->sections->get_section(1);
-my $main1 = $biber->sortlists->get_list(1, 'nty/global', 'entry', 'nty', 'global');
+my $main1 = $biber->sortlists->get_list(1, 'nty/global/', 'entry', 'nty', 'global', '');
 my $out = $biber->get_output_obj;
 
 # crossref field is included as the parent is included by being crossrefed >= mincrossrefs times
@@ -138,6 +141,7 @@ my $cr_m = q|    \entry{cr_m}{book}{}
       }
       \field{sortinit}{G}
       \field{sortinithash}{1c854ef9177a91bf894e66485bdbd3ed}
+      \true{crossrefsource}
       \field{labeltitlesource}{title}
       \field{title}{Graphs of the Continent}
       \field{year}{1974}
@@ -340,7 +344,7 @@ my $xr2 = q|    \entry{xr2}{inbook}{}
     \endentry
 |;
 
-# This is included as it is crossrefed >= mincrossrefs times
+# This is included as it is xref'd >= minxrefs times
 # Notice lack of labelname and hashes because the only name is EDITOR and useeditor is false
 my $xrm = q|    \entry{xrm}{book}{}
       \name{editor}{1}{}{%
@@ -355,6 +359,7 @@ my $xrm = q|    \entry{xrm}{book}{}
       }
       \field{sortinit}{C}
       \field{sortinithash}{59f25d509f3381b07695554a9f35ecb2}
+      \true{xrefsource}
       \field{labeltitlesource}{title}
       \field{title}{Calligraphy, Calisthenics, Culture}
       \field{year}{1970}
@@ -451,6 +456,7 @@ my $xr4 = q|    \entry{xr4}{inbook}{}
       \field{labeltitlesource}{title}
       \field{origyear}{1933}
       \field{title}{Lumbering Lunatics}
+      \strng{xref}{xrn}
     \endentry
 |;
 
@@ -564,6 +570,39 @@ my $ccr3 = q|    \entry{ccr4}{inbook}{}
     \endentry
 |;
 
+my $s1 = q|    \entry{s1}{inbook}{}
+      \field{sortinit}{S}
+      \field{sortinithash}{fd1e7c5ab79596b13dbbb67f8d70fb5a}
+      \field{labeltitlesource}{title}
+      \strng{crossref}{s2}
+      \field{title}{Subtitle}
+    \endentry
+|;
+
+my $xc2 = q|    \entry{xc2}{inbook}{}
+      \name{author}{1}{}{%
+        {{hash=1a0f7d518cccdad859a74412ef956474}{%
+           family={Crust},
+           family_i={C\\bibinitperiod},
+           given={Xavier},
+           given_i={X\\bibinitperiod}}}%
+      }
+      \name{bookauthor}{1}{}{%
+        {{hash=1a0f7d518cccdad859a74412ef956474}{%
+           family={Crust},
+           family_i={C\\bibinitperiod},
+           given={Xavier},
+           given_i={X\\bibinitperiod}}}%
+      }
+      \strng{namehash}{1a0f7d518cccdad859a74412ef956474}
+      \strng{fullhash}{1a0f7d518cccdad859a74412ef956474}
+      \field{sortinit}{C}
+      \field{sortinithash}{59f25d509f3381b07695554a9f35ecb2}
+      \true{xrefsource}
+      \field{labelnamesource}{author}
+      \field{booktitle}{Title}
+    \endentry
+|;
 
 eq_or_diff($out->get_output_entry('cr1', $main0), $cr1, 'crossref test 1');
 eq_or_diff($out->get_output_entry('cr2', $main0), $cr2, 'crossref test 2');
@@ -581,7 +620,7 @@ eq_or_diff($out->get_output_entry('xrm', $main0), $xrm, 'xref test 3');
 eq_or_diff($out->get_output_entry('xr3', $main0), $xr3, 'xref test 4');
 eq_or_diff($out->get_output_entry('xrt', $main0), $xrt, 'xref test 5');
 eq_or_diff($out->get_output_entry('xr4', $main0), $xr4, 'xref test 6');
-eq_or_diff($section0->has_citekey('xrn'), 0,'xref test 7');
+eq_or_diff($section0->has_citekey('xrn'), 1,'xref test 7');
 eq_or_diff($out->get_output_entry('mxr', $main0), $mxr, 'missing xref test');
 eq_or_diff($out->get_output_entry('mcr', $main0), $mcr, 'missing crossef test');
 eq_or_diff($section1->has_citekey('crn'), 0,'mincrossrefs reset between sections');
@@ -597,5 +636,6 @@ eq_or_diff($section0->has_citekey('r3'), 0,'Recursive crossref test 5');
 ok(defined($section0->bibentry('r3')),'Recursive crossref test 6');
 eq_or_diff($section0->has_citekey('r4'), 0,'Recursive crossref test 7');
 ok(defined($section0->bibentry('r4')),'Recursive crossref test 8');
-
+eq_or_diff($out->get_output_entry('s1', $main0), $s1, 'per-entry noinherit');
+eq_or_diff($out->get_output_entry('xc2', $main0), $xc2, 'Cascading xref+crossref');
 

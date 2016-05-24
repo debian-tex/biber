@@ -43,7 +43,7 @@ $biber->set_output_obj(Biber::Output::bibtex->new());
 
 # Now generate the information
 $biber->prepare_tool;
-my $main = $biber->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme') . '/global', 'entry', Biber::Config->getblxoption('sortscheme'), 'global');
+my $main = $biber->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme') . '/global/', 'entry', Biber::Config->getblxoption('sortscheme'), 'global', '');
 my $out = $biber->get_output_obj;
 
 my $b1 = q|@ARTICLE{murray,
@@ -69,6 +69,7 @@ my $b2 = q|@BOOK{b1,
   MAINTITLE      = {Maintitle},
   MAINTITLEADDON = {Maintitleaddon},
   TITLE          = {Booktitle},
+  TITLE+AN       = {ann1, ann2},
   YEAR           = {1999},
 }
 
@@ -84,7 +85,6 @@ my $b3 = q|@BOOK{xd1,
 
 |;
 
-# NFD here because we are testing internals here and all internals expect NFD
 eq_or_diff($out->get_output_entry('murray',), $b1, 'bibtex output 1');
 eq_or_diff($out->get_output_entry('b1',), $b2, 'bibtex output 2');
 eq_or_diff($out->get_output_entry('xd1',), $b3, 'bibtex output 3');

@@ -14,7 +14,7 @@ our @EXPORT = qw{
                   %CONFIG_SCOPEOPT_BIBLATEX
                   %CONFIG_OPTTYPE_BIBLATEX
                   %CONFIG_BIBLATEX_ENTRY_OPTIONS
-                  %NOSORT_TYPES
+                  %DATAFIELD_SETS
                   %DM_DATATYPES
                   %LOCALE_MAP
                   %LOCALE_MAP_R
@@ -30,9 +30,9 @@ our @EXPORT = qw{
 
 # Version of biblatex control file which this release expects. Matched against version
 # passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '3.0';
+our $BCF_VERSION = '3.1';
 # Format version of the .bbl. Used when writing the .bbl
-our $BBL_VERSION = '2.6';
+our $BBL_VERSION = '2.7';
 
 # Global flags needed for sorting
 our $BIBER_SORT_FINAL = 0;
@@ -55,38 +55,9 @@ unless ($locale) {
   }
 }
 
-# nosort type category shortcuts
-our %NOSORT_TYPES = (
-                     type_name => {
-                                   author => 1,
-                                   afterword => 1,
-                                   annotator => 1,
-                                   bookauthor => 1,
-                                   commentator => 1,
-                                   editor => 1,
-                                   editora => 1,
-                                   editorb => 1,
-                                   editorc => 1,
-                                   foreword => 1,
-                                   holder => 1,
-                                   introduction => 1,
-                                   namea => 1,
-                                   nameb => 1,
-                                   namec => 1,
-                                   shortauthor => 1,
-                                   shorteditor => 1,
-                                   translator => 1
-                                  },
-                     type_title => {
-                                    booktitle => 1,
-                                    eventtitle => 1,
-                                    issuetitle => 1,
-                                    journaltitle => 1,
-                                    maintitle => 1,
-                                    origtitle => 1,
-                                    title => 1
-                                   }
-);
+
+# datafieldsets
+our %DATAFIELD_SETS = ();
 
 # datatypes for data model validation
 our %DM_DATATYPES = (
@@ -94,8 +65,10 @@ our %DM_DATATYPES = (
                      datepart => qr/\A\d+\z/xms
                     );
 
-# Mapping of data source types to extensions
+# Mapping of data source and output types to extensions
 our %DS_EXTENSIONS = (
+                      bbl        => 'bbl',
+                      bblxml     => 'bblxml',
                       bibtex     => 'bib',
                       biblatexml => 'bltxml',
                       ris        => 'ris'
@@ -104,6 +77,7 @@ our %DS_EXTENSIONS = (
 # Biber option defaults. Mostly not needed outside of tool mode since they are passed by .bcf
 
 our $CONFIG_DEFAULT_BIBER = {
+  annotation_marker   => { content => '+an' },
   clrmacros           => { content => 0 },
   collate             => { content => 1 },
   collate_options     => { option => {level => 4, variable => 'non-ignorable', normalization => 'prenormalized' }},
@@ -121,7 +95,9 @@ our $CONFIG_DEFAULT_BIBER = {
   isbn_normalise      => { content => 0 },
   listsep             => { content => 'and' },
   mincrossrefs        => { content => 2 },
+  minxrefs            => { content => 2 },
   namesep             => { content => 'and' },
+  no_bblxml_schema    => { content => 0 },
   no_bltxml_schema    => { content => 0 },
   nodieonerror        => { content => 0 },
   noinit              => { option => [ {value => q/\b\p{Ll}{2}\p{Pd}/},
@@ -130,8 +106,8 @@ our $CONFIG_DEFAULT_BIBER = {
   nolabelwidthcount   => { option => [ {value => q//} ] },
   nolog               => { content => 0 },
   nostdmacros         => { content => 0 },
-  nosort              => { option => [ { name => 'type_name', value => q/\A\p{L}{2}\p{Pd}/ },
-                                       { name => 'type_name', value => q/[\x{2bf}\x{2018}]/ } ] },
+  nosort              => { option => [ { name => 'setnames', value => q/\A\p{L}{2}\p{Pd}/ },
+                                       { name => 'setnames', value => q/[\x{2bf}\x{2018}]/ } ] },
   onlylog             => { content => 0 },
   others_string       => { content => 'others' },
   output_align        => { content => 0 },
@@ -150,9 +126,10 @@ our $CONFIG_DEFAULT_BIBER = {
   strip_comments      => { content => 0 },
   tool                => { content => 0 },
   trace               => { content => 0 },
+  validate_bblxml     => { content => 0 },
+  validate_bltxml     => { content => 0 },
   validate_config     => { content => 0 },
   validate_control    => { content => 0 },
-  validate_bltxml     => { content => 0 },
   validate_datamodel  => { content => 0 },
   wraplines           => { content => 0 },
   xsvsep              => { content => q/\s*,\s*/ },
@@ -251,7 +228,7 @@ our %LOCALE_MAP = (
                    'japanese'        => 'ja-JP',
                    'kannada'         => 'kn-IN',
                    'lao'             => 'lo-LA',
-                   'latin'           => 'sr-Latn',
+                   'latin'           => 'la-Latn',
                    'latvian'         => 'lv-LV',
                    'lithuanian'      => 'lt-LT',
                    'lowersorbian'    => 'dsb-DE',
@@ -282,7 +259,7 @@ our %LOCALE_MAP = (
                    'samin'           => 'se-NO',
                    'sanskrit'        => 'sa-IN',
                    'scottish'        => 'gd-GB',
-                   'serbian'         => 'sr-Cyrl',
+                   'serbian'         => 'sr-Latn',
                    'serbianc'        => 'sr-Cyrl',
                    'slovak'          => 'sk-SK',
                    'slovene'         => 'sl-SI',
@@ -509,6 +486,7 @@ our %CONFIG_BIBLATEX_ENTRY_OPTIONS =
                          INPUT  => ['maxcitenames', 'maxbibnames']},
    minnames          => {OUTPUT => ['mincitenames', 'minbibnames'],
                          INPUT  => ['mincitenames', 'minbibnames']},
+   noinherit         => {OUTPUT => 0},
    presort           => {OUTPUT => 0},
    skipbib           => {OUTPUT => 1},
    skipbiblist       => {OUTPUT => 1},

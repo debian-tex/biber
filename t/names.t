@@ -4,11 +4,12 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 55;
+use Test::More tests => 59;
 use Test::Differences;
 unified_diff;
 
 use Biber;
+use Biber::Utils;
 use Biber::Output::bbl;
 use Log::Log4perl;
 use Unicode::Normalize;
@@ -46,7 +47,7 @@ Biber::Config->setblxoption('mincitenames', 3);
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+my $main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 my $bibentries = $section->bibentries;
 
 my $name1 =
@@ -353,7 +354,7 @@ my $l8 = q|    \entry{L8}{book}{}
 my $l9 = q|    \entry{L9}{book}{}
       \name{author}{1}{}{%
         {{hash=1734924c4c55de5bb18d020c34a5249e}{%
-           family={{Iliad\bibnamedelimb Ipswich}},
+           family={{Iliad Ipswich}},
            family_i={I\bibinitperiod},
            given={Ian},
            given_i={I\bibinitperiod}}}%
@@ -439,6 +440,7 @@ my $l12 = q|    \entry{L12}{book}{}
       \strng{fullhash}{5bb094a9232384acc478f1aa54e8cf3c}
       \field{sortinit}{d}
       \field{sortinithash}{78f7c4753a2004675f316a80bdb31742}
+      \true{uniqueprimaryauthor}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -581,7 +583,7 @@ my $l20 = q|    \entry{L20}{book}{}
         {{hash=fdaa0936724be89ef8bd16cf02e08c74}{%
            family={Ford},
            family_i={F\bibinitperiod},
-           given={{John\bibnamedelimb Henry}},
+           given={{John Henry}},
            given_i={J\bibinitperiod}}}%
       }
       \strng{namehash}{fdaa0936724be89ef8bd16cf02e08c74}
@@ -677,7 +679,7 @@ my $l24 = q|    \entry{L24}{book}{}
 my $l25 = q|    \entry{L25}{book}{}
       \name{author}{1}{}{%
         {{hash=7069367d4a4f37ffb0377e3830e98ed0}{%
-           family={{American\bibnamedelimb Psychological\bibnamedelimb Association,\bibnamedelimb Task\bibnamedelimb Force\bibnamedelimb on\bibnamedelimb the\bibnamedelimb Sexualization\bibnamedelimb of\bibnamedelimb Girls}},
+           family={{American Psychological Association, Task Force on the Sexualization of Girls}},
            family_i={A\bibinitperiod}}}%
       }
       \strng{namehash}{7069367d4a4f37ffb0377e3830e98ed0}
@@ -691,7 +693,7 @@ my $l25 = q|    \entry{L25}{book}{}
 my $l26 = q|    \entry{L26}{book}{}
       \name{author}{1}{}{%
         {{hash=d176a8af5ce1c45cb06875c4433f2fe2}{%
-           family={{Sci-Art\bibnamedelimb Publishers}},
+           family={{Sci-Art Publishers}},
            family_i={S\bibinitperiod}}}%
       }
       \strng{namehash}{d176a8af5ce1c45cb06875c4433f2fe2}
@@ -714,7 +716,7 @@ my $l28 = q|    \entry{L28}{book}{}
 my $l29 = q|    \entry{L29}{book}{}
       \name{author}{1}{}{%
         {{hash=59a5e43a502767d00e589eb29f863728}{%
-           family={{U.S.\bibnamedelimi Department\bibnamedelimb of\bibnamedelimb Health\bibnamedelimb and\bibnamedelimb Human\bibnamedelimb Services,\bibnamedelimb National\bibnamedelimb Institute\bibnamedelimb of\bibnamedelimb Mental\bibnamedelimb Health,\bibnamedelimb National\bibnamedelimb Heart,\bibnamedelimb Lung\bibnamedelimb and\bibnamedelimb Blood\bibnamedelimb Institute}},
+           family={{U.S. Department of Health and Human Services, National Institute of Mental Health, National Heart, Lung and Blood Institute}},
            family_i={U\bibinitperiod}}}%
       }
       \strng{namehash}{59a5e43a502767d00e589eb29f863728}
@@ -751,6 +753,7 @@ my $l31 = q|    \entry{L31}{book}{}
       \strng{fullhash}{29c3ff92fff79d09a8b44d2f775de0b1}
       \field{sortinit}{\~{Z}}
       \field{sortinithash}{fdda4caaa6b5fa63e0c081dcb159543a}
+      \true{uniqueprimaryauthor}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -820,13 +823,15 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 Biber::Config->setoption('output_encoding', 'latin1');
 # If you change the encoding options, you have to re-read the T::B data from the datasource
 # This won't happen unless you invalidate the T::B cache.
+Biber::Config->setblxoption('uniqueprimaryauthor', 1);
+Biber::Config->setoption('namesep', 'and'); # revert custom name sep
 Biber::Input::file::bibtex->init_cache;
 
 # Now generate the information
 $biber->prepare;
 $out = $biber->get_output_obj;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+$main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 $bibentries = $section->bibentries;
 
 eq_or_diff(NFC($bibentries->entry('L21')->get_field($bibentries->entry('L21')->get_labelname_info)->nth_name(1)->get_namepart_initial('given')->[0]), 'Š', 'Terseinitials 1'); # Should be in NFD UTF-8
@@ -834,4 +839,10 @@ eq_or_diff( encode_utf8($out->get_output_entry('L12', $main)), encode_utf8($l12)
 eq_or_diff( $out->get_output_entry('L21', $main), $l21, 'LaTeX encoded unicode given name');
 eq_or_diff( $out->get_output_entry('L22', $main), $l22, 'LaTeX encoded unicode family name - 2');
 eq_or_diff( $out->get_output_entry('L31', $main), $l31, 'LaTeX encoded unicode family name with tie char');
+
+# uniqueprimaryauthor tests
+eq_or_diff($section->bibentry('upa1')->get_field('uniqueprimaryauthor'), 1, 'Unique primary author - 1');
+ok(is_undef($bibentries->entry('upa2')->get_field('uniqueprimaryauthor')), 'Unique primary author - 2');
+ok(is_undef($bibentries->entry('upa3')->get_field('uniqueprimaryauthor')), 'Unique primary author - 3');
+eq_or_diff($section->bibentry('upa4')->get_field('uniqueprimaryauthor'), 1, 'Unique primary author - 4');
 

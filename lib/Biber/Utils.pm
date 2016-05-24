@@ -2,7 +2,6 @@ package Biber::Utils;
 use v5.16;
 use strict;
 use warnings;
-use re 'eval';
 use parent qw(Exporter);
 
 use constant {
@@ -19,7 +18,9 @@ use IPC::Run3; # This works with PAR::Packer and Windows. IPC::Run doesn't
 use Biber::Constants;
 use Biber::LaTeX::Recode;
 use Biber::Entry::Name;
+use Data::Uniqid qw ( suniqid );
 use Regexp::Common qw( balanced );
+use List::AllUtils qw( first );
 use Log::Log4perl qw(:no_extra_logdie_message);
 use Scalar::Util qw(looks_like_number);
 use Text::Roman qw(isroman roman2int);
@@ -48,7 +49,8 @@ our @EXPORT = qw{ locate_biber_file makenamesid makenameid stringify_hash
   is_undef_or_null is_notnull is_null normalise_utf8 inits join_name latex_recode_output
   filter_entry_options biber_error biber_warn ireplace imatch validate_biber_xml
   process_entry_options escape_label unescape_label biber_decode_utf8 out parse_date
-  locale2bcp47 bcp472locale rangelen match_indices process_comment map_boolean parse_range maploop };
+  locale2bcp47 bcp472locale rangelen match_indices process_comment map_boolean parse_range
+  parse_range_alt maploopreplace get_transliterator call_transliterator normalise_string_bblxml};
 
 =head1 FUNCTIONS
 
@@ -224,7 +226,6 @@ sub strip_noinit {
   return $string unless my $noinit = Biber::Config->getoption('noinit');
   foreach my $opt (@$noinit) {
     my $re = $opt->{value};
-    $re = qr/$re/;
     $string =~ s/$re//gxms;
   }
   return $string;
@@ -238,36 +239,33 @@ sub strip_noinit {
 =cut
 
 sub strip_nosort {
-  my $string = shift;
-  my $fieldname = shift;
+  no autovivification;
+  my ($string, $fieldname) = @_;
   return '' unless $string; # Sanitise missing data
   return $string unless my $nosort = Biber::Config->getoption('nosort');
-  # Strip user-defined REs from string
+
   my $restrings;
+
   foreach my $nsopt (@$nosort) {
-    # Specific fieldnames override types
+    # Specific fieldnames override sets
     if (fc($nsopt->{name}) eq fc($fieldname)) {
       push @$restrings, $nsopt->{value};
     }
-  }
-
-  unless ($restrings) {
-    foreach my $nsopt (@$nosort) {
-      next unless $nsopt->{name} =~ /\Atype_/xms;
-      if ($NOSORT_TYPES{lc($nsopt->{name})}{lc($fieldname)}) {
+    elsif (my $set = $DATAFIELD_SETS{lc($nsopt->{name})} ) {
+      if (first {fc($_) eq fc($fieldname)} @$set) {
         push @$restrings, $nsopt->{value};
       }
     }
   }
+
   # If no nosort to do, just return string
   return $string unless $restrings;
+
   foreach my $re (@$restrings) {
-    $re = qr/$re/;
     $string =~ s/$re//gxms;
   }
   return $string;
 }
-
 
 =head2 normalise_string_label
 
@@ -279,16 +277,14 @@ sub normalise_string_label {
   my $str = shift;
   return '' unless $str; # Sanitise missing data
   my $nolabels = Biber::Config->getoption('nolabel');
-  $str =~ s/\\[A-Za-z]+//g;        # remove latex macros (assuming they have only ASCII letters)
+  $str =~ s/\\[A-Za-z]+//g;    # remove latex macros (assuming they have only ASCII letters)
   # Replace ties with spaces or they will be lost
   $str =~ s/([^\\])~/$1 /g; # Foo~Bar -> Foo Bar
   foreach my $nolabel (@$nolabels) {
-    my $nlopt = $nolabel->{value};
-    my $re = qr/$nlopt/;
+    my $re = $nolabel->{value};
     $str =~ s/$re//gxms;           # remove nolabel items
   }
-  $str =~ s/^\s+//;                # Remove leading spaces
-  $str =~ s/\s+$//;                # Remove trailing spaces
+  $str =~ s/(?:^\s+|\s+$)//g;      # Remove leading and trailing spaces
   $str =~ s/\s+/ /g;               # collapse spaces
   return $str;
 }
@@ -311,6 +307,21 @@ sub normalise_string_sort {
   # Then replace ties with spaces or they will be lost
   $str =~ s/([^\\])~/$1 /g; # Foo~Bar -> Foo Bar
   return normalise_string_common($str);
+}
+
+=head2 normalise_string_bblxml
+
+Some string normalisation for bblxml output
+
+=cut
+
+sub normalise_string_bblxml {
+  my $str = shift;
+  return '' unless $str; # Sanitise missing data
+  $str =~ s/\\[A-Za-z]+//g; # remove latex macros (assuming they have only ASCII letters)
+  $str =~ s/\{([^{}]+)\}/$1/g; # remove pointless braces
+  $str =~ s/~/ /g; # replace ties with spaces
+  return $str;
 }
 
 =head2 normalise_string
@@ -339,8 +350,7 @@ sub normalise_string_common {
   my $str = shift;
   $str =~ s/\\[A-Za-z]+//g;        # remove latex macros (assuming they have only ASCII letters)
   $str =~ s/[\p{P}\p{S}\p{C}]+//g; # remove punctuation, symbols, separator and control
-  $str =~ s/^\s+//;                # Remove leading spaces
-  $str =~ s/\s+$//;                # Remove trailing spaces
+  $str =~ s/^\s+|\s+$//g;          # Remove leading and trailing spaces
   $str =~ s/\s+/ /g;               # collapse spaces
   return $str;
 }
@@ -1129,19 +1139,88 @@ sub parse_range {
   }
 }
 
-=head2 maploop
+=head2 parse_range_alt
+
+  Parses a range of values into a two-value array ref.
+  Either start or end can be undef and it's up to surrounding code to interpret this
+
+=cut
+
+sub parse_range_alt {
+  my $rs = shift;
+  $rs =~ m/\A\s*(\P{Pd}+)?\s*(\p{Pd})*\s*(\P{Pd}+)?\s*\z/xms;
+  if ($2) {
+    return [$1, $3];
+  }
+  else {
+    return undef;
+  }
+}
+
+
+=head2 maploopreplace
 
   Replace loop markers with values.
 
 =cut
 
-sub maploop {
-  my ($string, $maploop, $mapuniq) = @_;
-  return $string if not defined($string);
-  return $string unless ($maploop or $mapuniq);
-  $string =~ s/\$MAPLOOP/$maploop/ge if $maploop;
-  $string =~ s/\$MAPUNIQ/$mapuniq/ge if $mapuniq;
+sub maploopreplace {
+  # $MAPUNIQVAL is lexical here
+  no strict 'vars';
+  my ($string, $maploop) = @_;
+  return undef unless defined($string);
+  return $string unless $maploop;
+  $string =~ s/\$MAPLOOP/$maploop/g;
+  $string =~ s/\$MAPUNIQVAL/$MAPUNIQVAL/g;
+  if ($string =~ m/\$MAPUNIQ/) {
+    my $MAPUNIQ = suniqid;
+    $string =~ s/\$MAPUNIQ/$MAPUNIQ/g;
+    $MAPUNIQVAL = $MAPUNIQ;
+  }
   return $string;
+}
+
+=head2 get_transliterator
+
+  Get a ref to a transliterator for the given from/to
+  We are abstracting this in this way because it is not clear what the future
+  of the transliteration library is. We want to be able to switch.
+
+=cut
+
+sub get_transliterator {
+  my ($target, $from, $to) = map {lc} @_;
+  my @valid_from = ('iast');
+  my @valid_to   = ('devanagari');
+  unless (first {$from eq $_} @valid_from and
+          first {$to eq $_} @valid_to) {
+    biber_warn("Invalid transliteration from/to pair ($from/$to)");
+  }
+  require Lingua::Translit;
+  # List pairs explicitly as we don't expect there to be to many of these ever
+  if ($from eq 'iast' and $to eq 'devanagari') {
+    $logger->debug("Using 'iast -> devanagari' transliteration for sorting '$target'");
+    return new Lingua::Translit('IAST Devanagari');
+  }
+  return undef;
+}
+
+=head2 call_transliterator
+
+  Run a transliterator on passed text. Hides call semantics of transliterator
+  so we can switch engine in the future.
+
+=cut
+
+sub call_transliterator {
+  my ($target, $from, $to, $text) = @_;
+  if (my $tr = get_transliterator($target, $from, $to)) {
+    # using Lingua::Translit
+    return $tr->translit($text);
+  }
+  else {
+    return $text;
+  }
 }
 
 

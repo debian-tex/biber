@@ -29,8 +29,8 @@
 \newcommand*{\biblatex}{Biblatex\xspace}
 \MakeAutoQuote{«}{»}
 
-\gdef\biberversion{2.4}    % BIBER VERSION
-\gdef\biblatexversion{3.3}   % BIBLATEX VERSION
+\gdef\biberversion{2.5}    % BIBER VERSION
+\gdef\biblatexversion{3.4}   % BIBLATEX VERSION
 
 % colour for tables
 \definecolor{Gray}{gray}{0.85}
@@ -237,6 +237,7 @@ compatibility matrix for the recent versions.
 \toprule
 \biber\ version & \biblatex\ version\\
 \midrule
+2.5 & 3.4\\
 2.4 & 3.3\\
 2.3 & 3.2\\
 2.2 & 3.1\\
@@ -346,9 +347,8 @@ processing in \biber. The most difficult tasks which \biber\
 performs are the processing of \biblatex's \opt{uniquename} and
 \opt{uniquelist} options\footnote{A rather tricky unbounded loop but with
   a guaranteed eventual stable exit state.}, the sorting of
-lists\footnote{This is a complex, arbitrary multi-field Schwartzian
-  Transform which has to deal with potentially different case and order
-  settings for every field.} and the initial data parse and remap into an
+lists\footnote{This is multi-field ST sort with an embedded cache for
+ performance.} and the initial data parse and remap into an
 internal data model. \biber\ is getting on for around 20,000 lines of
 mostly OO Perl and relies on certain splendid Perl modules
 such as \verb+Unicode::Collate+, \verb+Text::BibTeX+ and
@@ -424,7 +424,7 @@ way performance-wise. \biber\ is written in Perl and does a
 \emph{great} deal more than \BibTeX\ which is written in C. One of
 \biber's test cases is a 2150 entry, 15,000 line \verb+.bib+ file
 which references a 630 entry macros file with a resulting 160 or so page (A4)
-formatted bibliography. This takes \biber\ under 2 minutes to process on
+formatted bibliography. This takes \biber\ just under 30 seconds to process on
 a reasonable computer. This is perfectly acceptable, especially for a
 batch program.
 
@@ -620,9 +620,9 @@ an example config file which displays the \biber\ defaults:
   <nostdmacros>0</nostdmacros>
   <nosort>
     <!-- strip prefices like 'El-' when sorting name fields -->
-    <option name="type_name" value="\A\p{L}{2}\p{Pd}"/>
+    <option name="setnames" value="\A\p{L}{2}\p{Pd}"/>
     <!-- strip some diacritics when sorting name fields -->
-    <option name="type_name" value="[\x{2bf}\x{2018}]"/>
+    <option name="setnames" value="[\x{2bf}\x{2018}]"/>
   </nosort>
   <onlylog>0</onlylog>
   <others_string>others</others_string>
@@ -663,7 +663,8 @@ which is described in section \ref{ref:map}.
 \biber\ is able to output formats other than \file{.bbl} files for \biblatex\
 to consume. It is also able to output other formats such as \file{DOT} for
 visualisation of entry dependencies (see section \ref{ref:vis}), the
-experimental \verb+biblatexml+ XML format and also \bibtex\ \file{.bib} files.
+experimental \verb+biblatexml+ XML format, \bibtex\ \file{.bib} files and
+an XML version of the \file{.bbl} format with extension \file{.bblxml}.
 \file{.bib} output is possible in tool mode, when you are converting an
 entire datasource file independently of any particular document (see
 section \ref{ref:tool}). It is also useful when you want, instead of a
@@ -682,6 +683,19 @@ citation order, formatted according to the various \opt{ouput-*} options.
 You could of course also perform more processing like source mapping
 (see section \ref{ref:map}), reencoding (see section \ref{ref:enc}) etc. using more
 command line options or a config file.
+
+The \file{.bblxml} format for output is an XML version of the \file{.bbl}.
+It cannot be read by \biblatex\ but contains the same information as in the
+\file{.bbl} and may be useful if you want to transform a document
+bibliography into some other format since XML is a well-supported
+transformation format (using, for example, XSLT). By default, when choosing
+\file{.bblxml} output with the option \opt{--output-format=bblxml}, a
+RelaxNG XML schema is also generated (unless the \opt{--no-bblxml-schema}
+is used). This schema is derived from the active datamodel in the document
+(passed in the \file{.bcf} from \biblatex) and is placed in the same
+directory as the \file{.bblxml} output file. The extension of the schema is
+\file{.rng}. The option \opt{--validate-bblxml} may be used to validate the
+\file{.bblxml} against the schema.
 
 \subsubsection{The \texttt{sourcemap} option}\label{ref:map}
 
@@ -773,7 +787,7 @@ allows you to do a particular thing or combination of things:
 examples. A \opt{map} element looks like this:
 
 \begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
-<map +\textcolor{blue}{map\_overwrite="0|1"} \textcolor{blue}{map\_foreach="\textcolor{red}{loopfield}"}+>
+<map +\textcolor{blue}{map\_overwrite="0|1"} \textcolor{blue}{map\_foreach="\textcolor{red}{loopval}"}+>
   +\textcolor{blue}{<per\_datasource>\textcolor{red}{datasource}</per\_datasource>}+
   +\textcolor{blue}{<per\_type>\textcolor{red}{entrytype}</per\_type>}+
   +\textcolor{blue}{<per\_nottype>\textcolor{red}{entrytype}</per\_nottype>}+
@@ -792,7 +806,7 @@ examples. A \opt{map} element looks like this:
              +\textcolor{blue}{map\_append="1"}+
              +\textcolor{blue}{map\_null="1"}+
              +\textcolor{blue}{map\_entry\_null="1"}+
-             +\textcolor{blue}{map\_entry\_clone="\textcolor{red}{prefix}"}+
+             +\textcolor{blue}{map\_entry\_clone="\textcolor{red}{clonekey}"}+
              +\textcolor{blue}{map\_origfield="1"}+
              +\textcolor{blue}{map\_origfieldval="1"}+
              +\textcolor{blue}{map\_origentrytype="1"}+
@@ -817,13 +831,19 @@ examples. A \opt{map} element looks like this:
   omitted, it defaults to the parent \opt{maps} attribute value.
 \item The \texttt{map\_foreach} attribute loops over all \cmd{step}s in
   this \cmd{map}, setting the special variable \verb+$MAPLOOP+ to each of
-  the comma-separated values contained in the entry field
-  \textcolor{red}{\texttt{loopfield}}. This allows the user to repeat a
-  group of \opt{map\_step}s for each value of another CSV field. Using
-  regexp maps, it is possible to create a CSV field for use with this
-  functionality. The special variable \verb+$MAPUNIQ+ may also be used the
-  \opt{map\_step}s to generate a random unique string. This can be useful when
-  creating keys for new entries.
+  the comma-separated values contained in
+  \textcolor{red}{\texttt{loopval}}. \textcolor{red}{\texttt{loopval}} can
+  either be the name of a datafield set defined with \biblatex's
+  \cmd{DeclareDatafieldSet}, a datasource field which contains a
+  comma-separated values list or an explicit comma-separated values list
+  itself (and \textcolor{red}{\texttt{loopval}} is determined in that
+  order). This allows the user to repeat a group of \opt{map\_step}s for
+  each value of \textcolor{red}{\texttt{loopval}}. The special variable
+  \verb+$MAPUNIQ+ may also be used in the \opt{map\_step}s to generate a
+  random unique string. This can be useful when creating keys for new
+  entries. The special variable \verb+$MAPUNIQVAL+ may be used the
+  \opt{map\_step}s to refer to the value of the last random unique string
+  generated with \verb+$MAPUNIQ+.
 \end{itemize}
 
 \noindent Each \opt{map\_step} is looked at in turn and compared with the
@@ -835,8 +855,11 @@ datasource entry being processed. A \opt{map\_step} works like this:
   entry type \textcolor{red}{\texttt{newentrykeytype}} given in the option
   \textcolor{blue}{\texttt{map\_entry\_newtype}}. This entry is only
   in-scope during the processing of the current entry and can be referenced
-  by \textcolor{red}{\texttt{newentrykeytype}} given as the value to
-  \textcolor{blue}{\texttt{map\_entrytarget}}.
+  by \textcolor{red}{\texttt{newentrykey}} given as the value to
+  \textcolor{blue}{\texttt{map\_entrytarget}}. In
+  \textcolor{red}{\texttt{newentrykey}}, you may use standard Perl
+  regular expression backreferences to captures from a
+  previous \textcolor{blue}{\texttt{map\_match}} step.
 \item When a \textcolor{blue}{\texttt{map\_field\_set}} step has
   \textcolor{blue}{\texttt{map\_entrytarget}} set to the entrykey of an
   entry created by \textcolor{blue}{\texttt{map\_entry\_new}}, the target
@@ -848,13 +871,16 @@ datasource entry being processed. A \opt{map\_step} works like this:
   entry is not created. It is as if it did not exist in the
   datasource. Obviously, you should select the entries which you want
   to apply this to using prior mapping steps.
-\item If \textcolor{blue}{\texttt{map\_entry\_clone}} is set,
-  a clone of the entry is created with an entry key prefixed by
-  \textcolor{red}{\texttt{prefix}}. Obviously this may cause
-  labelling problems in author/year styles etc. and should be used with
-  care. It is mainly intended for numbering issues with numeric styles
-  and multiple bibliographies where the same entries occur in more than one
-  bibliography.
+\item If \textcolor{blue}{\texttt{map\_entry\_clone}} is set, a clone of
+  the entry is created with an entry key
+  \textcolor{red}{\texttt{clonekey}}. Obviously this may cause labelling
+  problems in author/year styles etc. and should be used with care. The
+  cloned entry is in-scope during the processing of the current entry and
+  can be modified by passing its key as the value to
+  \textcolor{blue}{\texttt{map\_entrytarget}}. In
+  \textcolor{red}{\texttt{clonekey}}, you may use standard Perl
+  regular expression backreferences to captures from a
+  previous \textcolor{blue}{\texttt{map\_match}} step.
 \item Change the \textcolor{red}{\texttt{source-entrytype}} to
   \textcolor{red}{\texttt{target-entrytype}}, if defined. If
   \textcolor{blue}{\texttt{map\_final}} is set then if the entrytype of the
@@ -1112,6 +1138,18 @@ for abstracts:
   </map>
 </maps>
 \end{lstlisting}
+
+\noindent Here we use a loop to apply a regular expression replacement to
+several fields:
+
+\begin{lstlisting}[language=xml,escapechar=;,mathescape=true]
+<maps datatype="bibtex" level="user">
+  <map map_overwrite="1" map_foreach="author,editor,translator">
+    <map_step map_field_source=";\$MAPLOOP;" map_match="Smith" map_replace="Jones"/>
+  </map>
+</maps>
+\end{lstlisting}
+
 \bigskip
 \subsubsection{The \texttt{inheritance} option}\label{inheritance}
 
@@ -1580,19 +1618,20 @@ personal default and thus they would naturally be set in the config file
 anyway. \opt{nosort} allows you to ignore parts of a field for sorting.
 This is done using Perl regular expressions which specify what to
 ignore in a field. You can specify as many patterns as you like for a
-specific field. Also available are some field type aliases so you can, for
-example, specify patterns for all name fields or all title fields. These
-field types all begin with the string «\verb+type_+», see Table
-\ref{tab:nst}.
+specific field. Datasource field sets defined using
+\cmd{DeclareDatafieldSet} in \biblatex are also recognised as valid options
+values and so you can specify \opt{nosort} regular expressions for
+arbitrary sets of fields. \biblatex defines as standard two sets as shown
+in Table \ref{tab:nst}.
 
 \begin{table}
 \begin{center}
 \small
 \begin{tabular}{ll}
 \toprule
-Alias & Fields\\
+Set & Fields\\
 \midrule
-type\_name & author\\
+setnames & author\\
           & afterword\\
           & annotator\\
           & bookauthor\\
@@ -1610,7 +1649,7 @@ type\_name & author\\
           & shortauthor\\
           & shorteditor\\
           & translator\\
-type\_title & booktitle\\
+settitles & booktitle\\
            & eventtitle\\
            & issuetitle\\
            & journaltitle\\
@@ -1620,7 +1659,7 @@ type\_title & booktitle\\
 \bottomrule
 \end{tabular}
 \end{center}
-\caption{\texttt{nosort} option field type aliases}
+\caption{Default \biblatex\ datafield sets}
 \label{tab:nst}
 \end{table}
 
@@ -1630,9 +1669,9 @@ in names which should not be considered when sorting. Given (the default):
 \begin{lstlisting}[language=xml]
 <nosort>
   <!-- strip prefices like 'al-' when sorting names -->
-  <option name="type_name" value="\A\p{L}{2}\p{Pd}"/>
+  <option name="setnames" value="\A\p{L}{2}\p{Pd}"/>
   <!-- strip diacritics when sorting names -->
-  <option name="type_name" value="[\x{2bf}\x{2018}]"/>
+  <option name="setnames" value="[\x{2bf}\x{2018}]"/>
 </nosort>
 \end{lstlisting}
 
@@ -1665,7 +1704,7 @@ beginning of a \bibfield{TITLE} field when sorting, you could add this to your
 
 \begin{lstlisting}[language=xml]
 <nosort>
-  <option name="type_title" value="\AThe\s+"/>
+  <option name="settitles" value="\AThe\s+"/>
 </nosort>
 \end{lstlisting}
 
@@ -2697,23 +2736,23 @@ linux» if unsure about this. There are many pages about this, for example:
 
 Instructions for those who want/need to build an executable from the
 Perl version. For this, you will need to have Perl 5.16+ with
-the following modules:
+the following modules (best installed in this order):
 
 \begin{itemize}
+\item \verb+Module::Build+ and all dependencies
 \item All \biber\ pre-requisites
 \item \verb+PAR::Packer+ and all dependencies
 \end{itemize}
 
-\noindent You should have the latest CPAN versions of all required modules
-as \biber\ is very specific in some cases about module versions and
+\noindent \biber\ is very specific in some cases about module versions and
 sometimes depends on recent fixes. You can see if you have the
-\biber\ Perl dependencies by the usual
+\biber\ Perl dependencies by the usual \verb+Module::Build+ command:
 
 \begin{verbatim}
 perl ./Build.PL
 \end{verbatim}
 
-\noindent invocation in the \biber\ Perl distribution tree
+\noindent run at the root of the \biber\ Perl distribution
 directory. Normally, the build procedure for the binaries is as
 follows\footnote{On Unix-like systems, you may need to specify a full
   path to the scripts e.g. \texttt{./Build}}:
@@ -2722,10 +2761,12 @@ follows\footnote{On Unix-like systems, you may need to specify a full
 \item Get the \biber\ source tree from SF and put it on the architecture
   you are building for
 \item cd to the root of the source tree
-\item \verb+perl Build.PL+ (this will check your module
-  dependencies)
-\item \verb+Build test+
-\item \verb+Build install+ (may need to run this as sudo on
+\item \verb+perl Build.PL+ (this will check your module dependencies)
+\item If you are missing dependencies, you will be informed and then you
+  should run \verb+Build installdeps+ (may need to run this with sudo on
+  Unix-like systems)
+\item Run the test suite with \verb+Build test+
+\item Install with \verb+Build install+ (may need to run this with sudo on
   Unix-like systems)
 \item \verb+cd dist/<arch>+
 \item \verb+build.sh+ (\verb+build.bat+ on Windows)
@@ -2733,7 +2774,7 @@ follows\footnote{On Unix-like systems, you may need to specify a full
 
 \noindent This leaves a binary called «\verb+biber-<arch>+» (also with
 a «\verb+.exe+» extension on Windows/Cygwin) in your current directory.
-The tricky part is constructing the information for the build
+The important part is constructing the information for the build
 script. There are two things that need to be configured, both of
 which are required by the \verb+PAR::Packer+ module:
 
@@ -2768,20 +2809,20 @@ define these two things as part of constructing new build scripts:
 \item Run the build script
 \end{itemize}
 
-\noindent The \opt{--link} options can be a little tricky
-sometimes. It is usually best to build without them once and then run
-\verb+ldd+ (or OS equivalent) on the binary to see which
-version/location of a library you should link to. You can also try
-just running the binary and it should complain about missing libraries
-and where it expected to find them. Put this path into the
-\opt{--link} option. The \opt{--module} options are the same for all
-architectures and do not need to be modified.
-On architectures which have or can have case-insensitive file systems,
-you should use the build script from either Windows or OSX as a reference
-as these include a step to copy the main \biber\ script to a new name
-before packing the binary. This is required as otherwise a spurious
-error is reported to the user on first run of the binary due to a name
-collision when it unpacks itself.
+\noindent The \opt{--link} options can be a little tricky sometimes. It is
+usually best to build without them once and then run
+\verb+ldd+\footnote{\verb+otool+ on OSX and \verb+depends.exe+ on Windows}
+on the binary to see which version/location of a library you should link
+to. You can also try just running the binary and it should complain about
+missing libraries and where it expected to find them. Put missing library
+paths into \opt{--link} options. The \opt{--module} options are the same
+for all architectures and do not need to be modified. On architectures
+which have or can have case-insensitive file systems, you should use the
+build script from either Windows or OSX as a reference as these include a
+step to copy the main \biber\ script to a new name before packing the
+binary. This is required as otherwise a spurious error is reported to the
+user on first run of the binary due to a name collision when it unpacks
+itself.
 
 See the \verb+PAR+ wiki
 page\footnote{\url{http://par.perl.org/wiki/Main_Page}} for FAQs and help
@@ -2811,7 +2852,7 @@ of \biber\ version and locale of course but there should be no errors
 or warnings).
 
 \begin{verbatim}
-INFO - This is Biber 2.4
+INFO - This is Biber 2.5
 INFO - Logfile is 'test.blg'
 INFO - BibLaTeX control file 'test.bcf' validates
 INFO - Converted BibLaTeX control file 'test.bcf' to 'test.bcf.html'
@@ -2847,9 +2888,9 @@ test.bbl
 \toprule
 Language & Locale & Language & Locale & Language & Locale & Language & Locale\\
 \midrule
-acadian    & \texttt{fr\_CA}  & divehi      & \texttt{dv\_MV}  & latin           & \texttt{sr\_Latn} & sanskrit        & \texttt{sa\_IN}\\
+acadian    & \texttt{fr\_CA}  & divehi      & \texttt{dv\_MV}  & latin           & \texttt{la\_Latn} & sanskrit        & \texttt{sa\_IN}\\
 american   & \texttt{en\_US}  & dutch       & \texttt{nl\_NL}  & latvian         & \texttt{lv\_LV} &   scottish        & \texttt{gd\_GB}\\
-australian & \texttt{en\_AU}  & english     & \texttt{en\_US}  & lithuanian      & \texttt{lt\_LT} &   serbian         & \texttt{sr\_Cyrl}\\ 
+australian & \texttt{en\_AU}  & english     & \texttt{en\_US}  & lithuanian      & \texttt{lt\_LT} &   serbian         & \texttt{sr\_Latn}\\ 
 afrikaans  & \texttt{af\_ZA}  & esperanto   & \texttt{eo\_001} & lowersorbian    & \texttt{dsb\_DE} &  serbianc        & \texttt{sr\_Cyrl}\\ 
 albanian   & \texttt{sq\_AL}  & estonian    & \texttt{et\_EE}  & lsorbian        & \texttt{dsb\_DE} &  slovak          & \texttt{sk\_SK}\\
 amharic    & \texttt{am\_ET}  & ethiopia    & \texttt{am\_ET}  & magyar          & \texttt{hu\_HU} &   slovene         & \texttt{sl\_SI}\\

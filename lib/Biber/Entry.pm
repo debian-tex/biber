@@ -29,7 +29,7 @@ Biber::Entry
              Such fields are used for tool mode where we don't want to alter the fields as they
              need to go back into the output as they are
     * data - These are fields which derive directly from or are themselves fields in the
-             data souce. Things like YEAR, MONTH, DAY etc. are such fields which are derived from,
+             data source. Things like YEAR, MONTH, DAY etc. are such fields which are derived from,
              for example, the DATE field (which is itself a "raw" field). They are part of the
              original data implicitly, derived from a "raw" field.
     * other - These are fields, often meta-information like labelname, labelalpha etc. which are
@@ -135,8 +135,7 @@ sub relclone {
 =cut
 
 sub clone {
-  my $self = shift;
-  my $newkey = shift;
+  my ($self, $newkey) = @_;
   my $new = new Biber::Entry;
   while (my ($k, $v) = each(%{$self->{datafields}})) {
     $new->{datafields}{$k} = $v;
@@ -175,14 +174,13 @@ sub notnull {
 =head2 set_labelname_info
 
   Record the labelname information. This is special
-  meta-information so we have a seperate method for this
+  meta-information so we have a separate method for this
   Takes a hash ref with the information.
 
 =cut
 
 sub set_labelname_info {
-  my $self = shift;
-  my $data = shift;
+  my ($self, $data) = @_;
   $self->{labelnameinfo} = $data;
   return;
 }
@@ -190,7 +188,7 @@ sub set_labelname_info {
 =head2 get_labelname_info
 
   Retrieve the labelname information. This is special
-  meta-information so we have a seperate method for this
+  meta-information so we have a separate method for this
   Returns a hash ref with the information.
 
 =cut
@@ -203,14 +201,13 @@ sub get_labelname_info {
 =head2 set_labelnamefh_info
 
   Record the fullhash labelname information. This is special
-  meta-information so we have a seperate method for this
+  meta-information so we have a separate method for this
   Takes a hash ref with the information.
 
 =cut
 
 sub set_labelnamefh_info {
-  my $self = shift;
-  my $data = shift;
+  my ($self, $data) = @_;
   $self->{labelnamefhinfo} = $data;
   return;
 }
@@ -218,7 +215,7 @@ sub set_labelnamefh_info {
 =head2 get_labelnamefh_info
 
   Retrieve the fullhash labelname information. This is special
-  meta-information so we have a seperate method for this
+  meta-information so we have a separate method for this
   Returns a hash ref with the information.
 
 =cut
@@ -231,14 +228,13 @@ sub get_labelnamefh_info {
 =head2 set_labeltitle_info
 
   Record the labeltitle information. This is special
-  meta-information so we have a seperate method for this
+  meta-information so we have a separate method for this
   Takes a hash ref with the information.
 
 =cut
 
 sub set_labeltitle_info {
-  my $self = shift;
-  my $data = shift;
+  my ($self, $data) = @_;
   $self->{labeltitleinfo} = $data;
   return;
 }
@@ -246,7 +242,7 @@ sub set_labeltitle_info {
 =head2 get_labeltitle_info
 
   Retrieve the labeltitle information. This is special
-  meta-information so we have a seperate method for this
+  meta-information so we have a separate method for this
   Returns a hash ref with the information.
 
 =cut
@@ -260,14 +256,13 @@ sub get_labeltitle_info {
 =head2 set_labeldate_info
 
   Record the labeldate information. This is special
-  meta-information so we have a seperate method for this
+  meta-information so we have a separate method for this
   Takes a hash ref with the information.
 
 =cut
 
 sub set_labeldate_info {
-  my $self = shift;
-  my $data = shift;
+  my ($self, $data) = @_;
   $self->{labeldateinfo} = $data;
   return;
 }
@@ -275,7 +270,7 @@ sub set_labeldate_info {
 =head2 get_labeldate_info
 
   Retrieve the labeldate information. This is special
-  meta-information so we have a seperate method for this
+  meta-information so we have a separate method for this
   Returns a hash ref with the information.
 
 =cut
@@ -294,8 +289,7 @@ sub get_labeldate_info {
 =cut
 
 sub set_field {
-  my $self = shift;
-  my ($key, $val) = @_;
+  my ($self, $key, $val) = @_;
   # All derived fields can be null
   $self->{derivedfields}{$key} = $val;
   return;
@@ -310,8 +304,7 @@ sub set_field {
 =cut
 
 sub get_field {
-  my $self = shift;
-  my $key = shift;
+  my ($self, $key) = @_;
   return undef unless $key;
   return $self->{datafields}{$key} //
          $self->{derivedfields}{$key} //
@@ -326,8 +319,7 @@ sub get_field {
 =cut
 
 sub set_datafield {
-  my $self = shift;
-  my ($key, $val) = @_;
+  my ($self, $key, $val) = @_;
   $self->{datafields}{$key} = $val;
   return;
 }
@@ -341,8 +333,7 @@ sub set_datafield {
 =cut
 
 sub set_rawfield {
-  my $self = shift;
-  my ($key, $val) = @_;
+  my ($self, $key, $val) = @_;
   $self->{rawfields}{$key} = $val;
   return;
 }
@@ -354,8 +345,7 @@ sub set_rawfield {
 =cut
 
 sub get_rawfield {
-  my $self = shift;
-  my $key = shift;
+  my ($self, $key) = @_;
   return $self->{rawfields}{$key};
 }
 
@@ -367,8 +357,7 @@ sub get_rawfield {
 =cut
 
 sub get_datafield {
-  my $self = shift;
-  my $key = shift;
+  my ($self, $key) = @_;
   return $self->{datafields}{$key};
 }
 
@@ -380,8 +369,7 @@ sub get_datafield {
 =cut
 
 sub del_field {
-  my $self = shift;
-  my $key = shift;
+  my ($self, $key) = @_;
   delete $self->{datafields}{$key};
   delete $self->{derivedfields}{$key};
   delete $self->{rawfields}{$key};
@@ -395,8 +383,7 @@ sub del_field {
 =cut
 
 sub del_datafield {
-  my $self = shift;
-  my $key = shift;
+  my ($self, $key) = @_;
   delete $self->{datafields}{$key};
   return;
 }
@@ -409,8 +396,7 @@ sub del_datafield {
 =cut
 
 sub field_exists {
-  my $self = shift;
-  my $key = shift;
+  my ($self, $key) = @_;
   return (exists($self->{datafields}{$key}) ||
           exists($self->{derivedfields}{$key}) ||
           exists($self->{rawfields}{$key})) ? 1 : 0;
@@ -509,8 +495,7 @@ sub has_keyword {
 =cut
 
 sub add_warning {
-  my $self = shift;
-  my $warning = shift;
+  my ($self, $warning) = @_;
   push @{$self->{derivedfields}{warnings}}, $warning;
   return;
 }
@@ -529,8 +514,7 @@ sub add_warning {
 =cut
 
 sub set_inherit_from {
-  my $self = shift;
-  my $parent = shift;
+  my ($self, $parent) = @_;
 
   # Data source fields
   foreach my $field ($parent->datafields) {
@@ -667,6 +651,13 @@ sub inherit_from {
       if (($type_pair->{source} eq '*' or $type_pair->{source} eq $parenttype) and
           ($type_pair->{target} eq '*' or $type_pair->{target} eq $type)) {
         foreach my $field (@{$inherit->{field}}) {
+          # Skip for fields in the per-entry noinerit datafield set
+          if (my $niset = Biber::Config->getblxoption('noinherit', undef, $target_key) and
+             exists($field->{target})) {
+            if (first {$field->{target} eq $_} @{$DATAFIELD_SETS{$niset}}) {
+              next;
+            }
+          }
           next unless $parent->field_exists($field->{source});
           $processed{$field->{source}} = 1;
           # localise defaults according to field, if specified
@@ -711,6 +702,12 @@ sub inherit_from {
       @fields = $parent->datafields;
     }
     foreach my $field (@fields) {
+      # Skip for fields in the per-entry noinerit datafield set
+      if (my $niset = Biber::Config->getblxoption('noinherit', undef, $target_key)) {
+        if (first {$field eq $_} @{$DATAFIELD_SETS{$niset}}) {
+          next;
+        }
+      }
       next if $processed{$field}; # Skip if we have already dealt with this field above
       # Set the field if it doesn't exist or override is requested
       if (not $self->field_exists($field) or $override_target eq 'true') {
