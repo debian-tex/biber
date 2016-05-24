@@ -40,7 +40,7 @@ Last-Update: 2013-08-29
  
 --- biber.orig/lib/Biber/Entry/Name.pm
 +++ biber/lib/Biber/Entry/Name.pm
-@@ -28,7 +28,7 @@
+@@ -30,7 +30,7 @@
  
  =head1 NAME
  
@@ -84,7 +84,7 @@ Last-Update: 2013-08-29
  
 --- biber.orig/lib/Biber/SortList.pm
 +++ biber/lib/Biber/SortList.pm
-@@ -11,7 +11,7 @@
+@@ -12,7 +12,7 @@
  
  =head1 NAME
  
@@ -106,7 +106,7 @@ Last-Update: 2013-08-29
  
 --- biber.orig/lib/Biber/DataModel.pm
 +++ biber/lib/Biber/DataModel.pm
-@@ -15,7 +15,7 @@
+@@ -17,7 +17,7 @@
  
  =head1 NAME
  

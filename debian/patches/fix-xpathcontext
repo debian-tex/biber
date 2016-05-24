@@ -8,7 +8,7 @@ Thanks to Don Armstrong for providing the idea
 
 --- biber.orig/lib/Biber/Input/file/biblatexml.pm
 +++ biber/lib/Biber/Input/file/biblatexml.pm
-@@ -173,7 +173,8 @@
+@@ -174,7 +174,8 @@
    $xml = NFD(decode('UTF-8', $xml));# Unicode NFD boundary
    my $bltxml = XML::LibXML->load_xml(string => $xml);
    my $xpc = XML::LibXML::XPathContext->new($bltxml);
