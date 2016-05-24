@@ -11,7 +11,7 @@ build_requires:
 configure_requires:
   Module::Build: '0.38'
 dynamic_config: 1
-generated_by: 'Module::Build version 0.4214, CPAN::Meta::Converter version 2.150001'
+generated_by: 'Module::Build version 0.4216, CPAN::Meta::Converter version 2.150001'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -20,9 +20,11 @@ name: biblatex-biber
 provides:
   Biber:
     file: lib/Biber.pm
+  Biber::Annotation:
+    file: lib/Biber/Annotation.pm
   Biber::Config:
     file: lib/Biber/Config.pm
-    version: '2.4'
+    version: '2.5'
   Biber::Constants:
     file: lib/Biber/Constants.pm
   Biber::DataModel:
@@ -86,13 +88,14 @@ requires:
   IPC::Run3: '0'
   LWP::Protocol::https: '0'
   LWP::Simple: '0'
+  Lingua::Translit: '0.25'
   List::AllUtils: '0'
   List::MoreUtils: '0'
   List::MoreUtils::XS: '0'
   Log::Log4perl: '0'
   Mozilla::CA: '20141217'
   Regexp::Common: '0'
-  Text::BibTeX: '0.71'
+  Text::BibTeX: '0.72'
   Text::Roman: '0'
   URI: '0'
   Unicode::Collate: '1.14'
@@ -106,4 +109,4 @@ requires:
   perl: v5.16.0
 resources:
   license: http://dev.perl.org/licenses/
-version: '2.4'
+version: '2.5'

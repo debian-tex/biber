@@ -5,6 +5,7 @@ use warnings;
 
 use Biber::Utils;
 use Biber::Constants;
+use Digest::MD5 qw( md5_hex );
 use List::Util qw( first );
 
 =encoding utf-8
@@ -99,6 +100,52 @@ sub get_sortnamekeyschemename {
   return $self->{sortnamekeyschemename};
 }
 
+=head2 set_sortinit_collator
+
+    Sets the sortinit collator for this list
+
+=cut
+
+sub set_sortinit_collator {
+  my $self = shift;
+  $self->{sortinitcollator} = shift;;
+  return;
+}
+
+=head2 get_sortinit_collator
+
+    Gets the sortinit collator for this list
+
+=cut
+
+sub get_sortinit_collator {
+  my $self = shift;
+  return $self->{sortinitcollator};
+}
+
+=head2 get_labelprefix
+
+    Gets the labelprefix setting of a sort list
+
+=cut
+
+sub get_labelprefix {
+  my $self = shift;
+  return $self->{labelprefix};
+}
+
+=head2 set_labelprefix
+
+    Sets the labelprefix setting of a sort list
+
+=cut
+
+sub set_labelprefix {
+  my $self = shift;
+  my $pn = shift;
+  $self->{labelprefix} = $pn;
+  return
+}
 
 =head2 set_name
 
@@ -109,7 +156,7 @@ sub get_sortnamekeyschemename {
 sub set_name {
   my $self = shift;
   my $name = shift;
-  $self->{name} = lc($name);
+  $self->{name} = $name;
   return;
 }
 
@@ -194,6 +241,7 @@ sub get_listdata {
   my $self = shift;
   return [ $self->{sortscheme},
            $self->{sortnamekeyschemename},
+           $self->{labelprefix},
            $self->{keys},
            $self->{sortinitdata},
            $self->{extrayeardata},
@@ -388,10 +436,9 @@ sub get_sortdata {
 =cut
 
 sub set_sortinitdata_for_key {
-  my ($self, $key, $init, $inithash) = @_;
+  my ($self, $key, $init) = @_;
   return unless defined($key);
-  $self->{sortinitdata}{$key} = {init     => $init,
-                                 inithash => $inithash};
+  $self->{sortinitdata}{$key} = {init => $init};
   return;
 }
 
@@ -407,7 +454,6 @@ sub set_sortinitdata {
   return;
 }
 
-
 =head2 get_sortinit_for_key
 
     Gets the sortinit in a list for a key
@@ -418,18 +464,6 @@ sub get_sortinit_for_key {
   my ($self, $key) = @_;
   return unless defined($key);
   return $self->{sortinitdata}{$key}{init};
-}
-
-=head2 get_sortinithash_for_key
-
-    Gets the sortinit hash in a list for a key
-
-=cut
-
-sub get_sortinithash_for_key {
-  my ($self, $key) = @_;
-  return unless defined($key);
-  return $self->{sortinitdata}{$key}{inithash};
 }
 
 =head2 set_sortscheme
@@ -498,59 +532,114 @@ sub get_filters {
   * extraalpha
   * extratitle
   * extratitleyear
+  * labelprefix
 
 =cut
 
 sub instantiate_entry {
   my $self = shift;
-  my $entry = shift;
-  my $key = shift;
+  my ($entry, $key, $format) = @_;
   return '' unless $entry;
+  $format //= 'bbl'; # default
 
   my $entry_string = $$entry;
 
   # sortinit
   my $sinit = $self->get_sortinit_for_key($key);
   if (defined($sinit)) {
-    my $str = "\\field{sortinit}{$sinit}";
+    my $str;
+    if ($format eq 'bbl') {
+      $str = "\\field{sortinit}{$sinit}";
+    }
+    elsif ($format eq 'bblxml') {
+      $str = "<bbl:field name=\"sortinit\">$sinit</bbl:field>";
+    }
     $entry_string =~ s|<BDS>SORTINIT</BDS>|$str|gxms;
   }
   else {# might not be defined if sortscheme returns nothing at all
-    $entry_string =~ s|<BDS>SORTINIT</BDS>||gxms;
+    $entry_string =~ s|^\s*<BDS>SORTINIT</BDS>\n||gxms;
   }
 
   # sortinithash
-  my $sinithash = $self->get_sortinithash_for_key($key);
-  if (defined($sinithash)) {
-    my $str = "\\field{sortinithash}{$sinithash}";
+  if (defined($sinit)) {
+    my $str;
+
+    # All Unicode::Collate operations are expensive so use a cache when possible
+    my $sinithash = md5_hex($self->{sortinitcollator}->viewSortKey($sinit));
+
+    if ($format eq 'bbl') {
+      $str = "\\field{sortinithash}{$sinithash}";
+    }
+    elsif ($format eq 'bblxml') {
+      $str = "<bbl:field name=\"sortinithash\">$sinithash</bbl:field>";
+    }
     $entry_string =~ s|<BDS>SORTINITHASH</BDS>|$str|gxms;
   }
   else {# might not be defined if sortscheme returns nothing at all
-    $entry_string =~ s|<BDS>SORTINITHASH</BDS>||gxms;
+    $entry_string =~ s|^\s*<BDS>SORTINITHASH</BDS>\n||gxms;
   }
 
   # extrayear
   if (my $e = $self->get_extrayeardata($key)) {
-    my $eys = "      \\field{extrayear}{$e}\n";
-    $entry_string =~ s|^\s*<BDS>EXTRAYEAR</BDS>\n|$eys|gxms;
+    my $str;
+    if ($format eq 'bbl') {
+      $str = "\\field{extrayear}{$e}";
+    }
+    elsif ($format eq 'bblxml') {
+      $str = "<bbl:field name=\"extrayear\">$e</bbl:field>";
+    }
+    $entry_string =~ s|<BDS>EXTRAYEAR</BDS>|$str|gxms;
   }
 
   # extratitle
   if (my $e = $self->get_extratitledata($key)) {
-    my $ets = "      \\field{extratitle}{$e}\n";
-    $entry_string =~ s|^\s*<BDS>EXTRATITLE</BDS>\n|$ets|gxms;
+    my $str;
+    if ($format eq 'bbl') {
+      $str = "\\field{extratitle}{$e}";
+    }
+    elsif ($format eq 'bblxml') {
+      $str = "<bbl:field name=\"extratitle\">$e</bbl:field>";
+    }
+    $entry_string =~ s|<BDS>EXTRATITLE</BDS>|$str|gxms;
   }
 
   # extratitle
   if (my $e = $self->get_extratitleyeardata($key)) {
-    my $etys = "      \\field{extratitleyear}{$e}\n";
-    $entry_string =~ s|^\s*<BDS>EXTRATITLEYEAR</BDS>\n|$etys|gxms;
+    my $str;
+    if ($format eq 'bbl') {
+      $str = "\\field{extratitleyear}{$e}";
+    }
+    elsif ($format eq 'bblxml') {
+      $str = "<bbl:field name=\"extratitleyear\">$e</bbl:field>";
+    }
+    $entry_string =~ s|<BDS>EXTRATITLEYEAR</BDS>|$str|gxms;
   }
 
   # extraalpha
   if (my $e = $self->get_extraalphadata($key)) {
-    my $eas = "      \\field{extraalpha}{$e}\n";
-    $entry_string =~ s|^\s*<BDS>EXTRAALPHA</BDS>\n|$eas|gxms;
+    my $str;
+    if ($format eq 'bbl') {
+      $str = "\\field{extraalpha}{$e}";
+    }
+    elsif ($format eq 'bblxml') {
+      $str = "<bbl:field name=\"extraalpha\">$e</bbl:field>";
+    }
+    $entry_string =~ s|<BDS>EXTRAALPHA</BDS>|$str|gxms;
+  }
+
+  # labelprefix
+  if (my $pn = $self->get_labelprefix($key)) {
+    my $str;
+    if ($format eq 'bbl') {
+      $str = "\\field{labelprefix}{$pn}";
+    }
+    elsif ($format eq 'bblxml') {
+      $str = "<bbl:field name=\"labelprefix\">$pn</bbl:field>";
+    }
+    $entry_string =~ s|<BDS>LABELPREFIX</BDS>|$str|gxms;
+  }
+  else {
+    $entry_string =~ s|^\s*<BDS>LABELPREFIX</BDS>\n||gxms;
   }
 
   return $entry_string;

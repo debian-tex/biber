@@ -23,7 +23,7 @@ use Unicode::Normalize;
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
-our $VERSION = '2.4';
+our $VERSION = '2.5';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -54,7 +54,9 @@ Biber::Config - Configuration items which need to be saved across the
 our $CONFIG;
 
 $CONFIG->{state}{crossrefkeys} = {};
+$CONFIG->{state}{xrefkeys} = {};
 $CONFIG->{state}{seenwork} = {};
+$CONFIG->{state}{seentitle} = {};
 
 # Set tracking, parent->child and child->parent
 $CONFIG->{state}{set}{pc} = {};
@@ -126,7 +128,9 @@ sub _init {
   $CONFIG->{state}{unulchanged} = 1;
   $CONFIG->{state}{control_file_location} = '';
   $CONFIG->{state}{seenwork} = {};
+  $CONFIG->{state}{seentitle} = {};
   $CONFIG->{state}{crossrefkeys} = {};
+  $CONFIG->{state}{xrefkeys} = {};
   $CONFIG->{state}{ladisambiguation} = {};
   $CONFIG->{state}{uniquenamecount} = {};
   $CONFIG->{state}{uniquenamecount_all} = {};
@@ -193,7 +197,7 @@ sub _initopts {
     _config_file_set(File::Spec->catpath($vol, "$dir", 'biber-tool.conf'));
   }
 
-  # Normal user config file - overrides tool mode defaults, if any
+  # Normal user config file - overrides tool mode defaults
   _config_file_set($opts->{configfile});
 
   # Set hard-coded biblatex option defaults
@@ -220,7 +224,6 @@ sub _initopts {
       Biber::Config->setcmdlineoption($copt, $opts->{$copt});
     }
   }
-
 
   # Record the $ARGV[0] name for future use
   if (Biber::Config->getoption('tool')) {
@@ -376,6 +379,11 @@ sub _config_file_set {
                                                             qr/\Afieldxor\z/,
                                                             qr/\Afield\z/,
                                                             qr/\Aalias\z/,
+                                                            qr/\Akeypart\z/,
+                                                            qr/\Apart\z/,
+                                                            qr/\Amember\z/,
+                                                            qr/\Anoinit\z/,
+                                                            qr/\Anolabel\z/,
                                                             qr/\Aalsoset\z/,
                                                             qr/\Aconstraints\z/,
                                                             qr/\Aconstraint\z/,
@@ -389,6 +397,7 @@ sub _config_file_set {
                                                             qr/\Asortitem\z/,
                                                             qr/\Apresort\z/,
                                                             qr/\Aoptionscope\z/,
+                                                            qr/\Asortingnamekey\z/,
                                                            ],
                                            'NsStrip' => 1,
                                            'KeyAttr' => []) or
@@ -417,10 +426,66 @@ sub _config_file_set {
 
   delete $userconf->{optionscope};
 
+  # DATAFIELD SETS
+  # Since we have to use the datamodel to resolve some members, just record the settings
+  # here for processing after the datamodel is parsed
+  foreach my $s (@{$userconf->{datafieldset}}) {
+    my $name = $s->{name};
+    foreach my $m (@{$s->{member}}) {
+      if (my $field = $m->{field}[0]) {# 'field' has forcearray for other things
+        push @{$DATAFIELD_SETS{$name}}, $field;
+      }
+      else {
+          push @{$DATAFIELD_SETS{$name}}, {fieldtype => $m->{fieldtype},
+                                           datatype  => $m->{datatype}};
+      }
+    }
+  }
+  delete $userconf->{datafieldset};
+
   # Set options from config file
   while (my ($k, $v) = each %$userconf) {
-    if (exists($v->{content})) { # simple option
-      Biber::Config->setconfigfileoption($k, $v->{content});
+    # sortingnamekey is special and has to be an array ref and so must come before
+    # the later options tests which assume hash refs
+    if (lc($k) eq 'sortingnamekey') {
+      my $snss;
+      foreach my $sns (@$v) {
+        my $snkps;
+        foreach my $snkp (sort {$a->{order} <=> $b->{order}} @{$sns->{keypart}}) {
+          my $snps;
+          foreach my $snp (sort {$a->{order} <=> $b->{order}} @{$snkp->{part}}) {
+            my $np;
+            if ($snp->{type} eq 'namepart') {
+              $np = { type => 'namepart', value => $snp->{content} };
+              if (exists($snp->{use})) {
+                $np->{use} = $snp->{use};
+              }
+            }
+            elsif ($snp->{type} eq 'literal') {
+              $np = { type => 'literal', value => $snp->{content} };
+            }
+            push @$snps, $np;
+          }
+          push @$snkps, $snps;
+        }
+        $snss->{$sns->{keyscheme}} = $snkps;
+      }
+      Biber::Config->setblxoption('sortingnamekey', $snss);
+    }
+    elsif (lc($k) eq 'transliteration') {
+      foreach my $tr (@$v) {
+        if ($tr->{entrytype}[0] eq '*') { # already array forced for another option
+          Biber::Config->setblxoption('translit', $tr->{translit});
+        }
+        else {                  # per_entrytype
+          Biber::Config->setblxoption('translit',
+                                      $tr->{translit},
+                                      'ENTRYTYPE',
+                                      $tr->{entrytype}[0]);
+
+
+        }
+      }
     }
     # mildly complex options - nosort/collate_options
     elsif (lc($k) eq 'nosort' or
@@ -486,6 +551,9 @@ sub _config_file_set {
     }
     elsif (lc($k) eq 'datamodel') {# This is a biblatex option
       Biber::Config->setblxoption('datamodel', $v);
+    }
+    elsif (exists($v->{content})) { # simple option
+      Biber::Config->setconfigfileoption($k, $v->{content});
     }
   }
 }
@@ -558,6 +626,7 @@ sub config_file {
 ##############################
 # Biber options static methods
 ##############################
+
 
 =head2 get_unul_done
 
@@ -636,6 +705,31 @@ sub get_dm {
   shift;
   return $CONFIG->{dm};
 }
+
+=head2 set_dm_helpers
+
+    Sets some datamodel helper lists
+
+=cut
+
+sub set_dm_helpers {
+  shift;
+  my $obj = shift;
+  $CONFIG->{dmhelpers} = $obj;
+  return;
+}
+
+=head2 get_dm_helpers
+
+    Sets the datamodel helper lists
+
+=cut
+
+sub get_dm_helpers {
+  shift;
+  return $CONFIG->{dmhelpers};
+}
+
 
 =head2 set_ctrlfile_path
 
@@ -857,7 +951,8 @@ sub set_graph {
   else {
     my ($source_key, $target_key, $source_field, $target_field) = @_;
     $logger->debug("Saving DOT graph information type '$type' with SOURCEKEY=$source_key, TARGETKEY=$target_key, SOURCEFIELD=$source_field, TARGETFIELD=$target_field");
-    $CONFIG->{state}{graph}{$type}{$source_key}{$source_field}{$target_key} = $target_field;
+    # source can go to more than one target (and does in default rules) so need array here
+    push @{$CONFIG->{state}{graph}{$type}{$source_key}{$source_field}{$target_key}}, $target_field;
   }
   return;
 }
@@ -1140,7 +1235,7 @@ sub incr_seenkey {
 
 =head2 get_seenwork
 
-    Get the count of occurences of a labelname or labeltitle
+    Get the count of occurrences of a labelname or labeltitle
 
 =cut
 
@@ -1152,7 +1247,7 @@ sub get_seenwork {
 
 =head2 incr_seenwork
 
-    Increment the count of occurences of a labelname or labeltitle
+    Increment the count of occurrences of a labelname or labeltitle
 
 =cut
 
@@ -1163,7 +1258,57 @@ sub incr_seenwork {
   return;
 }
 
+=head2 incr_seenpa
 
+    Increment the count of occurrences of a primary author family name
+
+=cut
+
+sub incr_seenpa {
+  shift; # class method so don't care about class name
+  my $identifier = shift;
+  $CONFIG->{state}{seenpa}{$identifier}++;
+  return;
+}
+
+
+=head2 get_seenpa
+
+    Get the count of occurrences of a primary author family name
+
+=cut
+
+sub get_seenpa {
+  shift; # class method so don't care about class name
+  my $identifier = shift;
+  return $CONFIG->{state}{seenpa}{$identifier};
+}
+
+
+=head2 get_seentitle
+
+    Get the count of occurrences of a labeltitle
+
+=cut
+
+sub get_seentitle {
+  shift; # class method so don't care about class name
+  my $identifier = shift;
+  return $CONFIG->{state}{seentitle}{$identifier};
+}
+
+=head2 incr_seentitle
+
+    Increment the count of occurrences of a labeltitle
+
+=cut
+
+sub incr_seentitle {
+  shift; # class method so don't care about class name
+  my $identifier = shift;
+  $CONFIG->{state}{seentitle}{$identifier}++;
+  return;
+}
 
 =head2 reset_seen_extra
 
@@ -1251,7 +1396,7 @@ sub get_seen_nameyear {
 
     Increment the count of an labelname/labelyear combination for extrayear
 
-    We pass in the name and year strings seperately as we have to
+    We pass in the name and year strings separately as we have to
     be careful and only increment this counter beyond 1 if there is
     a name component. Otherwise, extrayear gets defined for all
     entries with no name but the same year etc.
@@ -1297,7 +1442,7 @@ sub get_seen_nametitle {
 
     Increment the count of an labelname/labeltitle combination for extratitle
 
-    We pass in the name and year strings seperately as we have to
+    We pass in the name and year strings separately as we have to
     be careful and only increment this counter beyond 1 if there is
     a title component. Otherwise, extratitle gets defined for all
     entries with no title.
@@ -1341,7 +1486,7 @@ sub get_seen_titleyear {
 
     Increment the count of an labeltitle/labelyear combination for extratitleyear
 
-    We pass in the title and year strings seperately as we have to
+    We pass in the title and year strings separately as we have to
     be careful and only increment this counter beyond 1 if there is
     a title component. Otherwise, extratitleyear gets defined for all
     entries with no title.
@@ -1676,6 +1821,19 @@ sub get_crossrefkeys {
   return [ keys %{$CONFIG->{state}{crossrefkeys}} ];
 }
 
+=head1 xrefkeys
+
+=head2 get_xrefkeys
+
+    Return ref to array of keys which are xref targets
+
+=cut
+
+sub get_xrefkeys {
+  shift; # class method so don't care about class name
+  return [ keys %{$CONFIG->{state}{xrefkeys}} ];
+}
+
 =head2 get_crossrefkey
 
     Return an integer representing the number of times a
@@ -1687,6 +1845,19 @@ sub get_crossrefkey {
   shift; # class method so don't care about class name
   my $k = shift;
   return $CONFIG->{state}{crossrefkeys}{$k};
+}
+
+=head2 get_xrefkey
+
+    Return an integer representing the number of times a
+    xref target key has been ref'ed
+
+=cut
+
+sub get_xrefkey {
+  shift; # class method so don't care about class name
+  my $k = shift;
+  return $CONFIG->{state}{xrefkeys}{$k};
 }
 
 =head2 del_crossrefkey
@@ -1704,6 +1875,22 @@ sub del_crossrefkey {
   return;
 }
 
+=head2 del_xrefkey
+
+    Remove a xref target key from the xrefkeys state
+
+=cut
+
+sub del_xrefkey {
+  shift; # class method so don't care about class name
+  my $k = shift;
+  if (exists($CONFIG->{state}{xrefkeys}{$k})) {
+    delete $CONFIG->{state}{xrefkeys}{$k};
+  }
+  return;
+}
+
+
 =head2 incr_crossrefkey
 
     Increment the crossreferences count for a target crossref key
@@ -1714,6 +1901,19 @@ sub incr_crossrefkey {
   shift; # class method so don't care about class name
   my $k = shift;
   $CONFIG->{state}{crossrefkeys}{$k}++;
+  return;
+}
+
+=head2 incr_xrefkey
+
+    Increment the xreferences count for a target xref key
+
+=cut
+
+sub incr_xrefkey {
+  shift; # class method so don't care about class name
+  my $k = shift;
+  $CONFIG->{state}{xrefkeys}{$k}++;
   return;
 }
 

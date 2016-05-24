@@ -1,7 +1,7 @@
 # -*- cperl -*-
 use strict;
 use warnings;
-use Test::More tests => 6;
+use Test::More tests => 7;
 use Test::Differences;
 unified_diff;
 
@@ -11,12 +11,19 @@ use Biber::Utils;
 use Biber::Output::bibtex;
 use Log::Log4perl;
 use Unicode::Normalize;
-chdir("t/tdata");
+use XML::LibXML;
+
 no warnings 'utf8';
 use utf8;
 
+chdir("t/tdata");
+my $conf = 'tool-test.conf';
+
+# Set up schema
+my $CFxmlschema = XML::LibXML::RelaxNG->new(location => '../../data/schemata/config.rng');
+
 # Set up Biber object
-my $biber = Biber->new(configfile => 'tool-test.conf');
+my $biber = Biber->new(configfile => $conf);
 my $LEVEL = 'ERROR';
 my $l4pconf = qq|
     log4perl.category.main                             = $LEVEL, Screen
@@ -47,7 +54,7 @@ Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 $ARGV[0] = 'tool.bib'; # fake this as we are not running through top-level biber program
 $biber->tool_mode_setup;
 $biber->prepare_tool;
-my $main = $biber->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme'). '/global', 'entry', Biber::Config->getblxoption('sortscheme'), 'global');
+my $main = $biber->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme'). '/global/', 'entry', Biber::Config->getblxoption('sortscheme'), 'global', '');
 my $out = $biber->get_output_obj;
 
 my $t1 = q|@UNPUBLISHED{i3Š,
@@ -82,6 +89,7 @@ my $t3 = q|@BOOK{b1,
   MAINTITLE      = {Maintitle},
   MAINTITLEADDON = {Maintitleaddon},
   TITLE          = {Booktitle},
+  TITLE+AN       = {ann1, ann2},
   YEAR           = {1999},
 }
 
@@ -96,5 +104,14 @@ eq_or_diff(encode_utf8($out->get_output_entry(NFD('i3Š'))), encode_utf8($t1), '
 ok(is_undef($out->get_output_entry('loh')), 'tool mode 2');
 eq_or_diff($out->get_output_entry('xd1',), $t2, 'tool mode 3');
 eq_or_diff($out->get_output_entry('b1',), $t3, 'tool mode 4');
-is_deeply([$main->get_keys], ['macmillan:pub', 'macmillan:loc', 'mv1', 'b1', 'xd1', 'macmillan', NFD('i3Š')], 'tool mode sorting');
+is_deeply([$main->get_keys], ['macmillan:pub', 'macmillan:loc', 'mv1', 'b1', 'macmillan', NFD('i3Š'), 'xd1'], 'tool mode sorting');
 eq_or_diff($out->get_output_comments, $tc1, 'tool mode 5');
+
+my $CFxmlparser = XML::LibXML->new();
+ # basic parse and XInclude processing
+my $CFxp = $CFxmlparser->parse_file($conf);
+# XPath context
+my $CFxpc = XML::LibXML::XPathContext->new($CFxp);
+# Validate against schema. Dies if it fails.
+$CFxmlschema->validate($CFxp);
+is($@, '', "Validation of $conf");

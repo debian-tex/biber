@@ -48,11 +48,12 @@ Biber::Config->setoption('bcf', 'biblatexml.bcf');
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+my $main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 my $bibentries = $section->bibentries;
 
 my $l1 = q|    \entry{bltx1}{misc}{useprefix=false}
       \true{moreauthor}
+      \true{morelabelname}
       \name{author}{3}{useprefix=true}{%
         {{hash=d16c52bc219d448d5f07dc865d5c4f54}{%
            prefix={von},
@@ -72,7 +73,7 @@ my $l1 = q|    \entry{bltx1}{misc}{useprefix=false}
            family={Aхмедов},
            family_i={A\\bibinitperiod},
            given={Ашраф\\bibnamedelima Ахмедович},
-           given_i={А\\bibinitperiod\\bibinitdelim А\\bibinitperiod}}}%
+           given_i={A\\bibinitperiod\\bibinitdelim А\\bibinitperiod}}}%
       }
       \name{foreword}{1}{}{%
         {{hash=0ee59e598dae22fac8e6d9d2df7e79ec}{%
@@ -130,6 +131,14 @@ my $l1 = q|    \entry{bltx1}{misc}{useprefix=false}
       \field{year}{1983}
       \field{pages}{1\\bibrangedash 10\\bibrangessep 30\\bibrangedash 34}
       \range{pages}{15}
+      \annotation{field}{author}{}{}{names-ann}
+      \annotation{field}{language}{}{}{list-ann1}
+      \annotation{field}{title}{}{}{field-ann1}
+      \annotation{item}{author}{1}{}{name-ann1}
+      \annotation{item}{author}{3}{}{name-ann2}
+      \annotation{item}{language}{1}{}{item-ann1}
+      \annotation{part}{author}{1}{given}{namepart-ann1}
+      \annotation{part}{author}{2}{family}{namepart-ann2}
     \endentry
 |;
 

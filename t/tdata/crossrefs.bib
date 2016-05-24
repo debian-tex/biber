@@ -126,8 +126,8 @@
 }
 
 
-% Testing mincrossrefs. xr1 and xr2 xrefs should trigger inclusion of xrm and also
-% the xreffields in both of them
+% Testing minxrefs. xr1 and xr2 xrefs should trigger inclusion of xrm and also
+% the xref fields in both of them
 @INBOOK{xr1,
   AUTHOR    = {Zoe Zentrum},
   TITLE     = {Moods Mildly Modified},
@@ -149,7 +149,9 @@
   YEAR      = {1970}
 }
 
-% Testing explicit cite of xref parent. Should trigger inclusion of child xref field
+% Testing explicit cite of xref parent.
+% Should not trigger inclusion of child xref field by minxrefs as parent is
+% also directly cited
 @INBOOK{xr3,
   AUTHOR    = {Norman Normal},
   TITLE     = {Russian Regalia Revisited},
@@ -164,8 +166,8 @@
   YEAR      = {1977}
 }
 
-% Testing mincrossrefs not reached. cr4 is cited, cr5 isn't, therefore mincrossrefs (2) for
-% crn not reached
+% Testing minxrefs reached. xr4 is cited, xr5 isn't, but minxrefs=1 so xrn
+% is included
 @INBOOK{xr4,
   AUTHOR    = {Megan Mistrel},
   TITLE     = {Lumbering Lunatics},
@@ -210,6 +212,22 @@
   EDITOR    = {Edward Editor},
   TITLE     = {Stuff Concerning Varia},
   DATE      = {1934}
+}
+
+% Test of cascading xref+crossref
+@MISC{xc1,
+  AUTHOR    = {Xavier Crust},
+  XREF      = {xc2}
+}
+
+@INBOOK{xc2,
+  AUTHOR    = {Xavier Crust},
+  CROSSREF  = {xc3}
+}
+
+@BOOK{xc3,
+  AUTHOR    = {Xavier Crust},
+  TITLE     = {Title}
 }
 
 % using alias
@@ -262,3 +280,16 @@
 @BOOK{r4,
   DATE      = {1911},
 }
+
+% Test if per-entry inheritance suppression
+
+@INBOOK{s1,
+  OPTIONS  = {noinherit=nobtitle},
+  TITLE    = {Subtitle},
+  CROSSREF = {s2}
+}
+
+@BOOK{s2,
+  TITLE = {Title}
+}
+

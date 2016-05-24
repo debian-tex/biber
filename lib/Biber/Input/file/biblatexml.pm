@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Carp;
+use Biber::Annotation;
 use Biber::Constants;
 use Biber::DataModel;
 use Biber::Entries;
@@ -393,7 +394,7 @@ sub create_entry {
       }
 
       foreach my $maploop (@maploop) {
-        my $maploopuniq = suniqid;
+        my $MAPUNIQVAL;
         # loop over mapping steps
         foreach my $step (@{$map->{map_step}}) {
 
@@ -404,9 +405,9 @@ sub create_entry {
           }
 
           # new entry
-          if (my $newkey = maploop($step->{map_entry_new}, $maploop, $maploopuniq)) {
+          if (my $newkey = maploopreplace($step->{map_entry_new}, $maploop)) {
             my $newentrytype;
-            unless ($newentrytype = maploop($step->{map_entry_newtype}, $maploop, $maploopuniq)) {
+            unless ($newentrytype = maploopreplace($step->{map_entry_newtype}, $maploop)) {
               biber_warn("Source mapping (type=$level, key=$key): Missing type for new entry '$newkey', skipping step ...");
               next;
             }
@@ -427,7 +428,7 @@ sub create_entry {
           }
 
           # entry clone
-          if (my $prefix = maploop($step->{map_entry_clone}, $maploop, $maploopuniq)) {
+          if (my $prefix = maploopreplace($step->{map_entry_clone}, $maploop)) {
             $logger->debug("Source mapping (type=$level, key=$key): cloning entry with prefix '$prefix'");
             # Create entry with no sourcemapping to avoid recursion
             create_entry("$prefix$key", $entry);
@@ -448,7 +449,7 @@ sub create_entry {
           # so it's limited to being the target for field sets
           my $etarget;
           my $etargetkey;
-          if ($etargetkey = maploop($step->{map_entrytarget}, $maploop, $maploopuniq)) {
+          if ($etargetkey = maploopreplace($step->{map_entrytarget}, $maploop)) {
             unless ($etarget = $newentries{$etargetkey}) {
               biber_warn("Source mapping (type=$level, key=$key): Dynamically created entry target '$etargetkey' does not exist skipping step ...");
               next;
@@ -460,48 +461,48 @@ sub create_entry {
           }
 
           # Entrytype map
-          if (my $typesource = maploop($step->{map_type_source}, $maploop, $maploopuniq)) {
+          if (my $typesource = maploopreplace($step->{map_type_source}, $maploop)) {
             $typesource = lc($typesource);
-            unless ($entry->getAttribute('entrytype') eq $typesource) {
+            unless ($etarget->getAttribute('entrytype') eq $typesource) {
               # Skip the rest of the map if this step doesn't match and match is final
               if ($step->{map_final}) {
-                $logger->debug("Source mapping (type=$level, key=$key): Entry type is '" . $entry->getAttribute('entrytype') . "' but map wants '$typesource' and step has 'final' set, skipping rest of map ...");
+                $logger->debug("Source mapping (type=$level, key=$etargetkey): Entry type is '" . $etarget->getAttribute('entrytype') . "' but map wants '$typesource' and step has 'final' set, skipping rest of map ...");
                 next MAP;
               }
               else {
                 # just ignore this step
-                $logger->debug("Source mapping (type=$level, key=$key): Entry type is '" . $entry->getAttribute('entrytype') . "' but map wants '$typesource', skipping step ...");
+                $logger->debug("Source mapping (type=$level, key=$etargetkey): Entry type is '" . $etarget->getAttribute('entrytype') . "' but map wants '$typesource', skipping step ...");
                 next;
               }
             }
             # Change entrytype if requested
-            $last_type = $entry->getAttribute('entrytype');
-            my $t = lc(maploop($step->{map_type_target}, $maploop, $maploopuniq));
-            $logger->debug("Source mapping (type=$level, key=$key): Changing entry type from '$last_type' to $t");
-            $entry->setAttribute('entrytype', NFC($t));
+            $last_type = $etarget->getAttribute('entrytype');
+            my $t = lc(maploopreplace($step->{map_type_target}, $maploop));
+            $logger->debug("Source mapping (type=$level, key=$etargetkey): Changing entry type from '$last_type' to $t");
+            $etarget->setAttribute('entrytype', NFC($t));
           }
 
           # Field map
-          if (my $xp_fieldsource_s = _getpath(maploop($step->{map_field_source}, $maploop, $maploopuniq))) {
+          if (my $xp_fieldsource_s = _getpath(maploopreplace($step->{map_field_source}, $maploop))) {
             my $xp_fieldsource = XML::LibXML::XPathExpression->new($xp_fieldsource_s);
 
             # key is a pseudo-field. It's guaranteed to exist so
             # just check if that's what's being asked for
-            unless ($entry->exists($xp_fieldsource)) {
+            unless ($etarget->exists($xp_fieldsource)) {
               # Skip the rest of the map if this step doesn't match and match is final
               if ($step->{map_final}) {
-                $logger->debug("Source mapping (type=$level, key=$key): No field xpath '$xp_fieldsource_s' and step has 'final' set, skipping rest of map ...");
+                $logger->debug("Source mapping (type=$level, key=$etargetkey): No field xpath '$xp_fieldsource_s' and step has 'final' set, skipping rest of map ...");
                 next MAP;
               }
               else {
                 # just ignore this step
-                $logger->debug("Source mapping (type=$level, key=$key): No field xpath '$xp_fieldsource_s', skipping step ...");
+                $logger->debug("Source mapping (type=$level, key=$etargetkey): No field xpath '$xp_fieldsource_s', skipping step ...");
                 next;
               }
             }
 
-            $last_field = $entry->findnodes($xp_fieldsource)->get_node(1)->nodeName;
-            $last_fieldval = $entry->findvalue($xp_fieldsource);
+            $last_field = $etarget->findnodes($xp_fieldsource)->get_node(1)->nodeName;
+            $last_fieldval = $etarget->findvalue($xp_fieldsource);
 
             my $negmatch = 0;
             # Negated matches are a normal match with a special flag
@@ -511,20 +512,20 @@ sub create_entry {
             }
 
             # map fields to targets
-            if (my $m = maploop($step->{map_match}, $maploop, $maploopuniq)) {
+            if (my $m = maploopreplace($step->{map_match}, $maploop)) {
               if (defined($step->{map_replace})) { # replace can be null
 
                 # Can't modify entrykey
                 if (lc($xp_fieldsource_s) eq './@id') {
-                  $logger->debug("Source mapping (type=$level, key=$key): Field xpath '$xp_fieldsource_s' is entrykey- cannot remap the value of this field, skipping ...");
+                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_fieldsource_s' is entrykey- cannot remap the value of this field, skipping ...");
                   next;
                 }
 
-                my $r = maploop($step->{map_replace}, $maploop, $maploopuniq);
-                $logger->debug("Source mapping (type=$level, key=$key): Doing match/replace '$m' -> '$r' on field xpath '$xp_fieldsource_s'");
+                my $r = maploopreplace($step->{map_replace}, $maploop);
+                $logger->debug("Source mapping (type=$level, key=$etargetkey): Doing match/replace '$m' -> '$r' on field xpath '$xp_fieldsource_s'");
 
-                unless (_changenode($entry, $xp_fieldsource_s, ireplace($last_fieldval, $m, $r)), \$cnerror) {
-                  biber_warn("Source mapping (type=$level, key=$key): $cnerror");
+                unless (_changenode($etarget, $xp_fieldsource_s, ireplace($last_fieldval, $m, $r)), \$cnerror) {
+                  biber_warn("Source mapping (type=$level, key=$etargetkey): $cnerror");
                 }
               }
               else {
@@ -537,12 +538,12 @@ sub create_entry {
                 unless (@imatches = imatch($last_fieldval, $m, $negmatch)) {
                   # Skip the rest of the map if this step doesn't match and match is final
                   if ($step->{map_final}) {
-                    $logger->debug("Source mapping (type=$level, key=$key): Field xpath '$xp_fieldsource_s' does not match '$m' and step has 'final' set, skipping rest of map ...");
+                    $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_fieldsource_s' does not match '$m' and step has 'final' set, skipping rest of map ...");
                     next MAP;
                   }
                   else {
                     # just ignore this step
-                    $logger->debug("Source mapping (type=$level, key=$key): Field xpath '$xp_fieldsource_s' does not match '$m', skipping step ...");
+                    $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_fieldsource_s' does not match '$m', skipping step ...");
                     next;
                   }
                 }
@@ -550,7 +551,7 @@ sub create_entry {
             }
 
             # Set to a different target if there is one
-            if (my $xp_target_s = _getpath(maploop($step->{map_field_target}, $maploop, $maploopuniq))) {
+            if (my $xp_target_s = _getpath(maploopreplace($step->{map_field_target}, $maploop))) {
               my $xp_target = XML::LibXML::XPathExpression->new($xp_target_s);
 
               # Can't remap entry key pseudo-field
@@ -576,13 +577,13 @@ sub create_entry {
           }
 
           # field changes
-          if (my $xp_node_s = _getpath(maploop($step->{map_field_set}, $maploop, $maploopuniq))) {
+          if (my $xp_node_s = _getpath(maploopreplace($step->{map_field_set}, $maploop))) {
             my $xp_node = XML::LibXML::XPathExpression->new($xp_node_s);
 
             # Deal with special tokens
             if ($step->{map_null}) {
-              $logger->debug("Source mapping (type=$level, key=$key): Deleting field xpath '$xp_node_s'");
-              $entry->findnodes($xp_node)->get_node(1)->unbindNode();
+              $logger->debug("Source mapping (type=$level, key=$etargetkey): Deleting field xpath '$xp_node_s'");
+              $etarget->findnodes($xp_node)->get_node(1)->unbindNode();
             }
             else {
               if ($etarget->exists($xp_node)) {
@@ -615,18 +616,18 @@ sub create_entry {
                 next unless $last_fieldval;
                 $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field xpath '$xp_node_s' to '${orig}${last_fieldval}'");
                 unless (_changenode($etarget, $xp_node_s, $orig . $last_fieldval, \$cnerror)) {
-                  biber_warn("Source mapping (type=$level, key=$key): $cnerror");
+                  biber_warn("Source mapping (type=$level, key=$etargetkey): $cnerror");
                 }
               }
               elsif ($step->{map_origfield}) {
                 next unless $last_field;
                 $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field xpath '$xp_node_s' to '${orig}${last_field}'");
                 unless (_changenode($etarget, $xp_node_s, $orig . $last_field, \$cnerror)) {
-                  biber_warn("Source mapping (type=$level, key=$key): $cnerror");
+                  biber_warn("Source mapping (type=$level, key=$etargetkey): $cnerror");
                 }
               }
               else {
-                my $fv = maploop($step->{map_field_value}, $maploop, $maploopuniq);
+                my $fv = maploopreplace($step->{map_field_value}, $maploop);
                 # Now re-instate any unescaped $1 .. $9 to get round these being
                 # dynamically scoped and being null when we get here from any
                 # previous map_match
@@ -688,7 +689,7 @@ sub _related {
   my $Srx = Biber::Config->getoption('xsvsep');
   my $S = qr/$Srx/;
   my $node = $entry->findnodes("./$f")->get_node(1);
-  foreach my $item ($node->findnodes("./$NS:item")) {
+  foreach my $item ($node->findnodes("./$NS:list/$NS:item")) {
     $bibentry->set_datafield('related', [ split(/$S/, $item->getAttribute('ids')) ]);
     $bibentry->set_datafield('relatedtype', $item->getAttribute('type'));
     if (my $string = $item->getAttribute('string')) {
@@ -716,15 +717,23 @@ sub _literal {
     else {
       $bibentry->set_datafield(_norm($f), $node->textContent());
     }
+    # generic annotation attribute
+    if (my $string = $node->getAttribute('annotation')) {
+      Biber::Annotation->set_annotation('field', $key, _norm($f), $string);
+    }
   }
   return;
 }
 
 # xSV field
 sub _xsv {
-  my ($bibentry, $entry, $f) = @_;
+  my ($bibentry, $entry, $f, $key) = @_;
   foreach my $node ($entry->findnodes("./$f")) {
-    $bibentry->set_datafield(_norm($f), _split_list($node));
+    $bibentry->set_datafield(_norm($f), _split_list($node, $key, $f));
+    # generic annotation attribute
+    if (my $string = $node->getAttribute('annotation')) {
+      Biber::Annotation->set_annotation('field', $key, _norm($f), $string);
+    }
   }
   return;
 }
@@ -743,6 +752,10 @@ sub _uri {
    $value = URI->new($value)->as_string;
   }
   $bibentry->set_datafield(_norm($f), $value);
+  # generic annotation attribute
+  if (my $string = $node->getAttribute('annotation')) {
+    Biber::Annotation->set_annotation('field', $key, _norm($f), $string);
+  }
   return;
 }
 
@@ -751,7 +764,12 @@ sub _uri {
 sub _list {
   my ($bibentry, $entry, $f, $key) = @_;
   foreach my $node ($entry->findnodes("./$f")) {
-    $bibentry->set_datafield(_norm($f), _split_list($node));
+    $bibentry->set_datafield(_norm($f), _split_list($node, $key, $f));
+
+    # generic annotation attribute
+    if (my $string = $node->getAttribute('annotation')) {
+      Biber::Annotation->set_annotation('field', $key, _norm($f), $string);
+    }
   }
   return;
 }
@@ -761,7 +779,7 @@ sub _range {
   my ($bibentry, $entry, $f, $key) = @_;
   foreach my $node ($entry->findnodes("./$f")) {
     # List of ranges/values
-    if (my @rangelist = $node->findnodes("./$NS:item")) {
+    if (my @rangelist = $node->findnodes("./$NS:list/$NS:item")) {
       my $rl;
       foreach my $range (@rangelist) {
         push @$rl, _parse_range_list($range);
@@ -851,6 +869,7 @@ sub _name {
       $names->set_sortnamekeyscheme($node->getAttribute('sortnamekeyscheme'));
     }
 
+    my $numname = 1;
     foreach my $namenode ($node->findnodes("./$NS:name")) {
 
       my $useprefix;
@@ -863,7 +882,7 @@ sub _name {
         $useprefix = Biber::Config->getblxoption('useprefix', $bibentry->get_field('entrytype'), $key);
       }
 
-      $names->add_name(parsename($namenode,$f, {useprefix => $useprefix}));
+      $names->add_name(parsename($namenode, $f, $key, $numname++, {useprefix => $useprefix}));
     }
 
     # Deal with explicit "moreenames" in data source
@@ -872,6 +891,11 @@ sub _name {
     }
 
     $bibentry->set_datafield(_norm($f), $names);
+
+    # generic annotation attribute
+    if (my $string = $node->getAttribute('annotation')) {
+      Biber::Annotation->set_annotation('field', $key, _norm($f), $string);
+    }
   }
   return;
 }
@@ -897,7 +921,7 @@ sub _name {
 =cut
 
 sub parsename {
-  my ($node, $fieldname, $opts) = @_;
+  my ($node, $fieldname, $key, $count, $opts) = @_;
   $logger->debug('Parsing BibLaTeXML name object ' . $node->nodePath);
   # We have to pass this in from higher scopes as we need to actually use the scoped
   # value in this sub as well as set the name local value in the object
@@ -909,27 +933,42 @@ sub parsename {
     $useprefix = $namescope_useprefix = map_boolean($node->getAttribute('useprefix'), 'tonum');
   }
 
+  # generic annotation attribute - individual name scope
+  if (my $string = $node->getAttribute('annotation')) {
+    Biber::Annotation->set_annotation('item', $key, _norm($fieldname), $string, $count);
+  }
 
   my %namec;
 
   foreach my $n ($dm->get_constant_value('nameparts')) { # list type so returns list
-    # If there is a name component node for this component ...
-    if (my $nc_node = $node->findnodes("./$NS:namepart[\@type='$n']")->get_node(1)) {
+    # If there is a namepart node for this component ...
+    if (my $npnode = $node->findnodes("./$NS:namepart[\@type='$n']")->get_node(1)) {
+
+      # generic annotation attribute - namepart scope
+      if (my $string = $npnode->getAttribute('annotation')) {
+        Biber::Annotation->set_annotation('part', $key, _norm($fieldname), $string, $count, $n);
+      }
+
       # name component with parts
-      if (my @parts = map {$_->textContent()} $nc_node->findnodes("./$NS:namepart")) {
+      if (my @npnodes =  $npnode->findnodes("./$NS:namepart")) {
+        my @parts = map {$_->textContent()} @npnodes;
         $namec{$n} = _join_name_parts(\@parts);
-        $logger->debug("Found name component '$n': " . $namec{$n});
-        if (my $ni = $node->getAttribute('initial')) {
-          $namec{"${n}_i"} = [$ni];
+        $logger->debug("Found namepart '$n': " . $namec{$n});
+        my @partinits;
+        foreach my $part (@npnodes) {
+          if (my $pi = $part->getAttribute('initial')) {
+            push @partinits, $pi;
+          }
+          else {
+            push @partinits, _gen_initials($part->textContent());
+          }
         }
-        else {
-          $namec{"${n}_i"} = [_gen_initials(@parts)];
-        }
+        $namec{"${n}_i"} = \@partinits;
       }
       # with no parts
-      elsif (my $t = $nc_node->textContent()) {
+      elsif (my $t = $npnode->textContent()) {
         $namec{$n} = $t;
-        $logger->debug("Found name component '$n': $t");
+        $logger->debug("Found namepart '$n': $t");
         if (my $ni = $node->getAttribute('initial')) {
           $namec{"${n}_i"} = [$ni];
         }
@@ -1018,7 +1057,7 @@ sub _join_name_parts {
   return $namestring;
 }
 
-# Passed an array ref of strings, returns an array ref of initials
+# Passed an array of strings, returns an array of initials
 sub _gen_initials {
   my @strings = @_;
   my @strings_out;
@@ -1060,8 +1099,16 @@ sub _parse_range_list {
 
 # Splits a list field into an array ref
 sub _split_list {
-  my $node = shift;
-  if (my @list = $node->findnodes("./$NS:item")) {
+  my ($node, $key, $f) = @_;
+  if (my @list = $node->findnodes("./$NS:list/$NS:item")) {
+
+    for (my $i = 0; $i <= $#list; $i++) {
+      # generic annotation attribute
+      if (my $string = $list[$i]->getAttribute('annotation')) {
+        Biber::Annotation->set_annotation('item', $key, _norm($f), $string, $i+1);
+      }
+    }
+
     return [ map {$_->textContent()} @list ];
   }
   else {

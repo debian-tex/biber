@@ -108,6 +108,12 @@ sub set_output_entry {
       # Did we have "and others" in the data?
       if ( $nf->get_morenames ) {
         $acc .= "      \\true{more$namefield}\n";
+        # Is this name labelname? If so, provide \morelabelname
+        if (my $lni = $be->get_labelname_info) {
+          if ( $lni eq $namefield ) {
+            $acc .= "      \\true{morelabelname}\n";
+          }
+        }
       }
 
       my $total = $nf->count_names;
@@ -221,17 +227,16 @@ sub set_output_entry {
     }
   }
 
-  if ( Biber::Config->getblxoption('labelnumber', $be->get_field('entrytype')) ) {
-    if (my $sh = $be->get_field('shorthand')) {
-      $acc .= "      \\field{labelnumber}{$sh}\n";
-    }
-    elsif (my $ln = $be->get_field('labelnumber')) {
-      $acc .= "      \\field{labelnumber}{$ln}\n";
-    }
-  }
-
   if (defined($be->get_field('singletitle'))) {
     $acc .= "      \\true{singletitle}\n";
+  }
+
+  if (defined($be->get_field('uniqueprimaryauthor'))) {
+    $acc .= "      \\true{uniqueprimaryauthor}\n";
+  }
+
+  if (defined($be->get_field('uniquetitle'))) {
+    $acc .= "      \\true{uniquetitle}\n";
   }
 
   # The source field for labelname

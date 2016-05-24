@@ -30,6 +30,7 @@ sub new {
   my ($thislocale, %collopts) = @_;
 
   # Add tailoring locale for Unicode::Collate
+  # Ignore table as this is not valid for U::C::Locale objects
   if ($thislocale and not $collopts{locale}) {
     $collopts{locale} = $thislocale;
     if ($collopts{table}) {

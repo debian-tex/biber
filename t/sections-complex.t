@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 64;
+use Test::More tests => 66;
 use Test::Differences;
 unified_diff;
 
@@ -47,9 +47,9 @@ Biber::Config->setblxoption('labeldate', undef);
 $biber->prepare;
 my $section0 = $biber->sections->get_section(0);
 my $bibentries0 = $section0->bibentries;
-my $main0 = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+my $main0 = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 my $section1 = $biber->sections->get_section(1);
-my $main1 = $biber->sortlists->get_list(1, 'nty/global', 'entry', 'nty', 'global');
+my $main1 = $biber->sortlists->get_list(1, 'nty/global/', 'entry', 'nty', 'global', '');
 my $bibentries1 = $section1->bibentries;
 
 eq_or_diff($bibentries0->entry('L1')->get_field('sortlabelalpha'), 'Doe95', 'maxalphanames=1 minalphanames=1 entry L1 labelalpha');
@@ -88,9 +88,9 @@ for (my $i=5; $i<9; $i++) {
 $biber->prepare;
 $section0 = $biber->sections->get_section(0);
 $bibentries0 = $section0->bibentries;
-$main0 = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+$main0 = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 $section1 = $biber->sections->get_section(1);
-$main1 = $biber->sortlists->get_list(1, 'nty/global', 'entry', 'nty', 'global');
+$main1 = $biber->sortlists->get_list(1, 'nty/global/', 'entry', 'nty', 'global', '');
 $bibentries1 = $section1->bibentries;
 
 eq_or_diff($bibentries0->entry('L1')->get_field('sortlabelalpha'), 'Doe95', 'maxalphanames=2 minalphanames=1 entry L1 labelalpha');
@@ -129,9 +129,9 @@ for (my $i=5; $i<9; $i++) {
 $biber->prepare;
 $section0 = $biber->sections->get_section(0);
 $bibentries0 = $section0->bibentries;
-$main0 = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+$main0 = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 $section1 = $biber->sections->get_section(1);
-$main1 = $biber->sortlists->get_list(1, 'nty/global', 'entry', 'nty', 'global');
+$main1 = $biber->sortlists->get_list(1, 'nty/global/', 'entry', 'nty', 'global', '');
 $bibentries1 = $section1->bibentries;
 
 eq_or_diff($bibentries0->entry('L1')->get_field('sortlabelalpha'), 'Doe95', 'maxalphanames=2 minalphanames=2 entry L1 labelalpha');
@@ -171,9 +171,9 @@ for (my $i=5; $i<9; $i++) {
 $biber->prepare;
 $section0 = $biber->sections->get_section(0);
 $bibentries0 = $section0->bibentries;
-$main0 = $biber->sortlists->get_list(0, 'nty/global', 'entry', 'nty', 'global');
+$main0 = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
 $section1 = $biber->sections->get_section(1);
-$main1 = $biber->sortlists->get_list(1, 'nty/global', 'entry', 'nty', 'global');
+$main1 = $biber->sortlists->get_list(1, 'nty/global/', 'entry', 'nty', 'global', '');
 $bibentries1 = $section1->bibentries;
 
 eq_or_diff($bibentries0->entry('L1')->get_field('sortlabelalpha'), 'Doe95', 'maxalphanames=3 minalphanames=1 entry L1 labelalpha');
@@ -192,4 +192,5 @@ eq_or_diff($bibentries1->entry('L7')->get_field('sortlabelalpha'), 'DSJ95', 'max
 ok(is_undef($main1->get_extraalphadata('L7')), 'maxalphanames=3 minalphanames=1 entry L7 extraalpha');
 eq_or_diff($bibentries1->entry('L8')->get_field('sortlabelalpha'), 'Sha85', 'maxalphanames=3 minalphanames=1 entry L8 labelalpha');
 ok(is_undef($main1->get_extraalphadata('L8')), 'maxalphanames=3 minalphanames=1 entry L8 extraalpha');
-
+eq_or_diff($bibentries1->entry('m1')->get_field('keywords'), ['thing'], 'map idempotency - 1');
+eq_or_diff($bibentries1->entry('m1')->get_field('title'), 'Film title 11', 'map idempotency - 2');

@@ -68,12 +68,13 @@ my $builder = $class->new(
         'XML::Writer' => 0,
         'Text::Roman' => 0,
         'URI' => 0,
-        'Text::BibTeX' => '0.71',
+        'Text::BibTeX' => '0.72',
         'LWP::Simple' => 0,
         'LWP::Protocol::https' => 0,
         'Business::ISBN' => 0,
         'Business::ISSN' => 0,
         'Business::ISMN' => 0,
+        'Lingua::Translit' => '0.25',
         'perl' => '5.16.0'
     },
     script_files => [ glob( "bin/*" ) ],
@@ -83,8 +84,7 @@ my $builder = $class->new(
                    'data/schemata/bcf.rng' => 'lib/Biber/bcf.rng',
                    'data/biber-tool.conf' => 'lib/Biber/biber-tool.conf',
                    'lib/Biber/LaTeX/recode_data.xml' => 'lib/Biber/LaTeX/recode_data.xml',
-                   'data/bcf.xsl' => 'lib/Biber/bcf.xsl',
-                   'data/latinkeys.txt' => 'lib/Unicode/Collate/latinkeys.txt' }
+                   'data/bcf.xsl' => 'lib/Biber/bcf.xsl' }
 );
 
 $builder->add_build_element('data');

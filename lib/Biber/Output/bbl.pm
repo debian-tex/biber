@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use parent qw(Biber::Output::base);
 
+use Biber::Annotation;
 use Biber::Config;
 use Biber::Constants;
 use Biber::Entry;
@@ -92,26 +93,6 @@ sub create_output_misc {
   }
   $self->{output_data}{TAIL} .= "\\endinput\n\n";
   return;
-}
-
-=head2 set_output_target_file
-
-    Set the output target file of a Biber::Output::bbl object
-    A convenience around set_output_target so we can keep track of the
-    filename
-
-=cut
-
-sub set_output_target_file {
-  my $self = shift;
-  my $bblfile = shift;
-  $self->{output_target_file} = $bblfile;
-  my $enc_out;
-  if (my $enc = Biber::Config->getoption('output_encoding')) {
-    $enc_out = ":encoding($enc)";
-  }
-  my $BBLFILE = IO::File->new($bblfile, ">$enc_out");
-  $self->set_output_target($BBLFILE);
 }
 
 =head2 _printfield
@@ -206,14 +187,12 @@ sub set_output_undefkey {
 =cut
 
 sub set_output_entry {
-  my $self = shift;
-  my $be = shift; # Biber::Entry object
+  my ($self, $be, $section, $dm) = @_;
   my $bee = $be->get_field('entrytype');
-  my $section = shift; # Section object the entry occurs in
-  my $dm = shift; # Data Model object
-  my $acc = '';
   my $secnum = $section->number;
   my $key = $be->get_field('citekey');
+  my $acc = '';
+  my $dmh = Biber::Config->get_dm_helpers;
 
   # Skip entrytypes we don't want to output according to datamodel
   return if $dm->entrytype_is_skipout($bee);
@@ -230,14 +209,20 @@ sub set_output_entry {
   }
 
   # Output name fields
-  foreach my $namefield (@{$dm->get_fields_of_type('list', 'name')}) {
-    next if $dm->field_is_skipout($namefield);
+  foreach my $namefield (@{$dmh->{namelists}}) {
+    # Performance - as little as possible here - loop over DM fields for every entry
     if ( my $nf = $be->get_field($namefield) ) {
       my $plo = '';
 
       # Did we have "and others" in the data?
       if ( $nf->get_morenames ) {
         $acc .= "      \\true{more$namefield}\n";
+        # Is this name labelname? If so, provide \morelabelname
+        if (my $lni = $be->get_labelname_info) {
+          if ( $lni eq $namefield ) {
+            $acc .= "      \\true{morelabelname}\n";
+          }
+        }
       }
 
       my $total = $nf->count_names;
@@ -277,11 +262,8 @@ sub set_output_entry {
   }
 
   # Output list fields
-  foreach my $listfield (@{$dm->get_fields_of_fieldtype('list')}) {
-    next if $dm->field_is_datatype('name', $listfield); # name is a special list
-    next if $dm->field_is_datatype('verbatim', $listfield); # special lists
-    next if $dm->field_is_datatype('uri', $listfield); # special lists
-    next if $dm->field_is_skipout($listfield);
+  foreach my $listfield (@{$dmh->{lists}}) {
+    # Performance - as little as possible here - loop over DM fields for every entry
     if (my $lf = $be->get_field($listfield)) {
       if ( lc($lf->[-1]) eq Biber::Config->getoption('others_string') ) {
         $acc .= "      \\true{more$listfield}\n";
@@ -335,6 +317,12 @@ sub set_output_entry {
     }
   }
 
+  # labelprefix is list-specific. It is only defined is there is no shorthand
+  # (see biblatex documentation)
+  unless ($be->get_field('shorthand')) {
+    $acc .= "      <BDS>LABELPREFIX</BDS>\n";
+  }
+
   # The labeltitle option determines whether "extratitle" is output
   if ( Biber::Config->getblxoption('labeltitle', $bee)) {
     # Might not have been set due to skiplab/dataonly
@@ -365,17 +353,24 @@ sub set_output_entry {
     }
   }
 
-  if ( Biber::Config->getblxoption('labelnumber', $bee) ) {
-    if (my $sh = $be->get_field('shorthand')) {
-      $acc .= "      \\field{labelnumber}{$sh}\n";
-    }
-    elsif (my $lnum = $be->get_field('labelnumber')) {
-      $acc .= "      \\field{labelnumber}{$lnum}\n";
-    }
+  if (defined($be->get_field('crossrefsource'))) {
+    $acc .= "      \\true{crossrefsource}\n";
+  }
+
+  if (defined($be->get_field('xrefsource'))) {
+    $acc .= "      \\true{xrefsource}\n";
   }
 
   if (defined($be->get_field('singletitle'))) {
     $acc .= "      \\true{singletitle}\n";
+  }
+
+  if (defined($be->get_field('uniqueprimaryauthor'))) {
+    $acc .= "      \\true{uniqueprimaryauthor}\n";
+  }
+
+  if (defined($be->get_field('uniquetitle'))) {
+    $acc .= "      \\true{uniquetitle}\n";
   }
 
   # The source field for labelname
@@ -392,17 +387,12 @@ sub set_output_entry {
     $acc .= "      \\field{clonesourcekey}{$ck}\n";
   }
 
-  foreach my $field (sort @{$dm->get_fields_of_type('field', 'entrykey')},
-                          @{$dm->get_fields_of_type('field', 'key')},
-                          @{$dm->get_fields_of_type('field', 'integer')},
-                          @{$dm->get_fields_of_type('field', 'datepart')},
-                          @{$dm->get_fields_of_type('field', 'literal')},
-                          @{$dm->get_fields_of_type('field', 'code')}) {
-    next if $dm->field_is_skipout($field);
-    next if $dm->get_fieldformat($field) eq 'xsv';
-    if ( ($dm->field_is_nullok($field) and
-          $be->field_exists($field)) or
-         $be->get_field($field) ) {
+  foreach my $field (@{$dmh->{fields}}) {
+    # Performance - as little as possible here - loop over DM fields for every entry
+    if ( $be->get_field($field) or
+         ($dm->field_is_nullok($field) and
+          $be->field_exists($field)) ) {
+
       # we skip outputting the crossref or xref when the parent is not cited
       # (biblatex manual, section 2.2.3)
       # sets are a special case so always output crossref/xref for them since their
@@ -417,16 +407,14 @@ sub set_output_entry {
     }
   }
 
-  foreach my $field (sort @{$dm->get_fields_of_fieldformat('xsv')}) {
-    next if $dm->field_is_skipout($field);
-    next if $dm->get_datatype($field) eq 'keyword';# This is special in .bbl
+  foreach my $field (@{$dmh->{xsv}}) {
     if (my $f = $be->get_field($field)) {
       $acc .= _printfield($be, $field, join(',', @$f) );
     }
   }
 
-  foreach my $rfield (@{$dm->get_fields_of_datatype('range')}) {
-    next if $dm->field_is_skipout($rfield);
+  foreach my $rfield (@{$dmh->{ranges}}) {
+    # Performance - as little as possible here - loop over DM fields for every entry
     if ( my $rf = $be->get_field($rfield) ) {
       # range fields are an array ref of two-element array refs [range_start, range_end]
       # range_end can be be empty for open-ended range or undef
@@ -446,18 +434,15 @@ sub set_output_entry {
   }
 
   # verbatim fields
-  foreach my $vfield ((@{$dm->get_fields_of_type('field', 'verbatim')},
-                       @{$dm->get_fields_of_type('field', 'uri')})) {
-    next if $dm->field_is_skipout($vfield);
+  foreach my $vfield (@{$dmh->{vfields}}) {
+    # Performance - as little as possible here - loop over DM fields for every entry
     if ( my $vf = $be->get_field($vfield) ) {
       $acc .= "      \\verb{$vfield}\n";
       $acc .= "      \\verb $vf\n      \\endverb\n";
     }
   }
   # verbatim lists
-  foreach my $vlist ((@{$dm->get_fields_of_type('list', 'verbatim')},
-                      @{$dm->get_fields_of_type('list', 'uri')})) {
-    next if $dm->field_is_skipout($vlist);
+  foreach my $vlist (@{$dmh->{vlists}}) {
     if ( my $vlf = $be->get_field($vlist) ) {
       if ( lc($vlf->[-1]) eq Biber::Config->getoption('others_string') ) {
         $acc .= "      \\true{more$vlist}\n";
@@ -475,6 +460,28 @@ sub set_output_entry {
   if ( my $k = $be->get_field('keywords') ) {
     $k = join(',', @$k);
     $acc .= "      \\keyw{$k}\n";
+  }
+
+  # Output annotations
+  foreach my $f (Biber::Annotation->get_annotated_fields('field', $key)) {
+    my $v = Biber::Annotation->get_annotation('field', $key, $f);
+    $acc .= "      \\annotation{field}{$f}{}{}{$v}\n";
+  }
+
+  foreach my $f (Biber::Annotation->get_annotated_fields('item', $key)) {
+    foreach my $c (Biber::Annotation->get_annotated_items('item', $key, $f)) {
+      my $v = Biber::Annotation->get_annotation('item', $key, $f, $c);
+      $acc .= "      \\annotation{item}{$f}{$c}{}{$v}\n";
+    }
+  }
+
+  foreach my $f (Biber::Annotation->get_annotated_fields('part', $key)) {
+    foreach my $c (Biber::Annotation->get_annotated_items('part', $key, $f)) {
+      foreach my $p (Biber::Annotation->get_annotated_parts('part', $key, $f, $c)) {
+        my $v = Biber::Annotation->get_annotation('part', $key, $f, $c, $p);
+        $acc .= "      \\annotation{part}{$f}{$c}{$p}{$v}\n";
+      }
+    }
   }
 
   # Append any warnings to the entry, if any
@@ -534,6 +541,7 @@ sub output {
     foreach my $list (sort {$a->get_sortschemename cmp $b->get_sortschemename} @{$Biber::MASTER->sortlists->get_lists_for_section($secnum)}) {
       if ($list->get_sortschemename eq Biber::Config->getblxoption('sortscheme') and
           $list->get_sortnamekeyschemename eq 'global' and
+          $list->get_labelprefix eq '' and
           $list->get_type eq 'entry') {
         next;
       }
@@ -544,23 +552,19 @@ sub output {
     # due to its sequential reading of the .bbl as the final list overrides the
     # previously read ones and the global list determines the order of labelnumber
     # and sortcites etc. when not using defernumbers
-    push @lists, $Biber::MASTER->sortlists->get_list($secnum, Biber::Config->getblxoption('sortscheme') . '/global', 'entry', Biber::Config->getblxoption('sortscheme'), 'global');
+    push @lists, $Biber::MASTER->sortlists->get_list($secnum, Biber::Config->getblxoption('sortscheme') . '/global/', 'entry', Biber::Config->getblxoption('sortscheme'), 'global', '');
 
     foreach my $list (@lists) {
       next unless $list->count_keys; # skip empty lists
       my $listssn = $list->get_sortschemename;
       my $listsnksn = $list->get_sortnamekeyschemename;
+      my $listpn = $list->get_labelprefix;
       my $listtype = $list->get_type;
       my $listname = $list->get_name;
 
-      $logger->debug("Writing entries in '$listname' list of type '$listtype' with sortscheme '$listssn' and sort name key scheme '$listsnksn'");
+      $logger->debug("Writing entries in '$listname' list of type '$listtype' with sortscheme '$listssn', sort name key scheme '$listsnksn' and labelprefix '$listpn'");
 
-      if ($listtype eq 'entry') {
-        out($target, "  \\sortlist[entry]{$listname}\n");
-      }
-      elsif ($listtype eq 'list') {
-        out($target, "  \\sortlist[list]{$listname}\n");
-      }
+      out($target, "  \\sortlist[$listtype]{$listname}\n");
 
       # The order of this array is the sorted order
       foreach my $k ($list->get_keys) {
@@ -575,7 +579,7 @@ sub output {
         if (Biber::Config->getoption('output_safechars')) {
           $entry_string = latex_recode_output($entry_string);
         }
-        else {       # ... or, check for encoding problems and force macros
+        else { # ... or, check for encoding problems and force macros
           my $outenc = Biber::Config->getoption('output_encoding');
           if ($outenc ne 'UTF-8') {
             # Can this entry be represented in the output encoding?
