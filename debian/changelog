@@ -1,3 +1,10 @@
+biber (2.5-1) unstable; urgency=medium
+
+  * Imported Upstream version 2.5
+  * update patches
+
+ -- Norbert Preining <preining@debian.org>  Wed, 25 May 2016 01:09:39 +0900
+
 biber (2.4-1) unstable; urgency=medium
 
   * Imported Upstream version 2.4

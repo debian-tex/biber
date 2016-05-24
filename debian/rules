@@ -5,6 +5,11 @@ TEST_FILES=$(filter-out t/remote-files.t,$(shell echo t/*.t))
 %:
 	dh $@ --with tex
 
+override_dh_auto_build:
+	dh_auto_build
+	# does not work at the moment
+	# cd doc && xelatex -output-driver="xdvipdfmx -V 4" biber.tex
+	
 override_dh_auto_test:
 	dh_auto_test -- test_files="$(TEST_FILES)"
 
