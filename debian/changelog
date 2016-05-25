@@ -5,8 +5,9 @@ biber (2.5-1) unstable; urgency=medium
   * fix documentation .tex file to compile
   * build pdf during package build time, adjust build-deps
   * bump standards version, no changes necessary
+  * break against texlive-bibtex-extra << 2016
 
- -- Norbert Preining <preining@debian.org>  Wed, 25 May 2016 10:50:45 +0900
+ -- Norbert Preining <preining@debian.org>  Wed, 25 May 2016 10:51:32 +0900
 
 biber (2.4-1) unstable; urgency=medium
 
