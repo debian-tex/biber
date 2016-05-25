@@ -2,6 +2,9 @@
 
 TEST_FILES=$(filter-out t/remote-files.t,$(shell echo t/*.t))
 
+TEXMFVAR := $(shell mktemp -d)
+export TEXMFVAR
+
 %:
 	dh $@ --with tex
 
