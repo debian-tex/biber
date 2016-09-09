@@ -34,7 +34,8 @@
             "Data::Compare" : "0",
             "Data::Dump" : "0",
             "Data::Uniqid" : "0",
-            "Date::Simple" : "0",
+            "DateTime::Calendar::Julian" : "0",
+            "DateTime::Format::Builder" : "0",
             "Encode::EUCJPASCII" : "0",
             "Encode::HanExtra" : "0",
             "Encode::JIS2K" : "0",
@@ -48,20 +49,24 @@
             "List::MoreUtils" : "0",
             "List::MoreUtils::XS" : "0",
             "Log::Log4perl" : "0",
-            "Mozilla::CA" : "20141217",
+            "Mozilla::CA" : "20160104",
             "Regexp::Common" : "0",
-            "Text::BibTeX" : "0.72",
+            "Sort::Key" : "0",
+            "Text::BibTeX" : "0.76",
+            "Text::CSV" : "0",
+            "Text::CSV_XS" : "0",
             "Text::Roman" : "0",
             "URI" : "0",
             "Unicode::Collate" : "1.14",
             "Unicode::GCString" : "0",
+            "Unicode::LineBreak" : "2016.003",
             "Unicode::Normalize" : "1.25",
             "XML::LibXML" : "1.7",
             "XML::LibXML::Simple" : "0",
             "XML::LibXSLT" : "0",
             "XML::Writer" : "0",
             "autovivification" : "0",
-            "perl" : "v5.16.0"
+            "perl" : "v5.24.0"
          }
       },
       "test" : {
@@ -81,13 +86,16 @@
       },
       "Biber::Config" : {
          "file" : "lib/Biber/Config.pm",
-         "version" : "2.5"
+         "version" : "2.6"
       },
       "Biber::Constants" : {
          "file" : "lib/Biber/Constants.pm"
       },
       "Biber::DataModel" : {
          "file" : "lib/Biber/DataModel.pm"
+      },
+      "Biber::Date::Format" : {
+         "file" : "lib/Biber/Date/Format.pm"
       },
       "Biber::Entries" : {
          "file" : "lib/Biber/Entries.pm"
@@ -106,9 +114,6 @@
       },
       "Biber::Input::file::bibtex" : {
          "file" : "lib/Biber/Input/file/bibtex.pm"
-      },
-      "Biber::Input::file::ris" : {
-         "file" : "lib/Biber/Input/file/ris.pm"
       },
       "Biber::Internals" : {
          "file" : "lib/Biber/Internals.pm"
@@ -159,5 +164,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "2.5"
+   "version" : "2.6"
 }
