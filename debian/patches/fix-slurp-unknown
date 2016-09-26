@@ -4,8 +4,8 @@
 
 --- biber.orig/lib/Biber.pm
 +++ biber/lib/Biber.pm
-@@ -12,6 +12,7 @@
- use Carp;
+@@ -29,6 +29,7 @@
+ use Data::Compare;
  use Encode;
  use File::Copy;
 +use File::Slurp;

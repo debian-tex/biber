@@ -8,7 +8,7 @@ Thanks to Don Armstrong for providing the idea
 
 --- biber.orig/lib/Biber/Input/file/biblatexml.pm
 +++ biber/lib/Biber/Input/file/biblatexml.pm
-@@ -174,7 +174,8 @@
+@@ -180,7 +180,8 @@
    $xml = NFD(decode('UTF-8', $xml));# Unicode NFD boundary
    my $bltxml = XML::LibXML->load_xml(string => $xml);
    my $xpc = XML::LibXML::XPathContext->new($bltxml);
@@ -17,4 +17,4 @@ Thanks to Don Armstrong for providing the idea
 +  $xpc->registerNs($NS, $tmp);
  
    if ($section->is_allkeys) {
-     $logger->debug("All citekeys will be used for section '$secnum'");
+     if ($logger->is_debug()) {# performance tune

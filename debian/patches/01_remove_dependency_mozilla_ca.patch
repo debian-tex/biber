@@ -9,32 +9,11 @@ Comment: fixes to adapt to biber 1.8
 ---
  lib/Biber/Input/file/biblatexml.pm |   11 -----------
  lib/Biber/Input/file/bibtex.pm     |   11 -----------
- lib/Biber/Input/file/ris.pm        |   11 -----------
- 3 files changed, 33 deletions(-)
+ 2 files changed, 22 deletions(-)
 
 --- biber.orig/lib/Biber/Input/file/biblatexml.pm
 +++ biber/lib/Biber/Input/file/biblatexml.pm
-@@ -118,17 +118,6 @@
-         # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
-         # We have to explicitly set the cert path because otherwise the https module
-         # can't find the .pem when PAR::Packer'ed
--        # Have to explicitly try to require Mozilla::CA here to get it into %INC below
--        # It may, however, have been removed by some biber unpacked dists
--        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
--            not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
--            not defined(Biber::Config->getoption('ssl-nointernalca')) and
--            eval {require Mozilla::CA}) {
--          # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
--          (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
--          $dir =~ s/\/$//;      # splitpath sometimes leaves a trailing '/'
--          $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
--        }
- 
-         # fallbacks for, e.g., linux
-         unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
---- biber.orig/lib/Biber/Input/file/ris.pm
-+++ biber/lib/Biber/Input/file/ris.pm
-@@ -111,17 +111,6 @@
+@@ -119,17 +119,6 @@
          # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
          # We have to explicitly set the cert path because otherwise the https module
          # can't find the .pem when PAR::Packer'ed
@@ -54,7 +33,7 @@ Comment: fixes to adapt to biber 1.8
          unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
 --- biber.orig/lib/Biber/Input/file/bibtex.pm
 +++ biber/lib/Biber/Input/file/bibtex.pm
-@@ -141,17 +141,6 @@
+@@ -145,17 +145,6 @@
          # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
          # We have to explicitly set the cert path because otherwise the https module
          # can't find the .pem when PAR::Packer'ed
