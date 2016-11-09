@@ -1,3 +1,9 @@
+biber (2.6-2) unstable; urgency=high
+
+  * band-aid fix for FTBFS with newer libcollate-unicode-perl (Closes: #843711)
+
+ -- Norbert Preining <preining@debian.org>  Thu, 10 Nov 2016 00:55:23 +0900
+
 biber (2.6-1) unstable; urgency=medium
 
   * New upstream version 2.6
