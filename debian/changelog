@@ -1,3 +1,11 @@
+biber (2.7-1) unstable; urgency=medium
+
+  * New upstream version 2.7
+  * update patches
+  * break against old versions of biblatex
+
+ -- Norbert Preining <preining@debian.org>  Sun, 22 Jan 2017 22:24:08 +0900
+
 biber (2.6-2) unstable; urgency=high
 
   * band-aid fix for FTBFS with newer libcollate-unicode-perl (Closes: #843711)
