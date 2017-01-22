@@ -52,6 +52,7 @@ start =
       uniquename,
       uniqueprimaryauthor,
       uniquetitle,
+      uniquebaretitle,
       uniquework,
       useprefix,
       usenames
@@ -86,6 +87,7 @@ start =
       uniquelist?,
       uniquename?,
       uniquetitle?,
+      uniquebaretitle?,
       uniquework?,
       useprefix?,
       usenames?
@@ -406,6 +408,11 @@ sorting =
       attribute type { text },
       element bcf:exclusion { text }+
     }*,
+    # forcibly includes certain fields excluded by sortexclusion for sorting for specified types
+    element bcf:sortinclusion {
+      attribute type { text },
+      element bcf:inclusion { text }+
+    }*,
     sort+
   }
 
@@ -593,6 +600,12 @@ uniquetitle =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "uniquetitle" },
+    element bcf:value { "0" | "1" }
+  }
+uniquebaretitle =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "uniquebaretitle" },
     element bcf:value { "0" | "1" }
   }
 uniquework =

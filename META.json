@@ -86,7 +86,7 @@
       },
       "Biber::Config" : {
          "file" : "lib/Biber/Config.pm",
-         "version" : "2.6"
+         "version" : "2.7"
       },
       "Biber::Constants" : {
          "file" : "lib/Biber/Constants.pm"
@@ -164,5 +164,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "2.6"
+   "version" : "2.7"
 }
