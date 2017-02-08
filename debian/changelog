@@ -1,3 +1,9 @@
+biber (2.7-2) unstable; urgency=medium
+
+  * play the libcollate-unicode-perl game (Closes: #852898)
+
+ -- Norbert Preining <preining@debian.org>  Wed, 08 Feb 2017 09:19:07 +0900
+
 biber (2.7-1) unstable; urgency=medium
 
   * New upstream version 2.7
