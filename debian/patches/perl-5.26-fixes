@@ -1,0 +1,16 @@
+fix unescaped { (Closes: #870617)
+---
+ lib/Biber/LaTeX/Recode.pm |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- biber.orig/lib/Biber/LaTeX/Recode.pm
++++ biber/lib/Biber/LaTeX/Recode.pm
+@@ -313,7 +313,7 @@
+     # Workaround perl's lack of variable-width negative look-behind -
+     # Reverse string (and therefore some of the Re) and use variable width negative look-ahead
+     $text = reverse $text;
+-    $text =~ s/}(\pM+\pL){(?!\pL+\\)/$1/g;
++    $text =~ s/}(\pM+\pL)\{(?!\pL+\\)/$1/g;
+     $text = reverse $text;
+ 
+     # Replace verbatim field markers
