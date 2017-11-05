@@ -9,7 +9,7 @@ Thanks to Don Armstrong for providing the idea
 --- biber.orig/lib/Biber/Input/file/biblatexml.pm
 +++ biber/lib/Biber/Input/file/biblatexml.pm
 @@ -180,7 +180,8 @@
-   $xml = NFD(decode('UTF-8', $xml));# Unicode NFD boundary
+   $xml = NFD($xml);# Unicode NFD boundary
    my $bltxml = XML::LibXML->load_xml(string => $xml);
    my $xpc = XML::LibXML::XPathContext->new($bltxml);
 -  $xpc->registerNs($NS, $BIBLATEXML_NAMESPACE_URI);

@@ -5,8 +5,9 @@ biber (2.8-1) unstable; urgency=medium
   * bump deps for new biber
   * break against TL with old biblatex
   * bump standards version, no changes necessary
+  * update/unfuzzify patches
 
- -- Norbert Preining <preining@debian.org>  Sun, 05 Nov 2017 22:03:28 +0900
+ -- Norbert Preining <preining@debian.org>  Sun, 05 Nov 2017 22:10:03 +0900
 
 biber (2.7-2) unstable; urgency=medium
 

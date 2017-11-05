@@ -2,5 +2,3 @@
 02_spelling.patch
 03_whatis.patch
 fix-xpathcontext
-fix-slurp-unknown
-perl-5.26-fixes

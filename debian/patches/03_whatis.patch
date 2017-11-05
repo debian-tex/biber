@@ -12,9 +12,7 @@ Last-Update: 2013-08-29
  lib/Biber/Entry/Names.pm |    2 +-
  lib/Biber/Section.pm     |    2 +-
  lib/Biber/Sections.pm    |    2 +-
- lib/Biber/SortList.pm    |    2 +-
- lib/Biber/SortLists.pm   |    2 +-
- 9 files changed, 9 insertions(+), 9 deletions(-)
+ 7 files changed, 7 insertions(+), 7 deletions(-)
 
 --- biber.orig/lib/Biber/Entries.pm
 +++ biber/lib/Biber/Entries.pm
@@ -29,7 +27,7 @@ Last-Update: 2013-08-29
  
 --- biber.orig/lib/Biber/Entry.pm
 +++ biber/lib/Biber/Entry.pm
-@@ -17,7 +17,7 @@
+@@ -18,7 +18,7 @@
  
  =head1 NAME
  
@@ -51,7 +49,7 @@ Last-Update: 2013-08-29
  
 --- biber.orig/lib/Biber/Entry/Names.pm
 +++ biber/lib/Biber/Entry/Names.pm
-@@ -24,7 +24,7 @@
+@@ -22,7 +22,7 @@
  
  =head1 NAME
  
@@ -79,28 +77,6 @@ Last-Update: 2013-08-29
  
 -Biber::Sections
 +Biber::Sections - Biber::Sections objects
- 
- =head2 new
- 
---- biber.orig/lib/Biber/SortList.pm
-+++ biber/lib/Biber/SortList.pm
-@@ -12,7 +12,7 @@
- 
- =head1 NAME
- 
--Biber::SortList
-+Biber::SortList - Biber::SortList objects
- 
- =head2 new
- 
---- biber.orig/lib/Biber/SortLists.pm
-+++ biber/lib/Biber/SortLists.pm
-@@ -7,7 +7,7 @@
- 
- =head1 NAME
- 
--Biber::SortLists
-+Biber::SortLists - Biber::SortLists objects
  
  =head2 new
  

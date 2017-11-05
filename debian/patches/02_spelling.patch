@@ -10,9 +10,9 @@ Last-Update: 2013-08-29
 
 --- biber.orig/lib/Biber.pm
 +++ biber/lib/Biber.pm
-@@ -3086,7 +3086,7 @@
+@@ -3363,7 +3363,7 @@
  
-         Biber::Config->add_uniquelistcount($namelist);
+         $dlist->add_uniquelistcount($namelist);
        }
 -      # We need to know the list uniqueness counts for the whole list seperately otherwise
 +      # We need to know the list uniqueness counts for the whole list separately otherwise
