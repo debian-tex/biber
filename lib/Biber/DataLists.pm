@@ -1,4 +1,4 @@
-package Biber::SortLists;
+package Biber::DataLists;
 use v5.24;
 use strict;
 use warnings;
@@ -7,11 +7,11 @@ use warnings;
 
 =head1 NAME
 
-Biber::SortLists
+Biber::DataLists
 
 =head2 new
 
-    Initialize a Biber::SortLists object
+    Initialize a Biber::DataLists object
 
 =cut
 
@@ -65,21 +65,40 @@ sub get_lists_for_section {
   return $lists;
 }
 
+=head2 get_lists_by_attrs
+
+    Returns an array ref of data lists with certain
+    attributes
+
+=cut
+
+sub get_lists_by_attrs {
+  my ($self, %attrs) = @_;
+  my $lists;
+  LIST: foreach my $list ($self->{lists}->@*) {
+      foreach my $attr (keys %attrs) {
+        my $method = "get_$attr";
+        unless ($attrs{$attr} eq $list->$method) {
+          next LIST;
+        }
+      }
+      push $lists->@*, $list;
+    }
+  return $lists;
+}
+
 =head2 get_list
 
-    Returns a specific list by section, name, type, sortscheme, sortnamekeyscheme
+    Returns a specific list by list metadata
 
 =cut
 
 sub get_list {
-  my ($self, $section, $name, $type, $ssn, $snksn, $pn) = @_;
+  my ($self, $name, $section, $type) = @_;
   foreach my $list ($self->{lists}->@*) {
-    return $list if ($list->get_name eq $name and
-                     $list->get_sortschemename eq $ssn and
-                     $list->get_sortnamekeyschemename eq $snksn and
-                     $list->get_labelprefix eq $pn and
-                     $list->get_type eq $type and
-                     $list->get_section == $section);
+    next if (defined($section) and ($list->get_section ne $section));
+    next if ($type and ($list->get_type ne $type));
+    return $list if $list->get_name eq $name;
   }
   return undef;
 }
@@ -119,7 +138,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

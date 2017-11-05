@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 13;
+use Test::More tests => 15;
 use Test::Differences;
 unified_diff;
 
@@ -39,23 +39,24 @@ Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 # Now generate the information
 $biber->prepare;
 my $out = $biber->get_output_obj;
-my $section = $biber->sections->get_section(0);
-my $shs = $biber->sortlists->get_list(0, 'shorthands/global/', 'list', 'shorthands', 'global', '');
-my $main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
-my $bibentries = $section->bibentries;
+my $main = $biber->datalists->get_list('none/global//global/global');
+my $shs = $biber->datalists->get_list('shorthand/global//global/global', 0, 'list');
 
 my $k1 = q|    \entry{key1}{article}{}
       \name{author}{1}{}{%
-        {{hash=a517747c3d12f99244ae598910d979c5}{%
+        {{uniquename=0,uniquepart=base,hash=a517747c3d12f99244ae598910d979c5}{%
            family={Author},
            familyi={A\bibinitperiod}}}%
       }
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
+      \strng{bibnamehash}{a517747c3d12f99244ae598910d979c5}
+      \strng{authorbibnamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authornamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authorfullhash}{a517747c3d12f99244ae598910d979c5}
       \field{sortinit}{1}
       \field{sortinithash}{27a2bc5dfb9ed0a0422134d636544b5d}
+      \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
@@ -75,7 +76,7 @@ my $k1 = q|    \entry{key1}{article}{}
 
 my $k2 = q|    \entry{key2}{inbook}{}
       \name{author}{1}{}{%
-        {{hash=a517747c3d12f99244ae598910d979c5}{%
+        {{uniquename=0,uniquepart=base,hash=a517747c3d12f99244ae598910d979c5}{%
            family={Author},
            familyi={A\bibinitperiod}}}%
       }
@@ -87,10 +88,13 @@ my $k2 = q|    \entry{key2}{inbook}{}
       }
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
+      \strng{bibnamehash}{a517747c3d12f99244ae598910d979c5}
+      \strng{authorbibnamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authornamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authorfullhash}{a517747c3d12f99244ae598910d979c5}
       \field{sortinit}{2}
       \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
@@ -110,12 +114,14 @@ my $k2 = q|    \entry{key2}{inbook}{}
 
 my $kck1 = q|    \entry{c2add694bf942dc77b376592d9c862cd}{article}{dataonly}
       \name{author}{1}{}{%
-        {{hash=a517747c3d12f99244ae598910d979c5}{%
+        {{uniquename=0,uniquepart=base,hash=a517747c3d12f99244ae598910d979c5}{%
            family={Author},
            familyi={A\bibinitperiod}}}%
       }
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
+      \strng{bibnamehash}{a517747c3d12f99244ae598910d979c5}
+      \strng{authorbibnamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authornamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authorfullhash}{a517747c3d12f99244ae598910d979c5}
       \field{labeldatesource}{}
@@ -137,7 +143,7 @@ my $kck1 = q|    \entry{c2add694bf942dc77b376592d9c862cd}{article}{dataonly}
 
 my $kck2 = q|    \entry{78f825aaa0103319aaa1a30bf4fe3ada}{inbook}{dataonly}
       \name{author}{1}{}{%
-        {{hash=a517747c3d12f99244ae598910d979c5}{%
+        {{uniquename=0,uniquepart=base,hash=a517747c3d12f99244ae598910d979c5}{%
            family={Author},
            familyi={A\bibinitperiod}}}%
       }
@@ -149,6 +155,8 @@ my $kck2 = q|    \entry{78f825aaa0103319aaa1a30bf4fe3ada}{inbook}{dataonly}
       }
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
+      \strng{bibnamehash}{a517747c3d12f99244ae598910d979c5}
+      \strng{authorbibnamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authornamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authorfullhash}{a517747c3d12f99244ae598910d979c5}
       \field{labeldatesource}{}
@@ -181,6 +189,8 @@ my $kck3 = q|    \entry{3631578538a2d6ba5879b31a9a42f290}{inbook}{dataonly}
       }
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
+      \strng{bibnamehash}{a517747c3d12f99244ae598910d979c5}
+      \strng{authorbibnamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authornamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authorfullhash}{a517747c3d12f99244ae598910d979c5}
       \field{labeldatesource}{}
@@ -212,6 +222,8 @@ my $kck4 = q|    \entry{caf8e34be07426ae7127c1b4829983c1}{inbook}{dataonly,useed
       }
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
+      \strng{bibnamehash}{a517747c3d12f99244ae598910d979c5}
+      \strng{authorbibnamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authornamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authorfullhash}{a517747c3d12f99244ae598910d979c5}
       \field{labeldatesource}{}
@@ -254,6 +266,8 @@ my $s1 = q|    \entry{8ddf878039b70767c4a5bcf4f0c4f65e}{book}{dataonly,skipbib=f
       }
       \strng{namehash}{a517747c3d12f99244ae598910d979c5}
       \strng{fullhash}{a517747c3d12f99244ae598910d979c5}
+      \strng{bibnamehash}{a517747c3d12f99244ae598910d979c5}
+      \strng{authorbibnamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authornamehash}{a517747c3d12f99244ae598910d979c5}
       \strng{authorfullhash}{a517747c3d12f99244ae598910d979c5}
       \field{labelnamesource}{author}
@@ -275,7 +289,7 @@ eq_or_diff( $out->get_output_entry('caf8e34be07426ae7127c1b4829983c1', $main), $
 # Key k4 is used only to create a related entry clone but since it isn't cited itself
 # it shouldn't be in the .bbl
 eq_or_diff( $out->get_output_entry('key4', $main), undef, 'Related entry test 8' ) ;
-is_deeply([$shs->get_keys], [
+is_deeply($shs->get_keys, [
                              "key1",
                              "key2",
                              "caf8e34be07426ae7127c1b4829983c1",
@@ -290,3 +304,76 @@ eq_or_diff( $out->get_output_entry('0a3d72134fb3d6c024db4c510bc1605b', $main), $
 
 # Testing custom relatedoptions
 eq_or_diff( $out->get_output_entry('8ddf878039b70767c4a5bcf4f0c4f65e', $main), $s1, 'Custom options - 1' ) ;
+
+my $un1 = q|    \entry{kullback}{book}{}
+      \name{author}{1}{}{%
+        {{uniquename=0,uniquepart=base,hash=34c5bbf9876c37127c3abe4e7d7a7198}{%
+           family={Kullback},
+           familyi={K\bibinitperiod},
+           given={Solomon},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {New York}%
+      }
+      \list{publisher}{1}{%
+        {John Wiley \& Sons}%
+      }
+      \strng{namehash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \strng{fullhash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \strng{bibnamehash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \strng{authorbibnamehash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \strng{authornamehash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \strng{authorfullhash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \field{sortinit}{5}
+      \field{sortinithash}{c9df3c9fb8f555dd9201cedc5e343021}
+      \field{extradatescope}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{langid}{english}
+      \field{langidopts}{variant=american}
+      \field{title}{Information Theory and Statistics}
+      \field{year}{1959}
+    \\endentry
+|;
+
+my $un2 = q|    \entry{kullback:related}{book}{}
+      \name{author}{1}{}{%
+        {{uniquename=0,uniquepart=base,hash=34c5bbf9876c37127c3abe4e7d7a7198}{%
+           family={Kullback},
+           familyi={K\bibinitperiod},
+           given={Solomon},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {New York}%
+      }
+      \list{publisher}{1}{%
+        {Dover Publications}%
+      }
+      \strng{namehash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \strng{fullhash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \strng{bibnamehash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \strng{authorbibnamehash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \strng{authornamehash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \strng{authorfullhash}{34c5bbf9876c37127c3abe4e7d7a7198}
+      \field{sortinit}{6}
+      \field{sortinithash}{02bbed3ed82f61ae046619460488516d}
+      \field{extradatescope}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{annotation}{A reprint of the \texttt{kullback} entry. Note the format of the \texttt{related} and \texttt{relatedtype} fields}
+      \field{langid}{english}
+      \field{langidopts}{variant=american}
+      \field{relatedtype}{origpubin}
+      \field{title}{Information Theory and Statistics}
+      \field{year}{1997}
+      \field{related}{7963607e635f427aafeffbf28942c3bb}
+    \endentry
+|;
+
+# uniquename in related entries
+eq_or_diff($out->get_output_entry('kullback', $main), $un1, 'Related uniquename - 1');
+eq_or_diff($out->get_output_entry('kullback:related', $main), $un2, 'Related uniquename - 2');

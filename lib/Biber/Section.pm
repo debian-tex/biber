@@ -34,12 +34,12 @@ sub new {
   $self->{everykey_lc} = {};
   $self->{bcfkeycache} = {};
   $self->{labelcache_v} = {};
-  $self->{sortcache} = [];
   $self->{dkeys} = {};
   $self->{keytods} = {};
   $self->{orig_order_citekeys} = [];
   $self->{undef_citekeys} = [];
   $self->{citekey_alias} = {};
+  $self->{static_keys} = {};
   return $self;
 }
 
@@ -51,7 +51,6 @@ sub new {
 
 sub reset_caches {
   my $self = shift;
-  $self->{sortcache} = [];
   $self->{labelcache_l} = {};
   $self->{labelcache_v} = {};
   $self->{bcfkeycache} = {};
@@ -313,7 +312,6 @@ sub set_orig_order_citekeys {
   return;
 }
 
-
 =head2 get_citekeys
 
     Gets the citekeys of a Biber::Section object
@@ -339,6 +337,17 @@ sub get_static_citekeys {
   return reduce_array($self->{citekeys}, $self->dynamic_set_keys);
 }
 
+=head2 has_cited_citekey
+
+    Returns true when $key was one of the actually cited keys in the section
+
+=cut
+
+sub has_cited_citekey {
+  my $self = shift;
+  my $key = shift;
+  return $self->{citekeys_h}{$key} ? 1 : 0;
+}
 
 =head2 add_undef_citekey
 
@@ -443,7 +452,6 @@ sub add_citekeys {
   return;
 }
 
-
 =head2 set_citekey_alias
 
     Set citekey alias information
@@ -482,7 +490,6 @@ sub del_citekey_alias {
   return;
 }
 
-
 =head2 get_citekey_aliases
 
     Get a list of all citekey aliases for the section
@@ -493,7 +500,6 @@ sub get_citekey_aliases {
   my $self = shift;
   return ( keys $self->{citekey_alias}->%* );
 }
-
 
 =head2 set_labelcache_v
 
@@ -655,34 +661,6 @@ sub get_datasources {
 }
 
 
-=head2 add_sort_cache
-
-    Adds a scheme/keys pair to the sort cache:
-    [$scheme, $keys, $sortinitdata, $extraalphadata, $extrayeardata ]
-
-=cut
-
-sub add_sort_cache {
-  my $self = shift;
-  my $cacheitem = shift;
-  push $self->{sortcache}->@*, $cacheitem;
-  return;
-}
-
-
-=head2 get_sort_cache
-
-    Retrieves the sort cache
-
-=cut
-
-sub get_sort_cache {
-  my $self = shift;
-  return $self->{sortcache};
-}
-
-
-
 =head2 number
 
     Gets the section number of a Biber::Section object
@@ -710,7 +688,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

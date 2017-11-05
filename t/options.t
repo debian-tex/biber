@@ -46,7 +46,7 @@ Biber::Config->setblxoption('labeldatespec', [ {content => 'date', type => 'fiel
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
+my $main = $biber->datalists->get_list('nty/global//global/global');
 my $bibentries = $section->bibentries;
 
 my $dmv =  [
@@ -83,21 +83,25 @@ my $bln = [ {content => 'author'}, {content => 'editor'} ];
 
 my $l1 = q|    \entry{L1}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
+        {{uniquename=0,uniquepart=base,hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
            family={Doe},
            familyi={D\bibinitperiod},
            given={John},
-           giveni={J\bibinitperiod}}}%
+           giveni={J\bibinitperiod},
+           givenun=0}}%
       }
       \list{publisher}{1}{%
         {Oxford}%
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
       \field{sortinithash}{d10b5413de1f3d197b20897dd0d565bb}
+      \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
@@ -116,21 +120,25 @@ my $l1 = q|    \entry{L1}{book}{}
 
 my $l2 = q|    \entry{L2}{book}{maxcitenames=3,maxbibnames=3,maxitems=2}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=19eec87c959944d6d9c72434a42856ba}{%
+        {{uniquename=0,uniquepart=base,hash=19eec87c959944d6d9c72434a42856ba}{%
            family={Edwards},
            familyi={E\bibinitperiod},
            given={Ellison},
-           giveni={E\bibinitperiod}}}%
+           giveni={E\bibinitperiod},
+           givenun=0}}%
       }
       \list{publisher}{1}{%
         {Oxford}%
       }
       \strng{namehash}{19eec87c959944d6d9c72434a42856ba}
       \strng{fullhash}{19eec87c959944d6d9c72434a42856ba}
+      \strng{bibnamehash}{19eec87c959944d6d9c72434a42856ba}
+      \strng{authorbibnamehash}{19eec87c959944d6d9c72434a42856ba}
       \strng{authornamehash}{19eec87c959944d6d9c72434a42856ba}
       \strng{authorfullhash}{19eec87c959944d6d9c72434a42856ba}
       \field{sortinit}{E}
       \field{sortinithash}{07bbd5a529b5beaa311df5be05b874bc}
+      \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
@@ -144,21 +152,25 @@ my $l2 = q|    \entry{L2}{book}{maxcitenames=3,maxbibnames=3,maxitems=2}
 
 my $l3 = q|    \entry{L3}{book}{blah=10}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=490250da1f3b92580d97563dc96c6c84}{%
+        {{uniquename=0,uniquepart=base,hash=490250da1f3b92580d97563dc96c6c84}{%
            family={Bluntford},
            familyi={B\bibinitperiod},
            given={Bunty},
-           giveni={B\bibinitperiod}}}%
+           giveni={B\bibinitperiod},
+           givenun=0}}%
       }
       \list{publisher}{1}{%
         {Oxford}%
       }
       \strng{namehash}{490250da1f3b92580d97563dc96c6c84}
       \strng{fullhash}{490250da1f3b92580d97563dc96c6c84}
+      \strng{bibnamehash}{490250da1f3b92580d97563dc96c6c84}
+      \strng{authorbibnamehash}{490250da1f3b92580d97563dc96c6c84}
       \strng{authornamehash}{490250da1f3b92580d97563dc96c6c84}
       \strng{authorfullhash}{490250da1f3b92580d97563dc96c6c84}
       \field{sortinit}{B}
       \field{sortinithash}{5f6fa000f686ee5b41be67ba6ff7962d}
+      \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}

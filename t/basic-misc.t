@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 68;
+use Test::More tests => 69;
 use Test::Differences;
 unified_diff;
 
@@ -55,9 +55,10 @@ Biber::Config->setblxoption('uniquework', 1);
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
+my $main = $biber->datalists->get_list('nty/global//global/global');
+
 my @keys = sort $section->get_citekeys;
-my @citedkeys = sort qw{ alias1 alias2 alias5 anon1 anon2 murray t1 kant:ku kant:kpv t2 shore u1 u2 us1 list1 isbn1 isbn2 markey ent1 verb1};
+my @citedkeys = sort qw{ alias1 alias2 alias5 anon1 anon2 murray t1 kant:ku kant:kpv t2 shore u1 u2 us1 list1 isbn1 isbn2 markey ent1 verb1 over1};
 
 # entry "loh" is missing as the biber.conf map removes it with map_entry_null
 my @allkeys = sort map {lc()} qw{ anon1 anon2 stdmodel aristotle:poetics vazques-de-parga t1
@@ -71,25 +72,27 @@ piccato hasan hyman stdmodel:glashow stdmodel:ps_sc kant:kpv companion almendro
 sigfridsson ctan baez/online aristotle:rhetoric pimentel00 pines knuth:ct:c moraux cms
 angenendt angenendtsk markey cotton vangennepx kant:ku nussbaum nietzsche:ksa1
 vangennep knuth:ct angenendtsa spiegelberg bertram brandt set:aksin chiu nietzsche:ksa
-set:yoon maron coleridge tvonb t2 u1 u2 i1 i2 tmn1 tmn2 tmn3 tmn4 lne1 alias1 alias2 alias5 url1 ol1 pages1 pages2 pages3 pages4 pages5 pages6 pages7 pages8 us1 labelstest list1 sn1 pages9 isbn1 isbn2 snk1 clone-snk1 newtestkey ent1 avona rvonr verb1};
+set:yoon maron coleridge tvonb t2 u1 u2 i1 i2 tmn1 tmn2 tmn3 tmn4 lne1 alias1 alias2 alias5 url1 ol1 pages1 pages2 pages3 pages4 pages5 pages6 pages7 pages8 us1 labelstest list1 sn1 pages9 isbn1 isbn2 snk1 clone-snk1 newtestkey ent1 avona rvonr verb1 over1 others1 others2};
 
 my $u1 = q|    \entry{u1}{misc}{}
       \name{author}{4}{uniquelist=4}{%
-        {{uniquename=0,hash=e1faffb3e614e6c2fba74296962386b7}{%
+        {{uniquename=0,uniquepart=base,hash=e1faffb3e614e6c2fba74296962386b7}{%
            family={AAA},
            familyi={A\bibinitperiod}}}%
-        {{uniquename=0,hash=2bb225f0ba9a58930757a868ed57d9a3}{%
+        {{uniquename=0,uniquepart=base,hash=2bb225f0ba9a58930757a868ed57d9a3}{%
            family={BBB},
            familyi={B\bibinitperiod}}}%
-        {{uniquename=0,hash=defb99e69a9f1f6e06f15006b1f166ae}{%
+        {{uniquename=0,uniquepart=base,hash=defb99e69a9f1f6e06f15006b1f166ae}{%
            family={CCC},
            familyi={C\bibinitperiod}}}%
-        {{uniquename=0,hash=45054f47ac3305a2a33e9bcceadff712}{%
+        {{uniquename=0,uniquepart=base,hash=45054f47ac3305a2a33e9bcceadff712}{%
            family={DDD},
            familyi={D\bibinitperiod}}}%
       }
       \strng{namehash}{b78abdc838d79b6576f2ed0021642766}
       \strng{fullhash}{b78abdc838d79b6576f2ed0021642766}
+      \strng{bibnamehash}{b78abdc838d79b6576f2ed0021642766}
+      \strng{authorbibnamehash}{b78abdc838d79b6576f2ed0021642766}
       \strng{authornamehash}{b78abdc838d79b6576f2ed0021642766}
       \strng{authorfullhash}{b78abdc838d79b6576f2ed0021642766}
       \field{labelalpha}{AAA\textbf{+}00}
@@ -109,7 +112,8 @@ my $u1 = q|    \entry{u1}{misc}{}
 eq_or_diff( $out->get_output_entry('u1', $main), $u1, 'uniquelist 1' ) ;
 
 is_deeply( \@keys, \@citedkeys, 'citekeys 1') ;
-is_deeply( [ $biber->sortlists->get_list(0, 'shorthands/global/', 'list', 'shorthands', 'global', '')->get_keys ], [ 'kant:kpv', 'kant:ku' ], 'shorthands' ) ;
+
+is_deeply($biber->datalists->get_list('shorthand/global//global/global')->get_keys, [ 'kant:kpv', 'kant:ku' ], 'shorthands' ) ;
 
 # reset some options and re-generate information
 
@@ -134,79 +138,95 @@ is_deeply( \@keys, \@allkeys, 'citekeys 2') ;
 
 my $murray1 = q|    \entry{murray}{article}{}
       \name{author}{14}{}{%
-        {{uniquename=0,hash=f1bafaf959660d1c3ca82d486ce5a651}{%
+        {{uniquename=0,uniquepart=base,hash=f1bafaf959660d1c3ca82d486ce5a651}{%
            family={Hostetler},
            familyi={H\bibinitperiod},
            given={Michael\bibnamedelima J.},
-           giveni={M\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
-        {{uniquename=0,hash=de9f774c929dc661b4180b07f5eb62f3}{%
+           giveni={M\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=de9f774c929dc661b4180b07f5eb62f3}{%
            family={Wingate},
            familyi={W\bibinitperiod},
            given={Julia\bibnamedelima E.},
-           giveni={J\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
-        {{uniquename=0,hash=76100791c221471771c6bf1dbbc0975d}{%
+           giveni={J\bibinitperiod\bibinitdelim E\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=76100791c221471771c6bf1dbbc0975d}{%
            family={Zhong},
            familyi={Z\bibinitperiod},
            given={Chuan-Jian},
-           giveni={C\bibinithyphendelim J\bibinitperiod}}}%
-        {{uniquename=0,hash=34c410f87490dd022093780c69640413}{%
+           giveni={C\bibinithyphendelim J\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=34c410f87490dd022093780c69640413}{%
            family={Harris},
            familyi={H\bibinitperiod},
            given={Jay\bibnamedelima E.},
-           giveni={J\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
-        {{uniquename=0,hash=a803710eddd16b95e91f420c0081985c}{%
+           giveni={J\bibinitperiod\bibinitdelim E\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=a803710eddd16b95e91f420c0081985c}{%
            family={Vachet},
            familyi={V\bibinitperiod},
            given={Richard\bibnamedelima W.},
-           giveni={R\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
-        {{uniquename=0,hash=38d1db37321ac524d14a116e74123685}{%
+           giveni={R\bibinitperiod\bibinitdelim W\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=38d1db37321ac524d14a116e74123685}{%
            family={Clark},
            familyi={C\bibinitperiod},
            given={Michael\bibnamedelima R.},
-           giveni={M\bibinitperiod\bibinitdelim R\bibinitperiod}}}%
-        {{uniquename=0,hash=969c673c8b05314f89a822ecfbead6af}{%
+           giveni={M\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=969c673c8b05314f89a822ecfbead6af}{%
            family={Londono},
            familyi={L\bibinitperiod},
            given={J.\bibnamedelimi David},
-           giveni={J\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
-        {{uniquename=0,hash=fc6cda30bdeb421b5b57ef2d1ce6f92b}{%
+           giveni={J\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=fc6cda30bdeb421b5b57ef2d1ce6f92b}{%
            family={Green},
            familyi={G\bibinitperiod},
            given={Stephen\bibnamedelima J.},
-           giveni={S\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
-        {{uniquename=0,hash=69dcde2965d0ce8a53fae463355f36f5}{%
+           giveni={S\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=69dcde2965d0ce8a53fae463355f36f5}{%
            family={Stokes},
            familyi={S\bibinitperiod},
            given={Jennifer\bibnamedelima J.},
-           giveni={J\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
-        {{uniquename=0,hash=8cfed260a429843a4846ad8d83f9a09f}{%
+           giveni={J\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=8cfed260a429843a4846ad8d83f9a09f}{%
            family={Wignall},
            familyi={W\bibinitperiod},
            given={George\bibnamedelima D.},
-           giveni={G\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
-        {{uniquename=0,hash=71a4aee3f5124c9c94825634735417be}{%
+           giveni={G\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=71a4aee3f5124c9c94825634735417be}{%
            family={Glish},
            familyi={G\bibinitperiod},
            given={Gary\bibnamedelima L.},
-           giveni={G\bibinitperiod\bibinitdelim L\bibinitperiod}}}%
-        {{uniquename=0,hash=9406f7f2b15056febb90692ae05e8620}{%
+           giveni={G\bibinitperiod\bibinitdelim L\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=9406f7f2b15056febb90692ae05e8620}{%
            family={Porter},
            familyi={P\bibinitperiod},
            given={Marc\bibnamedelima D.},
-           giveni={M\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
-        {{uniquename=0,hash=f8d80918767d0ce7f535453dc016c327}{%
+           giveni={M\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=f8d80918767d0ce7f535453dc016c327}{%
            family={Evans},
            familyi={E\bibinitperiod},
            given={Neal\bibnamedelima D.},
-           giveni={N\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
-        {{uniquename=0,hash=98688e58f25c10d275f9d15d31ba3396}{%
+           giveni={N\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=98688e58f25c10d275f9d15d31ba3396}{%
            family={Murray},
            familyi={M\bibinitperiod},
            given={Royce\bibnamedelima W.},
-           giveni={R\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+           giveni={R\bibinitperiod\bibinitdelim W\bibinitperiod},
+           givenun=0}}%
       }
       \strng{namehash}{7ba00ed438c44a2270c14ba95a7fc011}
       \strng{fullhash}{61836f4684b2615842b68c26479f6ec2}
+      \strng{bibnamehash}{bc09e680e2274ab94c57b58c4500dc45}
+      \strng{authorbibnamehash}{bc09e680e2274ab94c57b58c4500dc45}
       \strng{authornamehash}{7ba00ed438c44a2270c14ba95a7fc011}
       \strng{authorfullhash}{61836f4684b2615842b68c26479f6ec2}
       \field{labelalpha}{Hos\textbf{+}98}
@@ -235,79 +255,95 @@ my $murray1 = q|    \entry{murray}{article}{}
 
 my $murray2 = q|    \entry{murray}{article}{}
       \name{author}{14}{}{%
-        {{uniquename=0,hash=f1bafaf959660d1c3ca82d486ce5a651}{%
+        {{uniquename=0,uniquepart=base,hash=f1bafaf959660d1c3ca82d486ce5a651}{%
            family={Hostetler},
            familyi={H\bibinitperiod},
            given={Michael\bibnamedelima J.},
-           giveni={M\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
-        {{uniquename=0,hash=de9f774c929dc661b4180b07f5eb62f3}{%
+           giveni={M\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=de9f774c929dc661b4180b07f5eb62f3}{%
            family={Wingate},
            familyi={W\bibinitperiod},
            given={Julia\bibnamedelima E.},
-           giveni={J\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
-        {{uniquename=0,hash=76100791c221471771c6bf1dbbc0975d}{%
+           giveni={J\bibinitperiod\bibinitdelim E\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=76100791c221471771c6bf1dbbc0975d}{%
            family={Zhong},
            familyi={Z\bibinitperiod},
            given={Chuan-Jian},
-           giveni={C\bibinithyphendelim J\bibinitperiod}}}%
-        {{uniquename=0,hash=34c410f87490dd022093780c69640413}{%
+           giveni={C\bibinithyphendelim J\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=34c410f87490dd022093780c69640413}{%
            family={Harris},
            familyi={H\bibinitperiod},
            given={Jay\bibnamedelima E.},
-           giveni={J\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
-        {{uniquename=0,hash=a803710eddd16b95e91f420c0081985c}{%
+           giveni={J\bibinitperiod\bibinitdelim E\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=a803710eddd16b95e91f420c0081985c}{%
            family={Vachet},
            familyi={V\bibinitperiod},
            given={Richard\bibnamedelima W.},
-           giveni={R\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
-        {{uniquename=0,hash=38d1db37321ac524d14a116e74123685}{%
+           giveni={R\bibinitperiod\bibinitdelim W\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=38d1db37321ac524d14a116e74123685}{%
            family={Clark},
            familyi={C\bibinitperiod},
            given={Michael\bibnamedelima R.},
-           giveni={M\bibinitperiod\bibinitdelim R\bibinitperiod}}}%
-        {{uniquename=0,hash=969c673c8b05314f89a822ecfbead6af}{%
+           giveni={M\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=969c673c8b05314f89a822ecfbead6af}{%
            family={Londono},
            familyi={L\bibinitperiod},
            given={J.\bibnamedelimi David},
-           giveni={J\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
-        {{uniquename=0,hash=fc6cda30bdeb421b5b57ef2d1ce6f92b}{%
+           giveni={J\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=fc6cda30bdeb421b5b57ef2d1ce6f92b}{%
            family={Green},
            familyi={G\bibinitperiod},
            given={Stephen\bibnamedelima J.},
-           giveni={S\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
-        {{uniquename=0,hash=69dcde2965d0ce8a53fae463355f36f5}{%
+           giveni={S\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=69dcde2965d0ce8a53fae463355f36f5}{%
            family={Stokes},
            familyi={S\bibinitperiod},
            given={Jennifer\bibnamedelima J.},
-           giveni={J\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
-        {{uniquename=0,hash=8cfed260a429843a4846ad8d83f9a09f}{%
+           giveni={J\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=8cfed260a429843a4846ad8d83f9a09f}{%
            family={Wignall},
            familyi={W\bibinitperiod},
            given={George\bibnamedelima D.},
-           giveni={G\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
-        {{uniquename=0,hash=71a4aee3f5124c9c94825634735417be}{%
+           giveni={G\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=71a4aee3f5124c9c94825634735417be}{%
            family={Glish},
            familyi={G\bibinitperiod},
            given={Gary\bibnamedelima L.},
-           giveni={G\bibinitperiod\bibinitdelim L\bibinitperiod}}}%
-        {{uniquename=0,hash=9406f7f2b15056febb90692ae05e8620}{%
+           giveni={G\bibinitperiod\bibinitdelim L\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=9406f7f2b15056febb90692ae05e8620}{%
            family={Porter},
            familyi={P\bibinitperiod},
            given={Marc\bibnamedelima D.},
-           giveni={M\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
-        {{uniquename=0,hash=f8d80918767d0ce7f535453dc016c327}{%
+           giveni={M\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=f8d80918767d0ce7f535453dc016c327}{%
            family={Evans},
            familyi={E\bibinitperiod},
            given={Neal\bibnamedelima D.},
-           giveni={N\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
-        {{uniquename=0,hash=98688e58f25c10d275f9d15d31ba3396}{%
+           giveni={N\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,hash=98688e58f25c10d275f9d15d31ba3396}{%
            family={Murray},
            familyi={M\bibinitperiod},
            given={Royce\bibnamedelima W.},
-           giveni={R\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+           giveni={R\bibinitperiod\bibinitdelim W\bibinitperiod},
+           givenun=0}}%
       }
       \strng{namehash}{7ba00ed438c44a2270c14ba95a7fc011}
       \strng{fullhash}{61836f4684b2615842b68c26479f6ec2}
+      \strng{bibnamehash}{bc09e680e2274ab94c57b58c4500dc45}
+      \strng{authorbibnamehash}{bc09e680e2274ab94c57b58c4500dc45}
       \strng{authornamehash}{7ba00ed438c44a2270c14ba95a7fc011}
       \strng{authorfullhash}{61836f4684b2615842b68c26479f6ec2}
       \field{labelalpha}{Hos98}
@@ -337,14 +373,17 @@ my $murray2 = q|    \entry{murray}{article}{}
 # This example wouldn't compile - it's just to test escaping
 my $t1 = q+    \entry{t1}{misc}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=858fcf9483ec29b7707a7dda2dde7a6f}{%
+        {{uniquename=0,uniquepart=base,hash=858fcf9483ec29b7707a7dda2dde7a6f}{%
            family={Brown},
            familyi={B\bibinitperiod},
            given={Bill},
-           giveni={B\bibinitperiod}}}%
+           giveni={B\bibinitperiod},
+           givenun=0}}%
       }
       \strng{namehash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \strng{fullhash}{858fcf9483ec29b7707a7dda2dde7a6f}
+      \strng{bibnamehash}{858fcf9483ec29b7707a7dda2dde7a6f}
+      \strng{authorbibnamehash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \strng{authornamehash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \strng{authorfullhash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \field{labelalpha}{Bro92}
@@ -363,14 +402,17 @@ my $t1 = q+    \entry{t1}{misc}{}
 
 my $t2 = q|    \entry{t2}{misc}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=858fcf9483ec29b7707a7dda2dde7a6f}{%
+        {{uniquename=0,uniquepart=base,hash=858fcf9483ec29b7707a7dda2dde7a6f}{%
            family={Brown},
            familyi={B\bibinitperiod},
            given={Bill},
-           giveni={B\bibinitperiod}}}%
+           giveni={B\bibinitperiod},
+           givenun=0}}%
       }
       \strng{namehash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \strng{fullhash}{858fcf9483ec29b7707a7dda2dde7a6f}
+      \strng{bibnamehash}{858fcf9483ec29b7707a7dda2dde7a6f}
+      \strng{authorbibnamehash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \strng{authornamehash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \strng{authorfullhash}{858fcf9483ec29b7707a7dda2dde7a6f}
       \field{labelalpha}{Bro94}
@@ -393,14 +435,17 @@ my $anon1 = q|    \entry{anon1}{unpublished}{}
            familyi={A\bibinitperiod}}}%
       }
       \name{shortauthor}{1}{}{%
-        {{uniquename=0,hash=9873a6cc65c553faa2b21aaad626fe4b}{%
+        {{uniquename=0,uniquepart=base,hash=9873a6cc65c553faa2b21aaad626fe4b}{%
            family={XAnony},
            familyi={X\bibinitperiod}}}%
       }
       \strng{namehash}{9873a6cc65c553faa2b21aaad626fe4b}
       \strng{fullhash}{a66f357fe2fd356fe49959173522a651}
+      \strng{bibnamehash}{9873a6cc65c553faa2b21aaad626fe4b}
+      \strng{authorbibnamehash}{a66f357fe2fd356fe49959173522a651}
       \strng{authornamehash}{a66f357fe2fd356fe49959173522a651}
       \strng{authorfullhash}{a66f357fe2fd356fe49959173522a651}
+      \strng{shortauthorbibnamehash}{9873a6cc65c553faa2b21aaad626fe4b}
       \strng{shortauthornamehash}{9873a6cc65c553faa2b21aaad626fe4b}
       \strng{shortauthorfullhash}{9873a6cc65c553faa2b21aaad626fe4b}
       \field{labelalpha}{XAn35}
@@ -429,14 +474,17 @@ my $anon2 = q|    \entry{anon2}{unpublished}{}
            familyi={A\bibinitperiod}}}%
       }
       \name{shortauthor}{1}{}{%
-        {{uniquename=0,hash=f64c29e89ea49402b997956610b58ef6}{%
+        {{uniquename=0,uniquepart=base,hash=f64c29e89ea49402b997956610b58ef6}{%
            family={YAnony},
            familyi={Y\bibinitperiod}}}%
       }
       \strng{namehash}{f64c29e89ea49402b997956610b58ef6}
       \strng{fullhash}{a0bccee4041bc840e14c06e5ba7f083c}
+      \strng{bibnamehash}{f64c29e89ea49402b997956610b58ef6}
+      \strng{authorbibnamehash}{a0bccee4041bc840e14c06e5ba7f083c}
       \strng{authornamehash}{a0bccee4041bc840e14c06e5ba7f083c}
       \strng{authorfullhash}{a0bccee4041bc840e14c06e5ba7f083c}
+      \strng{shortauthorbibnamehash}{f64c29e89ea49402b997956610b58ef6}
       \strng{shortauthornamehash}{f64c29e89ea49402b997956610b58ef6}
       \strng{shortauthorfullhash}{f64c29e89ea49402b997956610b58ef6}
       \field{labelalpha}{YAn39}
@@ -460,14 +508,17 @@ my $anon2 = q|    \entry{anon2}{unpublished}{}
 
 my $url1 = q|    \entry{url1}{misc}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=b2106a3dda6c5a4879a0cab37e9cca55}{%
+        {{uniquename=0,uniquepart=base,hash=b2106a3dda6c5a4879a0cab37e9cca55}{%
            family={Alias},
            familyi={A\bibinitperiod},
            given={Alan},
-           giveni={A\bibinitperiod}}}%
+           giveni={A\bibinitperiod},
+           givenun=0}}%
       }
       \strng{namehash}{b2106a3dda6c5a4879a0cab37e9cca55}
       \strng{fullhash}{b2106a3dda6c5a4879a0cab37e9cca55}
+      \strng{bibnamehash}{b2106a3dda6c5a4879a0cab37e9cca55}
+      \strng{authorbibnamehash}{b2106a3dda6c5a4879a0cab37e9cca55}
       \strng{authornamehash}{b2106a3dda6c5a4879a0cab37e9cca55}
       \strng{authorfullhash}{b2106a3dda6c5a4879a0cab37e9cca55}
       \field{labelalpha}{Ali05}
@@ -477,6 +528,9 @@ my $url1 = q|    \entry{url1}{misc}{}
       \field{labelnamesource}{author}
       \field{year}{2005}
       \field{dateera}{ce}
+      \verb{urlraw}
+      \verb http://www.something.com/q=áŠ
+      \endverb
       \verb{url}
       \verb http://www.something.com/q=%C3%A1%C5%A0
       \endverb
@@ -498,8 +552,15 @@ my $list1 = q|    \entry{list1}{book}{}
     \endentry
 |;
 
-my $Worman_N = [ 'WormanN' ] ;
-my $Gennep = [ 'vanGennepA', 'vanGennepJ' ] ;
+my $over1 = q|    \entry{over1}{book}{}
+      \field{sortinit}{}
+      \field{sortinithash}{495dc9894017a8b12cafa9c619d10c0c}
+      \field{userd}{thing}
+    \endentry
+|;
+
+my $Worman_N = [ "Worman\x{10FFFD}WormanN" ] ;
+my $Gennep = [ "vanGennep\x{10FFFD}vanGennepA", "vanGennep\x{10FFFD}vanGennepJ" ] ;
 
 eq_or_diff( $out->get_output_entry('t1', $main), $t1, 'bbl entry with maths in title 1');
 eq_or_diff( $bibentries->entry('shore')->get_field('month'), '3', 'default bib month macros');
@@ -507,11 +568,11 @@ ok( $bibentries->entry('t1')->has_keyword('primary'), 'Keywords test - 1');
 ok( $bibentries->entry('t1')->has_keyword('something'), 'Keywords test - 2');
 ok( $bibentries->entry('t1')->has_keyword('somethingelse'), 'Keywords test - 3');
 eq_or_diff( $out->get_output_entry('t2', $main), $t2, 'bbl entry with maths in title 2');
-is_deeply( Biber::Config->_get_uniquename('WormanN', 'global'), $Worman_N, 'uniquename count 1');
-is_deeply( Biber::Config->_get_uniquename('vanGennep', 'global'), $Gennep, 'uniquename count 2');
+is_deeply( $main->_get_uniquename('WormanN', 'global'), $Worman_N, 'uniquename count 1');
+is_deeply( $main->_get_uniquename('vanGennep', 'global'), $Gennep, 'uniquename count 2');
 eq_or_diff( $out->get_output_entry('murray', $main), $murray1, 'bbl with > maxcitenames');
-eq_or_diff( $out->get_output_entry('missing1', $main), "  \\missing{missing1}\n", 'missing citekey 1');
-eq_or_diff( $out->get_output_entry('missing2', $main), "  \\missing{missing2}\n", 'missing citekey 2');
+eq_or_diff( $out->get_output_entry('missing1'), "  \\missing{missing1}\n", 'missing citekey 1');
+eq_or_diff( $out->get_output_entry('missing2'), "  \\missing{missing2}\n", 'missing citekey 2');
 
 Biber::Config->setblxoption('alphaothers', '');
 Biber::Config->setblxoption('sortalphaothers', '');
@@ -522,9 +583,10 @@ $section->del_citekeys;
 $section->bibentries->del_entries;
 $section->del_everykeys;
 Biber::Input::file::bibtex->init_cache;
-$biber->prepare ;
+$biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
+$main = $biber->datalists->get_list('nty/global//global/global');
+
 $out = $biber->get_output_obj;
 
 eq_or_diff($out->get_output_entry('murray', $main), $murray2, 'bbl with > maxcitenames, empty alphaothers');
@@ -551,7 +613,7 @@ ok(is_undef($bibentries->entry('i2')->get_field('userf')), 'map 9' );
 ok(is_undef($bibentries->entry('i2')->get_field('userc')), 'map 10' );
 
 # Make sure visibility doesn't exceed number of names.
-eq_or_diff($bibentries->entry('i2')->get_field($bibentries->entry('i2')->get_labelname_info)->get_visible_bib, '3', 'bib visibility - 1');
+eq_or_diff($main->get_visible_bib($bibentries->entry('i2')->get_field($bibentries->entry('i2')->get_labelname_info)->get_id), '3', 'bib visibility - 1');
 
 # Testing per_type and per_entry max/min* so reset globals to defaults
 Biber::Config->setblxoption('uniquelist', 0);
@@ -579,14 +641,14 @@ $section->del_everykeys;
 Biber::Input::file::bibtex->init_cache;
 $biber->prepare;
 $section = $biber->sections->get_section(0);
-$main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
+$main = $biber->datalists->get_list('nty/global//global/global');
 
-eq_or_diff($bibentries->entry('tmn1')->get_field($bibentries->entry('tmn1')->get_labelname_info)->get_visible_cite, '1', 'per_type maxcitenames - 1');
-eq_or_diff($bibentries->entry('tmn2')->get_field($bibentries->entry('tmn2')->get_labelname_info)->get_visible_cite, '3', 'per_type maxcitenames - 2');
-eq_or_diff($bibentries->entry('tmn3')->get_field($bibentries->entry('tmn3')->get_labelname_info)->get_visible_bib, '2', 'per_type bibnames - 3');
-eq_or_diff($bibentries->entry('tmn4')->get_field($bibentries->entry('tmn4')->get_labelname_info)->get_visible_bib, '3', 'per_type bibnames - 4');
-eq_or_diff($bibentries->entry('tmn1')->get_field($bibentries->entry('tmn1')->get_labelname_info)->get_visible_alpha, '3', 'per_type/entry alphanames - 1');
-eq_or_diff($bibentries->entry('tmn2')->get_field($bibentries->entry('tmn2')->get_labelname_info)->get_visible_alpha, '2', 'per_type/entry alphanames - 2');
+eq_or_diff($main->get_visible_cite($bibentries->entry('tmn1')->get_field($bibentries->entry('tmn1')->get_labelname_info)->get_id), '1', 'per_type maxcitenames - 1');
+eq_or_diff($main->get_visible_cite($bibentries->entry('tmn2')->get_field($bibentries->entry('tmn2')->get_labelname_info)->get_id), '3', 'per_type maxcitenames - 2');
+eq_or_diff($main->get_visible_bib($bibentries->entry('tmn3')->get_field($bibentries->entry('tmn3')->get_labelname_info)->get_id), '2', 'per_type bibnames - 3');
+eq_or_diff($main->get_visible_bib($bibentries->entry('tmn4')->get_field($bibentries->entry('tmn4')->get_labelname_info)->get_id), '3', 'per_type bibnames - 4');
+eq_or_diff($main->get_visible_alpha($bibentries->entry('tmn1')->get_field($bibentries->entry('tmn1')->get_labelname_info)->get_id), '3', 'per_type/entry alphanames - 1');
+eq_or_diff($main->get_visible_alpha($bibentries->entry('tmn2')->get_field($bibentries->entry('tmn2')->get_labelname_info)->get_id), '2', 'per_type/entry alphanames - 2');
 eq_or_diff($biber->_liststring('tmn1', 'institution'), 'A!B!C', 'per_type/entry items - 1');
 eq_or_diff($biber->_liststring('tmn3', 'institution'), "A!B\x{10FFFD}", 'per_type/entry items - 2');
 
@@ -599,7 +661,8 @@ eq_or_diff($section->get_citekey_alias('alias6'), 'alias5', 'Citekey aliases - 4
 ok($bibentries->entry('alias5'), 'Citekey aliases - 5');
 
 # URL encoding testing
-eq_or_diff($bibentries->entry('url1')->get_field('url'), 'http://www.something.com/q=%C3%A1%C5%A0', 'URL encoding - 1');
+# Should be raw as encoding is done on output
+eq_or_diff(NFC($bibentries->entry('url1')->get_field('url')), 'http://www.something.com/q=áŠ', 'URL encoding - 1');
 eq_or_diff($out->get_output_entry('url1', $main), $url1, 'URL encoding - 2' ) ;
 
 # map_final testing with map_field_set
@@ -607,8 +670,8 @@ eq_or_diff($bibentries->entry('ol1')->get_field('note'), 'A note', 'map_final - 
 eq_or_diff($bibentries->entry('ol1')->get_field('title'), 'Online1', 'map_final - 2');
 
 # Test for tricky pages field
-is_deeply($bibentries->entry('pages1')->get_field('pages'),[[23, 24]], 'pages - 1');
-is_deeply($bibentries->entry('pages2')->get_field('pages'),[[23, undef]], 'pages - 2');
+is_deeply($bibentries->entry('pages1')->get_field('pages'), [[23, 24]], 'pages - 1');
+is_deeply($bibentries->entry('pages2')->get_field('pages'), [[23, undef]], 'pages - 2');
 is_deeply($bibentries->entry('pages3')->get_field('pages'), [['I-II', 'III-IV']], 'pages - 3');
 is_deeply($bibentries->entry('pages4')->get_field('pages'), [[3,5]], 'pages - 4');
 is_deeply($bibentries->entry('pages5')->get_field('pages'), [[42, '']], 'pages - 5');
@@ -623,16 +686,22 @@ eq_or_diff($bibentries->entry('us1')->get_field('entrytype'), 'customa', 'Map le
 # Test for "others" in lists
 eq_or_diff( $out->get_output_entry('list1', $main), $list1, 'Entry with others list' ) ;
 
+# source->target mapping with overwrite test
+eq_or_diff($out->get_output_entry('over1', $main), $over1, 'Overwrite test - 1');
+
 my $isbn1 = q|    \entry{isbn1}{misc}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=f6595ccb9db5f634e7bb242a3f78e5f9}{%
+        {{uniquename=0,uniquepart=base,hash=f6595ccb9db5f634e7bb242a3f78e5f9}{%
            family={Flummox},
            familyi={F\bibinitperiod},
            given={Fred},
-           giveni={F\bibinitperiod}}}%
+           giveni={F\bibinitperiod},
+           givenun=0}}%
       }
       \strng{namehash}{f6595ccb9db5f634e7bb242a3f78e5f9}
       \strng{fullhash}{f6595ccb9db5f634e7bb242a3f78e5f9}
+      \strng{bibnamehash}{f6595ccb9db5f634e7bb242a3f78e5f9}
+      \strng{authorbibnamehash}{f6595ccb9db5f634e7bb242a3f78e5f9}
       \strng{authornamehash}{f6595ccb9db5f634e7bb242a3f78e5f9}
       \strng{authorfullhash}{f6595ccb9db5f634e7bb242a3f78e5f9}
       \field{labelalpha}{Flu}
@@ -646,14 +715,17 @@ my $isbn1 = q|    \entry{isbn1}{misc}{}
 
 my $isbn2 = q|    \entry{isbn2}{misc}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=f6595ccb9db5f634e7bb242a3f78e5f9}{%
+        {{uniquename=0,uniquepart=base,hash=f6595ccb9db5f634e7bb242a3f78e5f9}{%
            family={Flummox},
            familyi={F\bibinitperiod},
            given={Fred},
-           giveni={F\bibinitperiod}}}%
+           giveni={F\bibinitperiod},
+           givenun=0}}%
       }
       \strng{namehash}{f6595ccb9db5f634e7bb242a3f78e5f9}
       \strng{fullhash}{f6595ccb9db5f634e7bb242a3f78e5f9}
+      \strng{bibnamehash}{f6595ccb9db5f634e7bb242a3f78e5f9}
+      \strng{authorbibnamehash}{f6595ccb9db5f634e7bb242a3f78e5f9}
       \strng{authornamehash}{f6595ccb9db5f634e7bb242a3f78e5f9}
       \strng{authorfullhash}{f6595ccb9db5f634e7bb242a3f78e5f9}
       \field{labelalpha}{Flu}
@@ -680,18 +752,22 @@ my $new1 = q|    \entry{newtestkey}{book}{}
 
 my $clone1 = q|    \entry{snk1}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=83330b0520b5d4ea57529a23b404d43d}{%
+        {{uniquename=0,uniquepart=base,hash=83330b0520b5d4ea57529a23b404d43d}{%
            family={Doe},
            familyi={D\bibinitperiod},
            given={John},
            giveni={J\bibinitperiod},
+           givenun=0,
            prefix={von},
            prefixi={v\bibinitperiod},
            suffix={Jr},
-           suffixi={J\bibinitperiod}}}%
+           suffixi={J\bibinitperiod},
+           suffixun=0}}%
       }
       \strng{namehash}{83330b0520b5d4ea57529a23b404d43d}
       \strng{fullhash}{83330b0520b5d4ea57529a23b404d43d}
+      \strng{bibnamehash}{83330b0520b5d4ea57529a23b404d43d}
+      \strng{authorbibnamehash}{83330b0520b5d4ea57529a23b404d43d}
       \strng{authornamehash}{83330b0520b5d4ea57529a23b404d43d}
       \strng{authorfullhash}{83330b0520b5d4ea57529a23b404d43d}
       \field{labelalpha}{vDoe}
@@ -704,18 +780,22 @@ my $clone1 = q|    \entry{snk1}{book}{}
 
 my $clone2 = q|    \entry{clone-snk1}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=83330b0520b5d4ea57529a23b404d43d}{%
+        {{uniquename=0,uniquepart=base,hash=83330b0520b5d4ea57529a23b404d43d}{%
            family={Doe},
            familyi={D\bibinitperiod},
            given={John},
            giveni={J\bibinitperiod},
+           givenun=0,
            prefix={von},
            prefixi={v\bibinitperiod},
            suffix={Jr},
-           suffixi={J\bibinitperiod}}}%
+           suffixi={J\bibinitperiod},
+           suffixun=0}}%
       }
       \strng{namehash}{83330b0520b5d4ea57529a23b404d43d}
       \strng{fullhash}{83330b0520b5d4ea57529a23b404d43d}
+      \strng{bibnamehash}{83330b0520b5d4ea57529a23b404d43d}
+      \strng{authorbibnamehash}{83330b0520b5d4ea57529a23b404d43d}
       \strng{authornamehash}{83330b0520b5d4ea57529a23b404d43d}
       \strng{authorfullhash}{83330b0520b5d4ea57529a23b404d43d}
       \field{labelalpha}{vDoe}
@@ -728,22 +808,26 @@ my $clone2 = q|    \entry{clone-snk1}{book}{}
 |;
 
 my $ent1 = q|    \entry{ent1}{book}{}
-      \name{author}{2}{sortnamekeyscheme=snks1}{%
-        {{uniquename=0,hash=6b3653417f9aa97391c37cff5dfda7fa}{%
+      \name{author}{2}{sortingnamekeytemplatename=snks1}{%
+        {{uniquename=0,uniquepart=base,hash=6b3653417f9aa97391c37cff5dfda7fa}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={Simon},
-           giveni={S\bibinitperiod}}}%
-        {{uniquename=0,sortnamekeyscheme=snks2,hash=878a51e6f69e95562d15cb8a3ead5c95}{%
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{uniquename=0,uniquepart=base,sortingnamekeytemplatename=snks2,hash=878a51e6f69e95562d15cb8a3ead5c95}{%
            family={Brown},
            familyi={B\bibinitperiod},
            given={Brian},
            giveni={B\bibinitperiod},
+           givenun=0,
            prefix={de},
            prefixi={d\bibinitperiod}}}%
       }
       \strng{namehash}{b2536a425d549b46de5f21c4d468050a}
       \strng{fullhash}{b2536a425d549b46de5f21c4d468050a}
+      \strng{bibnamehash}{b2536a425d549b46de5f21c4d468050a}
+      \strng{authorbibnamehash}{b2536a425d549b46de5f21c4d468050a}
       \strng{authornamehash}{b2536a425d549b46de5f21c4d468050a}
       \strng{authorfullhash}{b2536a425d549b46de5f21c4d468050a}
       \field{labelalpha}{SdB}
@@ -754,16 +838,19 @@ my $ent1 = q|    \entry{ent1}{book}{}
     \endentry
 |;
 
-my $verb1 = q|    \\entry{verb1}{book}{}
+my $verb1 = q|    \entry{verb1}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=cac5a25f503e71f5ef28f474e14007b6}{%
+        {{uniquename=0,uniquepart=base,hash=cac5a25f503e71f5ef28f474e14007b6}{%
            family={Allright},
            familyi={A\\bibinitperiod},
            given={Arthur},
-           giveni={A\\bibinitperiod}}}%
+           giveni={A\\bibinitperiod},
+           givenun=0}}%
       }
       \strng{namehash}{cac5a25f503e71f5ef28f474e14007b6}
       \strng{fullhash}{cac5a25f503e71f5ef28f474e14007b6}
+      \strng{bibnamehash}{cac5a25f503e71f5ef28f474e14007b6}
+      \strng{authorbibnamehash}{cac5a25f503e71f5ef28f474e14007b6}
       \strng{authornamehash}{cac5a25f503e71f5ef28f474e14007b6}
       \strng{authorfullhash}{cac5a25f503e71f5ef28f474e14007b6}
       \field{labelalpha}{All}
@@ -774,7 +861,7 @@ my $verb1 = q|    \\entry{verb1}{book}{}
       \verb{verba}
       \verb \=y.\"a
       \endverb
-    \\endentry
+    \endentry
 |;
 
 # clone test

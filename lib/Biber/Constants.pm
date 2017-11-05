@@ -3,6 +3,7 @@ use v5.24;
 use strict;
 use warnings;
 
+use Encode;
 use Encode::Alias;
 
 use parent qw(Exporter);
@@ -23,6 +24,8 @@ our @EXPORT = qw{
                   %CONFIG_SCOPEOPT_BIBLATEX
                   %CONFIG_OPTTYPE_BIBLATEX
                   %CONFIG_BIBLATEX_ENTRY_OPTIONS
+                  %CONFIG_BIBLATEX_NAMELIST_OPTIONS
+                  %CONFIG_BIBLATEX_NAME_OPTIONS
                   %CONFIG_META_MARKERS
                   %CONFIG_DATE_PARSERS
                   %DATAFIELD_SETS
@@ -31,13 +34,15 @@ our @EXPORT = qw{
                   %LOCALE_MAP_R
                   %REMOTE_MAP
                   %DS_EXTENSIONS
+                  %UNIQUENAME_CONTEXTS
+                  %UNIQUENAME_VALUES
               };
 
 # Version of biblatex control file which this release expects. Matched against version
 # passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '3.3';
+our $BCF_VERSION = '3.4';
 # Format version of the .bbl. Used when writing the .bbl
-our $BBL_VERSION = '2.8';
+our $BBL_VERSION = '2.9';
 
 # Global flags needed for sorting
 our $BIBER_SORT_FINAL;
@@ -75,73 +80,86 @@ our %DS_EXTENSIONS = (
                       bbl        => 'bbl',
                       bblxml     => 'bblxml',
                       bibtex     => 'bib',
-                      biblatexml => 'bltxml',
-                      ris        => 'ris'
+                      biblatexml => 'bltxml'
                       );
+
+# Mapping of biblatex uniquename option to disambiguation level
+our %UNIQUENAME_CONTEXTS = (0 => 'none',        # false
+                            1 => 'init',        # init
+                            2 => 'initorfull',  # full/true
+                            3 => 'init',        # allinit
+                            4 => 'initorfull',  # allfull
+                            5 => 'init',        # mininit
+                            6 => 'initorfull'); # minfull
+
+# Mapping of strings to numeric uniquename values for easier biblatex processing
+our %UNIQUENAME_VALUES = ('none' => 0, 'init' => 1, full => '2');
 
 # Biber option defaults. Mostly not needed outside of tool mode since they are passed by .bcf
 our $CONFIG_DEFAULT_BIBER = {
-  annotation_marker   => { content => q/+an/ },
-  clrmacros           => { content => 0 },
-  collate_options     => { option => {level => 4, variable => 'non-ignorable', normalization => 'prenormalized' }},
-  graph               => { content => 0 },
-  debug               => { content => 0 },
-  dieondatamodel      => { content => 0 },
-  decodecharsset      => { content => 'base' },
-  dot_include         => { option => {section => 1, xdata => 1, crossref => 1, xref => 1 }},
-  fixinits            => { content => 0 },
-  input_encoding      => { content => 'UTF-8' },
-  input_format        => { content => 'bibtex' },
-  isbn10              => { content => 0 },
-  isbn13              => { content => 0 },
-  isbn_normalise      => { content => 0 },
-  listsep             => { content => 'and' },
-  mincrossrefs        => { content => 2 },
-  minxrefs            => { content => 2 },
-  namesep             => { content => 'and' },
-  no_bblxml_schema    => { content => 0 },
-  no_bltxml_schema    => { content => 0 },
-  nodieonerror        => { content => 0 },
-  noinit              => { option => [ {value => q/\b\p{Ll}{2}\p{Pd}/},
-                                       {value => q/[\x{2bf}\x{2018}]/} ] },
-  nolabel             => { option => [ {value => q/[\p{P}\p{S}\p{C}]+/} ] },
-#  nolabelwidthcount   => { option =>  }, # default is nothing
-  nolog               => { content => 0 },
-  nostdmacros         => { content => 0 },
-  nosort              => { option => [ { name => 'setnames', value => q/\A\p{L}{2}\p{Pd}/ },
-                                       { name => 'setnames', value => q/[\x{2bf}\x{2018}]/ } ] },
-  onlylog             => { content => 0 },
-  others_string       => { content => 'others' },
-  output_align        => { content => 0 },
-  output_annotation_marker   => { content => '+an' },
-  output_encoding     => { content => 'UTF-8' },
-  output_field_order  => { content => 'options,abstract,names,lists,dates' },
-  output_format       => { content => 'bbl' },
-  output_indent       => { content => '2' },
-  output_fieldcase    => { content => 'upper' },
-  output_listsep      => { content => 'and' },
-  output_namesep      => { content => 'and' },
-  output_resolve      => { content => 0 },
-  output_safechars    => { content => 0 },
-  output_safecharsset => { content => 'base' },
-  output_xnamesep     => { content => '=' },
-  quiet               => { content => 0 },
-  noskipduplicates    => { content => 0 },
-  sortdebug           => { content => 0 },
-  sortcase            => { content => 1 },
-  sortupper           => { content => 1 },
-  strip_comments      => { content => 0 },
-  tool                => { content => 0 },
-  trace               => { content => 0 },
-  nouri_encode        => { content => 0 },
-  validate_bblxml     => { content => 0 },
-  validate_bltxml     => { content => 0 },
-  validate_config     => { content => 0 },
-  validate_control    => { content => 0 },
-  validate_datamodel  => { content => 0 },
-  wraplines           => { content => 0 },
-  xnamesep            => { content => '=' },
-  xsvsep              => { content => q/\s*,\s*/ },
+  annotation_marker                           => { content => q/+an/ },
+  clrmacros                                   => { content => 0 },
+  collate_options                             => { option => {level => 4, variable => 'non-ignorable', normalization => 'prenormalized' }},
+  graph                                       => { content => 0 },
+  debug                                       => { content => 0 },
+  dieondatamodel                              => { content => 0 },
+  decodecharsset                              => { content => 'base' },
+  dot_include                                 => { option => {section => 1, xdata => 1, crossref => 1, xref => 1 }},
+  fixinits                                    => { content => 0 },
+  input_encoding                              => { content => 'UTF-8' },
+  input_format                                => { content => 'bibtex' },
+  isbn10                                      => { content => 0 },
+  isbn13                                      => { content => 0 },
+  isbn_normalise                              => { content => 0 },
+  listsep                                     => { content => 'and' },
+  mincrossrefs                                => { content => 2 },
+  minxrefs                                    => { content => 2 },
+  namesep                                     => { content => 'and' },
+  no_bblxml_schema                            => { content => 0 },
+  no_bltxml_schema                            => { content => 0 },
+  nodieonerror                                => { content => 0 },
+  noinit                                      => { option => [ {value => q/\b\p{Ll}{2}\p{Pd}/},
+                                                               {value => q/[\x{2bf}\x{2018}]/} ] },
+  nolabel                                     => { option => [ {value => q/[\p{P}\p{S}\p{C}]+/} ] },
+#  nolabelwidthcount                          => { option =>  }, # default is nothing
+  nolog                                       => { content => 0 },
+  nostdmacros                                 => { content => 0 },
+  nosort                                      => { option => [ { name => 'setnames', value => q/\A\p{L}{2}\p{Pd}/ },
+                                                               { name => 'setnames', value => q/[\x{2bf}\x{2018}]/ } ] },
+  onlylog                                     => { content => 0 },
+  others_string                               => { content => 'others' },
+  output_align                                => { content => 0 },
+  output_annotation_marker                    => { content => '+an' },
+  output_encoding                             => { content => 'UTF-8' },
+  output_field_order                          => { content => 'options,abstract,names,lists,dates' },
+  output_format                               => { content => 'bbl' },
+  output_indent                               => { content => '2' },
+  output_fieldcase                            => { content => 'upper' },
+  output_listsep                              => { content => 'and' },
+  output_namesep                              => { content => 'and' },
+  output_resolve_xdata                        => { content => 0 },
+  output_resolve_crossrefs                    => { content => 0 },
+  output_resolve_sets                         => { content => 0 },
+  output_safechars                            => { content => 0 },
+  output_safecharsset                         => { content => 'base' },
+  output_xnamesep                             => { content => '=' },
+  quiet                                       => { content => 0 },
+  noskipduplicates                            => { content => 0 },
+  sortdebug                                   => { content => 0 },
+  sortcase                                    => { content => 1 },
+  sortupper                                   => { content => 1 },
+  strip_comments                              => { content => 0 },
+  tool                                        => { content => 0 },
+  trace                                       => { content => 0 },
+  nouri_encode                                => { content => 0 },
+  validate_bblxml                             => { content => 0 },
+  validate_bltxml                             => { content => 0 },
+  validate_config                             => { content => 0 },
+  validate_control                            => { content => 0 },
+  validate_datamodel                          => { content => 0 },
+  wraplines                                   => { content => 0 },
+  xnamesep                                    => { content => '=' },
+  xsvsep                                      => { content => q/\s*,\s*/ },
 };
 
 # Set up some re-usable CSV parsers here for efficiency reasons
@@ -163,7 +181,7 @@ our %CONFIG_META_MARKERS = ();
 # * Some tool-mode defaults (as there is no .bcf and some biblatex options
 #   cannot be set in a biber config file)
 our %CONFIG_DEFAULT_BIBLATEX = (
-                                sortscheme    => 'none',
+                                sortingtemplatename    => 'tool',
                                 useauthor     => 1,
                                 useeditor     => 1,
                                 usetranslator => 1,
@@ -509,12 +527,20 @@ our %CONFIG_BIBLATEX_ENTRY_OPTIONS =
                          INPUT  => ['maxcitenames', 'maxbibnames']},
    minnames          => {OUTPUT => ['mincitenames', 'minbibnames'],
                          INPUT  => ['mincitenames', 'minbibnames']},
+   nametemplates     => {OUTPUT => ['sortingnamekeytemplatename',
+                                    'uniquenametemplatename',
+                                    'labelalphanametemplatename'],
+                         INPUT  => ['sortingnamekeytemplatename',
+                                    'uniquenametemplatename',
+                                    'labelalphanametemplatename']},
    noinherit         => {OUTPUT => 0},
    presort           => {OUTPUT => 0},
    skipbib           => {OUTPUT => 1},
    skipbiblist       => {OUTPUT => 1},
    skiplab           => {OUTPUT => 1},
-   sortnamekeyscheme => {OUTPUT => 1},
+   sortingnamekeytemplatename => {OUTPUT => 1},
+   uniquenametemplatename => {OUTPUT => 1},
+   labelalphanametemplatename => {OUTPUT => 1},
    uniquelist        => {OUTPUT => 0},
    useauthor         => {OUTPUT => 1},
    useeditor         => {OUTPUT => 1},
@@ -522,6 +548,25 @@ our %CONFIG_BIBLATEX_ENTRY_OPTIONS =
    usetranslator     => {OUTPUT => 1},
   );
 
+our %CONFIG_BIBLATEX_NAMELIST_OPTIONS =
+  (
+   nametemplates     => {OUTPUT => ['sortingnamekeytemplatename',
+                                    'uniquenametemplatename',
+                                    'labelalphanametemplatename'],
+                         INPUT  => ['sortingnamekeytemplatename',
+                                    'uniquenametemplatename',
+                                    'labelalphanametemplatename']},
+  );
+
+our %CONFIG_BIBLATEX_NAME_OPTIONS =
+  (
+   nametemplates     => {OUTPUT => ['sortingnamekeytemplatename',
+                                    'uniquenametemplatename',
+                                    'labelalphanametemplatename'],
+                         INPUT  => ['sortingnamekeytemplatename',
+                                    'uniquenametemplatename',
+                                    'labelalphanametemplatename']},
+  );
 
 1;
 
@@ -547,7 +592,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

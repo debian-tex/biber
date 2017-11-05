@@ -55,7 +55,7 @@ our @EXPORT = qw{ locate_biber_file makenamesid makenameid stringify_hash
   bcp472locale rangelen match_indices process_comment map_boolean
   parse_range parse_range_alt maploopreplace get_transliterator
   call_transliterator normalise_string_bblxml gen_initials join_name_parts
-  split_xsv edtf_monthday tzformat};
+  split_xsv edtf_monthday tzformat expand_option};
 
 =head1 FUNCTIONS
 
@@ -97,9 +97,14 @@ sub locate_biber_file {
     return $foundfile;
   }
 
-  # File is relative to cwd
-  if (-e $filename) {
-    return $filename;
+  # NFD filesystem: File is relative to cwd
+  if (-e NFD($filename)) {
+    return NFD($filename);
+  }
+
+  # NFC filesystem: File is relative to cwd
+  if (-e NFC($filename)) {
+    return NFC($filename);
   }
 
   # File is where control file lives
@@ -308,8 +313,6 @@ sub normalise_string_label {
 
 Removes LaTeX macros, and all punctuation, symbols, separators and control characters,
 as well as leading and trailing whitespace for sorting strings.
-It also decodes LaTeX character macros into Unicode as this is always safe when
-normalising strings for sorting since they don't appear in the output.
 
 =cut
 
@@ -321,7 +324,12 @@ sub normalise_string_sort {
   $str = strip_nosort($str, $fieldname);
   # Then replace ties with spaces or they will be lost
   $str =~ s/([^\\])~/$1 /g; # Foo~Bar -> Foo Bar
-  return normalise_string_common($str);
+  # Don't use normalise_string_common() as this strips out things needed for sorting
+  $str =~ s/\\[A-Za-z]+//g;        # remove latex macros (assuming they have only ASCII letters)
+  $str =~ s/[\{\}\p{C}]+//g;       # remove embedded braces and control
+  $str =~ s/^\s+|\s+$//g;          # Remove leading and trailing spaces
+  $str =~ s/\s+/ /g;               # collapse spaces
+  return $str;
 }
 
 =head2 normalise_string_bblxml
@@ -334,7 +342,7 @@ sub normalise_string_bblxml {
   my $str = shift;
   return '' unless $str; # Sanitise missing data
   $str =~ s/\\[A-Za-z]+//g; # remove latex macros (assuming they have only ASCII letters)
-  $str =~ s/\{([^{}]+)\}/$1/g; # remove pointless braces
+  $str =~ s/\{([^\{\}]+)\}/$1/g; # remove pointless braces
   $str =~ s/~/ /g; # replace ties with spaces
   return $str;
 }
@@ -364,7 +372,7 @@ sub normalise_string {
 sub normalise_string_common {
   my $str = shift;
   $str =~ s/\\[A-Za-z]+//g;        # remove latex macros (assuming they have only ASCII letters)
-  $str =~ s/[\p{P}\p{S}\p{C}]+//g; # remove punctuation, symbols, separator and control
+  $str =~ s/[\p{P}\p{S}\p{C}]+//g; # remove punctuation, symbols and control
   $str =~ s/^\s+|\s+$//g;          # Remove leading and trailing spaces
   $str =~ s/\s+/ /g;               # collapse spaces
   return $str;
@@ -390,7 +398,7 @@ sub normalise_string_hash {
   return '' unless $str; # Sanitise missing data
   $str =~ s/\\(\p{L}+)\s*/$1:/g; # remove tex macros
   $str =~ s/\\([^\p{L}])\s*/ord($1).':'/ge; # remove accent macros like \"a
-  $str =~ s/[{}~\.\s]+//g; # Remove brackes, ties, dots, spaces
+  $str =~ s/[\{\}~\.\s]+//g; # Remove brackes, ties, dots, spaces
   return $str;
 }
 
@@ -757,7 +765,7 @@ sub join_name {
 
 =head2 filter_entry_options
 
-    Process any per_entry option transformations which are necessary
+    Process any per_entry option transformations which are necessary on output
 
 =cut
 
@@ -958,43 +966,47 @@ sub process_entry_options {
   return unless $options;       # Just in case it's null
   foreach ($options->@*) {
     s/\s+=\s+/=/g; # get rid of spaces around any "="
-    m/^([^=]+)(=?)(.+)?$/;
-    if ($2) {
-      if ($CONFIG_OPTTYPE_BIBLATEX{lc($1)} and
-          $CONFIG_OPTTYPE_BIBLATEX{lc($1)} eq 'boolean') {
-        _expand_option($1, map_boolean($3, 'tonum'), $citekey);
-      }
-      else {
-        _expand_option($1, $3, $citekey);
-      }
+    m/^([^=]+)=?(.+)?$/;
+    my $val = $2 // 1; # bare options are just boolean numerals
+    if ($CONFIG_OPTTYPE_BIBLATEX{lc($1)} and
+        $CONFIG_OPTTYPE_BIBLATEX{lc($1)} eq 'boolean') {
+      $val = map_boolean($val, 'tonum');
     }
-    else {
-      _expand_option($1, 1, $citekey);
+    my $oo = expand_option($1, $val, $CONFIG_BIBLATEX_ENTRY_OPTIONS{lc($1)}->{INPUT});
+
+    foreach my $o ($oo->@*) {
+      Biber::Config->setblxoption($o->[0], $o->[1], 'ENTRY', $citekey);
     }
   }
   return;
 }
 
-sub _expand_option {
-  my ($opt, $val, $citekey) = @_;
-  my $cfopt = $CONFIG_BIBLATEX_ENTRY_OPTIONS{lc($opt)}{INPUT};
+=head2 expand_option
+
+    Expand option such as meta-options coming from biblatex
+
+=cut
+
+sub expand_option {
+  my ($opt, $val, $cfopt) = @_;
+  my $outopts;
   # Standard option
   if (not defined($cfopt)) {
-    Biber::Config->setblxoption($opt, $val, 'ENTRY', $citekey);
+    push $outopts->@*, [$opt, $val];
   }
-  # Set all split options to same value as parent
+  # Set all split options
   elsif (ref($cfopt) eq 'ARRAY') {
     foreach my $k ($cfopt->@*) {
-      Biber::Config->setblxoption($k, $val, 'ENTRY', $citekey);
+      push $outopts->@*, [$k, $val];
     }
   }
   # Specify values per all splits
   elsif (ref($cfopt) eq 'HASH') {
     foreach my $k (keys $cfopt->%*) {
-      Biber::Config->setblxoption($k, $cfopt->{$k}, 'ENTRY', $citekey);
+      push $outopts->@*, [$k, $cfopt->{$k}];
     }
   }
-  return;
+  return $outopts;
 }
 
 =head2 parse_date_range
@@ -1384,20 +1396,28 @@ sub maploopreplace {
 
 sub get_transliterator {
   my ($target, $from, $to) = map {lc} @_;
-  my @valid_from = ('iast');
-  my @valid_to   = ('devanagari');
+  my @valid_from = ('iast', 'russian');
+  my @valid_to   = ('devanagari', 'ala-lc', 'bgn/pcgn-standard');
   unless (first {$from eq $_} @valid_from and
           first {$to eq $_} @valid_to) {
     biber_warn("Invalid transliteration from/to pair ($from/$to)");
   }
   require Lingua::Translit;
+  if ($logger->is_debug()) {# performance tune
+    $logger->debug("Using '$from -> $to' transliteration for sorting '$target'");
+  }
+
   # List pairs explicitly as we don't expect there to be to many of these ever
   if ($from eq 'iast' and $to eq 'devanagari') {
-    if ($logger->is_debug()) {# performance tune
-      $logger->debug("Using 'iast -> devanagari' transliteration for sorting '$target'");
-    }
     return new Lingua::Translit('IAST Devanagari');
   }
+  elsif ($from eq 'russian' and $to eq 'ala-lc') {
+    return new Lingua::Translit('ALA-LC RUS');
+  }
+  elsif ($from eq 'russian' and $to eq 'bgn/pcgn-standard') {
+    return new Lingua::Translit('BGN/PCGN RUS Standard');
+  }
+
   return undef;
 }
 
@@ -1504,7 +1524,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

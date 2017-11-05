@@ -327,7 +327,23 @@
           </element>
         </optional>
         <optional>
-          <element name="output_resolve">
+          <element name="output_resolve_xdata">
+            <choice>
+              <value>0</value>
+              <value>1</value>
+            </choice>
+          </element>
+        </optional>
+        <optional>
+          <element name="output_resolve_crossrefs">
+            <choice>
+              <value>0</value>
+              <value>1</value>
+            </choice>
+          </element>
+        </optional>
+        <optional>
+          <element name="output_resolve_sets">
             <choice>
               <value>0</value>
               <value>1</value>
@@ -387,21 +403,52 @@
         <zeroOrMore>
           <ref name="translit"/>
         </zeroOrMore>
-        <optional>
+        <zeroOrMore>
           <ref name="labelalphanametemplate"/>
-        </optional>
+        </zeroOrMore>
         <optional>
           <ref name="labelalphatemplate"/>
         </optional>
-        <optional>
+        <zeroOrMore>
           <ref name="uniquenametemplate"/>
+        </zeroOrMore>
+        <optional>
+          <ref name="sortingnamekeytemplate"/>
         </optional>
         <optional>
-          <ref name="sortingnamekey"/>
+          <ref name="sortingtemplate"/>
         </optional>
-        <optional>
-          <ref name="sorting"/>
-        </optional>
+        <zeroOrMore>
+          <!-- presort default strings for different entry types -->
+          <element name="presort">
+            <optional>
+              <attribute name="type"/>
+            </optional>
+            <text/>
+          </element>
+        </zeroOrMore>
+        <zeroOrMore>
+          <!-- excludes of certain fields for sorting for specified types -->
+          <element name="sortexclusion">
+            <attribute name="type"/>
+            <oneOrMore>
+              <element name="exclusion">
+                <text/>
+              </element>
+            </oneOrMore>
+          </element>
+        </zeroOrMore>
+        <zeroOrMore>
+          <!-- forcibly includes certain fields excluded by sortexclusion for sorting for specified types -->
+          <element name="sortinclusion">
+            <attribute name="type"/>
+            <oneOrMore>
+              <element name="inclusion">
+                <text/>
+              </element>
+            </oneOrMore>
+          </element>
+        </zeroOrMore>
         <optional>
           <element name="sortlocale">
             <text/>
@@ -1102,12 +1149,11 @@
   <define name="labelalphanametemplate">
     <element name="labelalphanametemplate">
       <optional>
-        <attribute name="type">
+        <attribute name="name">
           <data type="string"/>
         </attribute>
       </optional>
       <oneOrMore>
-        <!-- per-type? -->
         <element name="namepart">
           <attribute name="order">
             <data type="integer"/>
@@ -1248,6 +1294,11 @@
   </define>
   <define name="uniquenametemplate">
     <element name="uniquenametemplate">
+      <attribute name="name">
+        <data type="string">
+          <param name="minLength">1</param>
+        </data>
+      </attribute>
       <oneOrMore>
         <element name="namepart">
           <attribute name="order">
@@ -1269,14 +1320,24 @@
               </choice>
             </attribute>
           </optional>
+          <optional>
+            <attribute name="context">
+              <choice>
+                <value>none</value>
+                <value>init</value>
+                <value>initorfull</value>
+                <value>full</value>
+              </choice>
+            </attribute>
+          </optional>
           <text/>
         </element>
       </oneOrMore>
     </element>
   </define>
-  <define name="sortingnamekey">
-    <element name="sortingnamekey">
-      <attribute name="keyscheme"/>
+  <define name="sortingnamekeytemplate">
+    <element name="sortingnamekeytemplate">
+      <attribute name="name"/>
       <oneOrMore>
         <element name="keypart">
           <attribute name="order">
@@ -1316,8 +1377,14 @@
       </oneOrMore>
     </element>
   </define>
-  <define name="sorting">
-    <element name="sorting">
+  <define name="sortingtemplate">
+    <element name="sortingtemplate">
+      <!-- sorting template name -->
+      <attribute name="name">
+        <data type="string">
+          <param name="minLength">1</param>
+        </data>
+      </attribute>
       <optional>
         <!-- locale for entire sorting specification -->
         <attribute name="locale">
@@ -1326,26 +1393,6 @@
           </data>
         </attribute>
       </optional>
-      <oneOrMore>
-        <!-- presort default strings for different entry types -->
-        <element name="presort">
-          <optional>
-            <attribute name="type"/>
-          </optional>
-          <text/>
-        </element>
-      </oneOrMore>
-      <zeroOrMore>
-        <!-- excludes of certain fields for sorting for specified types -->
-        <element name="sortexclusion">
-          <attribute name="type"/>
-          <oneOrMore>
-            <element name="exclusion">
-              <text/>
-            </element>
-          </oneOrMore>
-        </element>
-      </zeroOrMore>
       <oneOrMore>
         <ref name="sort"/>
       </oneOrMore>
@@ -1483,7 +1530,7 @@
     </choice>
   </define>
 </grammar>
-<!-- Copyright 2009-2016 François Charette and Philip Kime, all rights reserved. -->
+<!-- Copyright 2009-2017 François Charette and Philip Kime, all rights reserved. -->
 <!--
   This code is free software.  You can redistribute it and/or
   modify it under the terms of the Artistic License 2.0.

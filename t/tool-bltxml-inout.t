@@ -42,7 +42,8 @@ my $out = $biber->get_output_obj;
 
 # Biber options
 Biber::Config->setoption('tool', 1);
-Biber::Config->setoption('output_resolve', 1);
+Biber::Config->setoption('output_resolve_xdata', 1);
+Biber::Config->setoption('output_resolve_crossrefs', 1);
 Biber::Config->setoption('output_format', 'biblatexml');
 Biber::Config->setoption('input_format', 'biblatexml');
 Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
@@ -56,9 +57,17 @@ $out->set_output_target($out->set_output_target_file(\$outvar, 1));
 # Now generate the information
 $ARGV[0] = 'biblatexml.bltxml'; # fake this as we are not running through top-level biber program
 $biber->tool_mode_setup;
+
 $biber->prepare_tool;
 $out->output;
-my $main = $biber->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme') . '/global/', 'entry', Biber::Config->getblxoption('sortscheme'), 'global', '');
+my $main = $biber->datalists->get_lists_by_attrs(section                    => 99999,
+                                       name                       => 'tool/global//global/global',
+                                       type                       => 'entry',
+                                       sortingtemplatename             => 'tool',
+                                       sortingnamekeytemplatename      => 'global',
+                                       labelprefix                => '',
+                                       uniquenametemplatename     => 'global',
+                                       labelalphanametemplatename => 'global')->[0];
 
 my $bltxml1 = q|<?xml version="1.0" encoding="UTF-8"?>
 <?xml-model href="biblatexml.rng" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
@@ -77,7 +86,7 @@ my $bltxml1 = q|<?xml version="1.0" encoding="UTF-8"?>
         <bltx:namepart type="given" initial="J">John</bltx:namepart>
       </bltx:name>
     </bltx:names>
-    <bltx:names type="author" morenames="1" useprefix="1" annotation="names-ann">
+    <bltx:names type="author" morenames="1" useprefix="true" annotation="names-ann">
       <bltx:name gender="sm" annotation="name-ann1">
         <bltx:namepart type="family" initial="Б">Булгаков</bltx:namepart>
         <bltx:namepart type="given" annotation="namepart-ann1">

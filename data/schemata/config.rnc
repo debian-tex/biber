@@ -87,7 +87,9 @@ start =
     element output_listsep       { text }? &
     element output_macro_fields  { text }? &
     element output_namesep       { text }? &
-    element output_resolve       { "0" | "1" }? &
+    element output_resolve_xdata { "0" | "1" }? &
+    element output_resolve_crossrefs { "0" | "1" }? &
+    element output_resolve_sets { "0" | "1" }? &
     element output_safechars     { "0" | "1" }? &
     element output_safecharsset  { "base" | "full" }? &
     element output_xname         { "0" | "1" }? &
@@ -96,11 +98,26 @@ start =
     element recodedata           { text }? &
     element sortcase             { "0" | "1" }? &
     translit* &
-    labelalphanametemplate? &
+    labelalphanametemplate* &
     labelalphatemplate? &
-    uniquenametemplate? &
-    sortingnamekey? &
-    sorting? &
+    uniquenametemplate* &
+    sortingnamekeytemplate? &
+    sortingtemplate? &
+    # presort default strings for different entry types
+    element presort {
+      attribute type { text }?,
+      text
+    }* &
+    # excludes of certain fields for sorting for specified types
+    element sortexclusion {
+      attribute type { text },
+      element exclusion { text }+
+    }* &
+    # forcibly includes certain fields excluded by sortexclusion for sorting for specified types
+    element sortinclusion {
+      attribute type { text },
+      element inclusion { text }+
+    }* &
     element sortlocale           { text }? &
     element sortupper            { "0" | "1" }? &
     element sourcemap            {
@@ -325,7 +342,7 @@ map =
 
 labelalphanametemplate =     
     element labelalphanametemplate {
-      attribute type { xsd:string }?, # per-type?
+      attribute name { xsd:string }?,
       element namepart {
         attribute order { xsd:integer },
         attribute use { "0" | "1" }?,
@@ -362,17 +379,19 @@ labelalphatemplate =
 
 uniquenametemplate = 
   element uniquenametemplate {
+    attribute name { xsd:string {minLength="1"} },
     element namepart {
      attribute order { xsd:integer },
       attribute use { "0" | "1" }?,
       attribute base { "0" | "1" }?,
+      attribute context { "none" | "init" | "initorfull" | "full" }?,
       text
     }+
   }
 
-sortingnamekey = 
-  element sortingnamekey {
-    attribute keyscheme { text },
+sortingnamekeytemplate = 
+  element sortingnamekeytemplate {
+    attribute name { text },
     element keypart {
       attribute order { xsd:integer },
       element part {
@@ -385,20 +404,12 @@ sortingnamekey =
     }+
   }
 
-sorting = 
-  element sorting {
+sortingtemplate = 
+  element sortingtemplate {
+    # sorting template name
+    attribute name { xsd:string {minLength="1"}},
     # locale for entire sorting specification
     attribute locale { xsd:string {minLength="1"}}?,
-    # presort default strings for different entry types
-    element presort {
-      attribute type { text }?,
-      text
-    }+,
-    # excludes of certain fields for sorting for specified types
-    element sortexclusion {
-      attribute type { text },
-      element exclusion { text }+
-    }*,
     sort+
   }
 
@@ -436,7 +447,7 @@ element sort {
 dmfieldtype =  "field" | "list"
 dmdatatype =  "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "code" | "uri" | "datepart" | "keyword" | "option"
 
-# Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+# Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 # This code is free software.  You can redistribute it and/or
 # modify it under the terms of the Artistic License 2.0.

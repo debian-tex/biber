@@ -128,7 +128,7 @@ sub set_output_entry {
   # latter is not really a "processed" output, it is supposed to be something
   # which could be again used as input and so we don't want to resolve/skip
   # fields like DATE etc.
-  unless (Biber::Config->getoption('output_resolve')) {
+  unless (Biber::Config->getoption('output_resolve_xdata')) {
     if (my $xdata = $be->get_field('xdata')) {
       $xml->startTag([$xml_prefix, 'xdata']);
       foreach my $xd ($xdata->@*) {
@@ -136,6 +136,8 @@ sub set_output_entry {
       }
       $xml->endTag();
     }
+  }
+  unless (Biber::Config->getoption('output_resolve_crossrefs')) {
     if (my $crossref = $be->get_field('crossref')) {
       $xml->dataElement([$xml_prefix, 'crossref'], NFC($crossref));
     }
@@ -162,15 +164,18 @@ sub set_output_entry {
       }
 
       # Add per-namelist options
-      foreach my $ploname (sort keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
-        if (defined($nf->${\"get_$ploname"})) {
-          my $plo = $nf->${\"get_$ploname"};
-          if ($CONFIG_OPTTYPE_BIBLATEX{lc($ploname)} and
-              $CONFIG_OPTTYPE_BIBLATEX{lc($ploname)} eq 'boolean') {
-            push @attrs, ($ploname =>  map_boolean($plo, 'tostring'));
+      foreach my $nlo (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+        if (defined($nf->${\"get_$nlo"})) {
+          my $nlov = $nf->${\"get_$nlo"};
+
+          if ($CONFIG_OPTTYPE_BIBLATEX{lc($nlo)} and
+              $CONFIG_OPTTYPE_BIBLATEX{lc($nlo)} eq 'boolean') {
+            $nlov = map_boolean($nlov, 'tostring');
           }
-          else {
-            push @attrs, ($ploname => $plo);
+
+          my $oo = expand_option($nlo, $nlov, $CONFIG_BIBLATEX_NAMELIST_OPTIONS{$nlo}->{OUTPUT});
+          foreach my $o ($oo->@*) {
+            push @attrs, ($o->[0] => $o->[1]);
           }
         }
       }
@@ -528,7 +533,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

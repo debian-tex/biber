@@ -8,6 +8,7 @@ use Biber::Internals;
 use Biber::Constants;
 use Data::Dump qw( pp );
 use Digest::MD5 qw( md5_hex );
+use Encode;
 use Log::Log4perl qw( :no_extra_logdie_message );
 use List::Util qw( first );
 
@@ -94,7 +95,8 @@ sub relclone {
       }
       else {
         my $relentry = $section->bibentry($relkey);
-        my $clonekey = md5_hex($relkey);
+        # Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output")
+        my $clonekey = md5_hex(encode_utf8($relkey));
         push @clonekeys, $clonekey;
         my $relclone = $relentry->clone($clonekey);
         if ($logger->is_debug()) {# performance tune
@@ -331,7 +333,6 @@ sub get_field {
          $self->{derivedfields}{$key};
 }
 
-
 =head2 set_datafield
 
     Set a field which is in the .bib data file
@@ -511,13 +512,17 @@ sub add_warning {
 
 =head2 set_inherit_from
 
-    Inherit fields from parent entry
+    Inherit fields from first child entry
 
-    $entry->set_inherit_from($parententry);
+    $entry->set_inherit_from($firstchild);
 
     Takes a second Biber::Entry object as argument
-    Tailored for set inheritance which is a straight 1:1 inheritance,
-    excluding certain fields for backwards compatibility
+
+    The purpose here is to inherit fields so that sorting/labelling defaults
+    can be generated for set parents from the first child set member data, unless
+    the set parent itself already has some fields set that will do this. Set
+    parents only have certain fields output in the .bbl and those that output but
+    are not used in sorting/labelling data generation should not be inherited.
 
 =cut
 
@@ -528,8 +533,16 @@ sub set_inherit_from {
   # Data source fields
   foreach my $field ($parent->datafields) {
     next if $self->field_exists($field); # Don't overwrite existing fields
+
+    # Annotations are allowed for set parents themselves so never inherit these.
+    # This can't be suppressed at .bbl writing as it is impossible to know there
+    # whether the field came from the parent or first child because inheritance
+    # is a low-level operation on datafields
+    next if fc($field) eq fc('annotation');
+
     $self->set_datafield($field, $parent->get_field($field));
   }
+
   # Datesplit is a special non datafield and needs to be inherited for any
   # validation checks which may occur later
   foreach my $df ($dmh->{datefields}->@*) {
@@ -783,7 +796,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

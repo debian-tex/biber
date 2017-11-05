@@ -39,35 +39,19 @@ Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 # Now generate the information
 $biber->prepare;
 my $section0 = $biber->sections->get_section(0);
-my $main0 = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
-my $sh0 = $biber->sortlists->get_list(0, 'shorthands/global/', 'list', 'shorthands', 'global', '');
+my $main0 = $biber->datalists->get_list('none/global//global/global');
+my $sh0 = $biber->datalists->get_list('shorthand/global//global/global', 0, 'list');
+
 my $section1 = $biber->sections->get_section(1);
-my $main1 = $biber->sortlists->get_list(1, 'nty/global/', 'entry', 'nty', 'global', '');
-my $sh1 = $biber->sortlists->get_list(1, 'shorthands/global/', 'list', 'shorthands', 'global', '');
+my $main1 = $biber->datalists->get_list('none/global//global/global', 1);
+my $sh1 = $biber->datalists->get_list('shorthand/global//global/global', 1, 'list');
+
 my $out = $biber->get_output_obj;
 
 my $string1 = q|    \entry{DynSet}{set}{}
       \set{Dynamic1,Dynamic2,Dynamic3}
-      \name{author}{1}{}{%
-        {{hash=252caa7921a061ca92087a1a52f15b78}{%
-           family={Dynamism},
-           familyi={D\bibinitperiod},
-           given={Derek},
-           giveni={D\bibinitperiod}}}%
-      }
-      \strng{namehash}{252caa7921a061ca92087a1a52f15b78}
-      \strng{fullhash}{252caa7921a061ca92087a1a52f15b78}
-      \strng{authornamehash}{252caa7921a061ca92087a1a52f15b78}
-      \strng{authorfullhash}{252caa7921a061ca92087a1a52f15b78}
       \field{sortinit}{1}
       \field{sortinithash}{27a2bc5dfb9ed0a0422134d636544b5d}
-      \field{labeldatesource}{year}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{annotation}{Some Dynamic Note}
-      \field{shorthand}{d1}
-      \field{title}{Doing Daring Deeds}
-      \field{year}{2002}
     \endentry
 |;
 
@@ -82,6 +66,8 @@ my $string2 = q|    \entry{Dynamic1}{book}{}
       }
       \strng{namehash}{252caa7921a061ca92087a1a52f15b78}
       \strng{fullhash}{252caa7921a061ca92087a1a52f15b78}
+      \strng{bibnamehash}{252caa7921a061ca92087a1a52f15b78}
+      \strng{authorbibnamehash}{252caa7921a061ca92087a1a52f15b78}
       \strng{authornamehash}{252caa7921a061ca92087a1a52f15b78}
       \strng{authorfullhash}{252caa7921a061ca92087a1a52f15b78}
       \field{sortinit}{8}
@@ -107,6 +93,8 @@ my $string3 = q|    \entry{Dynamic2}{book}{}
       }
       \strng{namehash}{894a5fe6de820f5dcce84a65581667f4}
       \strng{fullhash}{894a5fe6de820f5dcce84a65581667f4}
+      \strng{bibnamehash}{894a5fe6de820f5dcce84a65581667f4}
+      \strng{authorbibnamehash}{894a5fe6de820f5dcce84a65581667f4}
       \strng{authornamehash}{894a5fe6de820f5dcce84a65581667f4}
       \strng{authorfullhash}{894a5fe6de820f5dcce84a65581667f4}
       \field{sortinit}{9}
@@ -131,6 +119,8 @@ my $string4 = q|    \entry{Dynamic3}{book}{}
       }
       \strng{namehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{fullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
+      \strng{bibnamehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
+      \strng{authorbibnamehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{authornamehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{authorfullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \field{sortinit}{1}
@@ -156,6 +146,8 @@ my $string5 = q|    \entry{Dynamic3}{book}{}
       }
       \strng{namehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{fullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
+      \strng{bibnamehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
+      \strng{authorbibnamehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{authornamehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{authorfullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \field{sortinit}{1}
@@ -179,7 +171,7 @@ eq_or_diff($out->get_output_entry('DynSet', $main0), $string1, 'Dynamic set test
 eq_or_diff($out->get_output_entry('Dynamic1', $main0), $string2, 'Dynamic set test 2');
 eq_or_diff($out->get_output_entry('Dynamic2', $main0), $string3, 'Dynamic set test 3');
 eq_or_diff($out->get_output_entry('Dynamic3', $main0), $string4, 'Dynamic set test 4');
-eq_or_diff($out->get_output_entry('Dynamic3', $main0, 1), $string5, 'Dynamic set test 5');
+eq_or_diff($out->get_output_entry('Dynamic3', $main1, 1), $string5, 'Dynamic set test 5');
 
 eq_or_diff($out->get_output_entry('Dynamic1', $sh0), $string2, 'Dynamic set skipbiblist 1');
 

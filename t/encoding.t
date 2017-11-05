@@ -34,17 +34,20 @@ Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 
 my $encode1 = q|    \entry{testŠ}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=06a47edae2e847800cfd78323a0e6be8}{%
+        {{uniquename=0,uniquepart=base,hash=06a47edae2e847800cfd78323a0e6be8}{%
            family={Encalcer},
            familyi={E\bibinitperiod},
            given={Edward},
-           giveni={E\bibinitperiod}}}%
+           giveni={E\bibinitperiod},
+           givenun=0}}%
       }
       \list{publisher}{1}{%
         {A press}%
       }
       \strng{namehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{fullhash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{bibnamehash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{authorbibnamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authornamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authorfullhash}{06a47edae2e847800cfd78323a0e6be8}
       \field{labelalpha}{Enc99}
@@ -61,17 +64,20 @@ my $encode1 = q|    \entry{testŠ}{book}{}
 
 my $encode2 = q|    \entry{test1}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=06a47edae2e847800cfd78323a0e6be8}{%
+        {{uniquename=0,uniquepart=base,hash=06a47edae2e847800cfd78323a0e6be8}{%
            family={Encalcer},
            familyi={E\bibinitperiod},
            given={Edward},
-           giveni={E\bibinitperiod}}}%
+           giveni={E\bibinitperiod},
+           givenun=0}}%
       }
       \list{publisher}{1}{%
         {A press}%
       }
       \strng{namehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{fullhash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{bibnamehash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{authorbibnamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authornamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authorfullhash}{06a47edae2e847800cfd78323a0e6be8}
       \field{labelalpha}{Enc99}
@@ -88,17 +94,20 @@ my $encode2 = q|    \entry{test1}{book}{}
 
 my $encode3 = q|    \entry{test1}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=06a47edae2e847800cfd78323a0e6be8}{%
+        {{uniquename=0,uniquepart=base,hash=06a47edae2e847800cfd78323a0e6be8}{%
            family={Encalcer},
            familyi={E\bibinitperiod},
            given={Edward},
-           giveni={E\bibinitperiod}}}%
+           giveni={E\bibinitperiod},
+           givenun=0}}%
       }
       \list{publisher}{1}{%
         {A press}%
       }
       \strng{namehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{fullhash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{bibnamehash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{authorbibnamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authornamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authorfullhash}{06a47edae2e847800cfd78323a0e6be8}
       \field{labelalpha}{Enc99}
@@ -115,17 +124,20 @@ my $encode3 = q|    \entry{test1}{book}{}
 
 my $encode5 = q|    \entry{test}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=06a47edae2e847800cfd78323a0e6be8}{%
+        {{uniquename=0,uniquepart=base,hash=06a47edae2e847800cfd78323a0e6be8}{%
            family={Encalcer},
            familyi={E\bibinitperiod},
            given={Edward},
-           giveni={E\bibinitperiod}}}%
+           giveni={E\bibinitperiod},
+           givenun=0}}%
       }
       \list{publisher}{1}{%
         {A press}%
       }
       \strng{namehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{fullhash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{bibnamehash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{authorbibnamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authornamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authorfullhash}{06a47edae2e847800cfd78323a0e6be8}
       \field{labelalpha}{Enc99}
@@ -142,17 +154,20 @@ my $encode5 = q|    \entry{test}{book}{}
 
 my $encode6 = q|    \entry{test}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=06a47edae2e847800cfd78323a0e6be8}{%
+        {{uniquename=0,uniquepart=base,hash=06a47edae2e847800cfd78323a0e6be8}{%
            family={Encalcer},
            familyi={E\bibinitperiod},
            given={Edward},
-           giveni={E\bibinitperiod}}}%
+           giveni={E\bibinitperiod},
+           givenun=0}}%
       }
       \list{publisher}{1}{%
         {A press}%
       }
       \strng{namehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{fullhash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{bibnamehash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{authorbibnamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authornamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authorfullhash}{06a47edae2e847800cfd78323a0e6be8}
       \field{labelalpha}{Enc99}
@@ -169,17 +184,20 @@ my $encode6 = q|    \entry{test}{book}{}
 
 my $encode7 = q|    \entry{test}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,hash=06a47edae2e847800cfd78323a0e6be8}{%
+        {{uniquename=0,uniquepart=base,hash=06a47edae2e847800cfd78323a0e6be8}{%
            family={Encalcer},
            familyi={E\bibinitperiod},
            given={Edward},
-           giveni={E\bibinitperiod}}}%
+           giveni={E\bibinitperiod},
+           givenun=0}}%
       }
       \list{publisher}{1}{%
         {A press}%
       }
       \strng{namehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{fullhash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{bibnamehash}{06a47edae2e847800cfd78323a0e6be8}
+      \strng{authorbibnamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authornamehash}{06a47edae2e847800cfd78323a0e6be8}
       \strng{authorfullhash}{06a47edae2e847800cfd78323a0e6be8}
       \field{labelalpha}{Enc99}

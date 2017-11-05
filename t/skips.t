@@ -40,34 +40,17 @@ Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $shs = $biber->sortlists->get_list(0, 'shorthands/global/', 'list', 'shorthands', 'global', '');
-my $main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
+my $main = $biber->datalists->get_list('custom/global//global/global');
+my $shs = $biber->datalists->get_list('shorthands/global//global/global', 0, 'list');
+
 my $bibentries = $section->bibentries;
 
 my $set1 = q|    \entry{seta}{set}{}
       \set{set:membera,set:memberb,set:memberc}
-      \name{author}{1}{}{%
-        {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
-           family={Doe},
-           familyi={D\bibinitperiod},
-           given={John},
-           giveni={J\bibinitperiod}}}%
-      }
-      \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
-      \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
-      \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
-      \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe10}
+      \field{extraalpha}{1}
       \field{sortinit}{D}
       \field{sortinithash}{d10b5413de1f3d197b20897dd0d565bb}
-      \field{extrayear}{1}
-      \field{labeldatesource}{}
-      \field{extraalpha}{1}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{title}{Set Member A}
-      \field{year}{2010}
-      \keyw{key1,key2}
     \endentry
 |;
 
@@ -82,6 +65,8 @@ my $set2 = q|    \entry{set:membera}{book}{}
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
@@ -107,6 +92,8 @@ my $set3 = q|    \entry{set:memberb}{book}{}
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
@@ -131,6 +118,8 @@ my $set4 = q|    \entry{set:memberc}{book}{}
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
@@ -154,12 +143,15 @@ my $noset1 = q|    \entry{noseta}{book}{}
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe10}
       \field{sortinit}{D}
       \field{sortinithash}{d10b5413de1f3d197b20897dd0d565bb}
-      \field{extrayear}{2}
+      \field{extradate}{2}
+      \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{extraalpha}{2}
       \field{labelnamesource}{author}
@@ -180,12 +172,15 @@ my $noset2 = q|    \entry{nosetb}{book}{}
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe10}
       \field{sortinit}{D}
       \field{sortinithash}{d10b5413de1f3d197b20897dd0d565bb}
-      \field{extrayear}{3}
+      \field{extradate}{3}
+      \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{extraalpha}{3}
       \field{labelnamesource}{author}
@@ -206,12 +201,15 @@ my $noset3 = q|    \entry{nosetc}{book}{}
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{labelalpha}{Doe10}
       \field{sortinit}{D}
       \field{sortinithash}{d10b5413de1f3d197b20897dd0d565bb}
-      \field{extrayear}{4}
+      \field{extradate}{4}
+      \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{extraalpha}{4}
       \field{labelnamesource}{author}
@@ -238,6 +236,8 @@ my $sk4 = q|    \entry{skip4}{article}{dataonly}
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
@@ -252,7 +252,8 @@ my $sk4 = q|    \entry{skip4}{article}{dataonly}
 |;
 
 is_deeply($bibentries->entry('skip1')->get_field('options'), ['skipbib'], 'Passing skipbib through');
-eq_or_diff($bibentries->entry('skip2')->get_field('labelalpha'), 'SA', 'Normal labelalpha');
+
+eq_or_diff($main->get_entryfield('skip2', 'labelalpha'), 'SA', 'Normal labelalpha');
 eq_or_diff($bibentries->entry('skip2')->get_field($bibentries->entry('skip2')->get_labeldate_info->{field}{year}), '1995', 'Normal labelyear');
 ok(is_undef($bibentries->entry('skip3')->get_field('labelalpha')), 'skiplab - no labelalpha');
 eq_or_diff($bibentries->entry('skip3')->get_labeldate_info->{field}{source}, 'year', 'skiplab - no labelyear');
@@ -263,7 +264,7 @@ eq_or_diff($out->get_output_entry('seta', $main), $set1, 'Set parent - with labe
 eq_or_diff($out->get_output_entry('set:membera', $main), $set2, 'Set member - no labels 1');
 eq_or_diff($out->get_output_entry('set:memberb', $main), $set3, 'Set member - no labels 2');
 eq_or_diff($out->get_output_entry('set:memberc', $main), $set4, 'Set member - no labels 3');
-eq_or_diff($out->get_output_entry('noseta', $main), $noset1, 'Not a set member - extrayear continues from set 1');
-eq_or_diff($out->get_output_entry('nosetb', $main), $noset2, 'Not a set member - extrayear continues from set 2');
-eq_or_diff($out->get_output_entry('nosetc', $main), $noset3, 'Not a set member - extrayear continues from set 3');
+eq_or_diff($out->get_output_entry('noseta', $main), $noset1, 'Not a set member - extradate continues from set 1');
+eq_or_diff($out->get_output_entry('nosetb', $main), $noset2, 'Not a set member - extradate continues from set 2');
+eq_or_diff($out->get_output_entry('nosetc', $main), $noset3, 'Not a set member - extradate continues from set 3');
 

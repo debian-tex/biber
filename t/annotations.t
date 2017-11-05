@@ -1,4 +1,3 @@
-
 # -*- cperl -*-
 use strict;
 use warnings;
@@ -42,7 +41,7 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
+my $main = $biber->datalists->get_list('nty/global//global/global');
 
 my $ann1 = q|    \entry{ann1}{misc}{}
       \name{author}{3}{}{%
@@ -68,6 +67,8 @@ my $ann1 = q|    \entry{ann1}{misc}{}
       }
       \strng{namehash}{90ae96c82de92e36949bc64254bbde0c}
       \strng{fullhash}{90ae96c82de92e36949bc64254bbde0c}
+      \strng{bibnamehash}{90ae96c82de92e36949bc64254bbde0c}
+      \strng{authorbibnamehash}{90ae96c82de92e36949bc64254bbde0c}
       \strng{authornamehash}{90ae96c82de92e36949bc64254bbde0c}
       \strng{authorfullhash}{90ae96c82de92e36949bc64254bbde0c}
       \field{sortinit}{L}

@@ -128,9 +128,9 @@ sub set_output_entry {
         push @namelist, 'useprefix=' . Biber::Utils::map_boolean($names->get_useprefix, 'tostring');
       }
 
-      # Namelist scope sortnamekeyscheme
-      if (my $snks = $names->get_sortnamekeyscheme) {
-        push @namelist, "sortnamekeyscheme=$snks";
+      # Namelist scope sortingnamekeytemplatename
+      if (my $snks = $names->get_sortingnamekeytemplatename) {
+        push @namelist, "sortingnamekeytemplatename=$snks";
       }
 
       # Now add all names to accumulator
@@ -187,11 +187,13 @@ sub set_output_entry {
   }
 
   # If CROSSREF and XDATA have been resolved, don't output them
-  if (Biber::Config->getoption('output_resolve')) {
-    if ( my $cr = $be->get_field('crossref') ) {
+  if (Biber::Config->getoption('output_resolve_crossrefs')) {
+    if ($be->get_field('crossref')) {
       $be->del_field('crossref');
     }
-    if ( my $xd = $be->get_field('xdata') ) {
+  }
+  if (Biber::Config->getoption('output_resolve_xdata')) {
+    if ($be->get_field('xdata')) {
       $be->del_field('xdata');
     }
   }
@@ -220,7 +222,12 @@ sub set_output_entry {
   # Verbatim fields
   foreach my $vfield ($dmh->{vfields}->@*) {
     if ( my $vf = $be->get_field($vfield) ) {
-      $acc{$casing->($vfield)} = $vf;
+      if ($vfield eq 'url') {
+        $acc{$casing->('urlraw')} = $vf;
+      }
+      else {
+        $acc{$casing->($vfield)} = $vf;
+      }
     }
   }
 
@@ -348,7 +355,14 @@ sub output {
   }
 
   # Bibtex output uses just one special section, always sorted by global sorting spec
-  foreach my $key ($Biber::MASTER->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme') . '/global/', 'entry', Biber::Config->getblxoption('sortscheme'), 'global', '')->get_keys) {
+  foreach my $key ($Biber::MASTER->datalists->get_lists_by_attrs(section => 99999,
+                                                                 name => Biber::Config->getblxoption('sortingtemplatename') . '/global//global/global',
+                                                                 type => 'entry',
+                                                                 sortingtemplatename => Biber::Config->getblxoption('sortingtemplatename'),
+                                                                 sortingnamekeytemplatename => 'global',
+                                                                 labelprefix => '',
+                                                                 uniquenametemplatename => 'global',
+                                                                 labelalphanametemplatename => 'global')->[0]->get_keys->@*) {
     out($target, ${$data->{ENTRIES}{99999}{index}{$key}});
   }
 
@@ -653,7 +667,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

@@ -53,8 +53,9 @@
     </table>
   </xsl:template>
   
-  <xsl:template name="sorting-spec">
+  <xsl:template name="sorting-template">
     <xsl:param name="spec"/>
+    <h3>Sorting Scheme: <xsl:value-of select="$spec/@name"/></h3>
     <table>
       <thead>
         <tr>
@@ -615,6 +616,32 @@
           </ul>
           </div>
         </xsl:if>
+        <!-- EXTRADATE -->
+        <xsl:if test="/bcf:controlfile/bcf:extradatespec">
+          <hr/>
+          <h3>Extradate specification</h3>
+          <table>
+            <thead>
+              <tr>
+                <td>Fields</td>
+              </tr>
+            </thead>
+            <tbody>
+              <xsl:for-each select="/bcf:controlfile/bcf:extradatespec/bcf:scope">
+                <tr>
+                  <td>
+                    <xsl:for-each select="./bcf:field">
+                      <xsl:value-of select="./text()"/>
+                      <xsl:if test="not(position()=last())">
+                        <xsl:text disable-output-escaping="yes">,&amp;nbsp;</xsl:text>
+                      </xsl:if>
+                    </xsl:for-each>
+                  </td>
+                </tr>
+              </xsl:for-each>
+            </tbody>
+          </table>
+        </xsl:if>
         <!-- INHERITANCE -->
         <xsl:if test="/bcf:controlfile/bcf:inheritance">
           <hr/>
@@ -802,7 +829,7 @@
             <tr><td>Entrytype</td><td>Presort default</td></tr>
           </thead>
           <tbody>
-            <xsl:for-each select="/bcf:controlfile/bcf:sorting/bcf:presort">
+            <xsl:for-each select="/bcf:controlfile/bcf:presort">
               <tr>
                 <td>
                   <xsl:choose>
@@ -825,7 +852,7 @@
             <tr><td>Entrytype</td><td>Fields excluded from sorting</td></tr>
           </thead>
           <tbody>
-            <xsl:for-each select="/bcf:controlfile/bcf:sorting/bcf:sortexclusion">
+            <xsl:for-each select="/bcf:controlfile/bcf:sortexclusion">
               <tr>
                 <td>
                   <xsl:value-of select="./@type"/>
@@ -848,7 +875,7 @@
             <tr><td>Entrytype</td><td>Fields forcibly included in sorting</td></tr>
           </thead>
           <tbody>
-            <xsl:for-each select="/bcf:controlfile/bcf:sorting/bcf:sortinclusion">
+            <xsl:for-each select="/bcf:controlfile/bcf:sortinclusion">
               <tr>
                 <td>
                   <xsl:value-of select="./@type"/>
@@ -868,7 +895,7 @@
         <h4>Uniquename Template</h4>
         <table>
           <thead>
-            <tr><td>Order</td><td>Base</td><td>Use option</td><td>Namepart</td></tr>
+            <tr><td>Order</td><td>Base</td><td>Use option</td><td>Disambiguation level</td><td>Namepart</td></tr>
           </thead>
           <tbody>
             <xsl:for-each select="/bcf:controlfile/bcf:uniquenametemplate/bcf:namepart">
@@ -877,17 +904,18 @@
                 <td><xsl:value-of select="./@order"/></td>
                 <td><xsl:value-of select="./@base"/></td>
                 <td><xsl:value-of select="./@use"/></td>
+                <td><xsl:value-of select="./@disambiguation"/></td>
                 <td><xsl:value-of select="./text()"/></td>
               </tr>
             </xsl:for-each>
           </tbody>
         </table>
         <br/>
-        <h4>Sorting Name Key Specification</h4>
-        <xsl:for-each select="/bcf:controlfile/bcf:sortingnamekey">
+        <h4>Sorting Name Key Template</h4>
+        <xsl:for-each select="/bcf:controlfile/bcf:sortingnamekeytemplate">
           <table>
             <thead>
-              <tr><td colspan="2"><b><xsl:value-of select="./@keyscheme"/></b></td></tr>
+              <tr><td colspan="2"><b><xsl:value-of select="./@name"/></b></td></tr>
               <tr><td>Order</td><td>Keypart</td></tr>
             </thead>
             <tbody>
@@ -909,10 +937,12 @@
           </table>
           <br/>
         </xsl:for-each>
-        <h4>Sorting Specification</h4>
-        <xsl:call-template name="sorting-spec">
-	        <xsl:with-param name="spec" select="/bcf:controlfile/bcf:sorting"/>
-	      </xsl:call-template>
+        <h4>Sorting Schemes</h4>
+        <xsl:for-each select="/bcf:controlfile/bcf:sortingtemplate">
+          <xsl:call-template name="sorting-template">
+	          <xsl:with-param name="spec" select="."/>
+	        </xsl:call-template>
+        </xsl:for-each>
         <xsl:if test="/bcf:controlfile/bcf:transliteration">
           <h4>Sorting Transliteration</h4>
           <xsl:for-each select="/bcf:controlfile/bcf:transliteration">
@@ -1210,45 +1240,45 @@
             </tbody>
           </table>
         </xsl:for-each>
-        <h3>Sorting Lists</h3>
-        <xsl:for-each select="/bcf:controlfile/bcf:sortlist">
-          <h4><u>Sorting list &quot;<xsl:value-of select="./@name"/>&quot;</u></h4>
-          <div>
-            <h6>Filters</h6>
-            <table>
-              <thead>
-                <tr><td>Filter type</td><td>Filter value</td></tr>
-              </thead>
-              <tbody>
-                <xsl:for-each select="./bcf:filter">
-                  <tr><td><xsl:value-of select="./@type"/></td><td><xsl:value-of select="./text()"/></td></tr>
-                </xsl:for-each>
-              </tbody>
-            </table>
-          </div>
-          <div>
-            <h6>Sorting Specification</h6>
-            <div class="small">Using sorting name key scheme: <xsl:value-of
-            select="./@sortnamekeyscheme"/><xsl:if
-            test="./@labelprefix"> and labelprefix: <xsl:value-of select="./@labelprefix"/></xsl:if></div>
-            <xsl:choose>
-              <xsl:when test="./bcf:sorting">
-                <xsl:call-template name="sorting-spec">
-                  <xsl:with-param name="spec" select="./bcf:sorting"/>
-                </xsl:call-template>
-              </xsl:when>
-              <xsl:otherwise>
-                (global default)
-              </xsl:otherwise>
-            </xsl:choose>
-          </div>
+        <h3>Data Lists</h3>
+        <xsl:for-each select="/bcf:controlfile/bcf:datalist">
+          <h4><u>Data list &quot;<xsl:value-of select="./@name"/>&quot;</u></h4>
+          <table>
+            <thead>
+              <tr><td>Type</td><td>Sorting Scheme</td><td>Labelprefix</td><td>Uniquename Template Name</td><td>Labelalphaname Template Name</td></tr>
+            </thead>
+            <tbody>
+              <tr>
+              <td><xsl:value-of select="./@type"/></td>
+              <td><xsl:value-of select="./@sortscheme"/></td>
+              <td><xsl:value-of select="./@labelprefix"/></td>
+              <td><xsl:value-of select="./@uniquenametemplatename"/></td>
+              <td><xsl:value-of select="./@labelalphanametemplatename"/></td>
+              </tr>
+            </tbody>
+          </table>
+          <xsl:if test="./bcf:filter">
+            <div>
+              <h6>Filters</h6>
+              <table>
+                <thead>
+                  <tr><td>Filter type</td><td>Filter value</td></tr>
+                </thead>
+                <tbody>
+                  <xsl:for-each select="./bcf:filter">
+                    <tr><td><xsl:value-of select="./@type"/></td><td><xsl:value-of select="./text()"/></td></tr>
+                  </xsl:for-each>
+                </tbody>
+              </table>
+            </div>
+          </xsl:if>
         </xsl:for-each>
       </body>
     </html>
   </xsl:template>
 </xsl:stylesheet>
 <!--
-    Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+    Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
     
     This code is free software.  You can redistribute it and/or
     modify it under the terms of the Artistic License 2.0.

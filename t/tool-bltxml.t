@@ -18,7 +18,7 @@ no warnings 'utf8';
 use utf8;
 
 # Set up Biber object
-my $biber = Biber->new( configfile => 'tool-test.conf');
+my $biber = Biber->new( configfile => 'tool-testsort.conf');
 my $LEVEL = 'ERROR';
 my $l4pconf = qq|
     log4perl.category.main                             = $LEVEL, Screen
@@ -42,7 +42,8 @@ my $out = $biber->get_output_obj;
 
 # Biber options
 Biber::Config->setoption('tool', 1);
-Biber::Config->setoption('output_resolve', 1);
+Biber::Config->setoption('output_resolve_xdata', 1);
+Biber::Config->setoption('output_resolve_crossrefs', 1);
 Biber::Config->setoption('output_format', 'biblatexml');
 Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 Biber::Config->setoption('dsn', 'tool.bib');
@@ -57,7 +58,15 @@ $ARGV[0] = 'tool.bib'; # fake this as we are not running through top-level biber
 $biber->tool_mode_setup;
 $biber->prepare_tool;
 $out->output;
-my $main = $biber->sortlists->get_list(99999, Biber::Config->getblxoption('sortscheme') . '/global/', 'entry', Biber::Config->getblxoption('sortscheme'), 'global', '');
+
+my $main = $biber->datalists->get_lists_by_attrs(section                    => 99999,
+                                       name                       => 'tool/global//global/global',
+                                       type                       => 'entry',
+                                       sortingtemplatename             => 'tool',
+                                       sortingnamekeytemplatename      => 'global',
+                                       labelprefix                => '',
+                                       uniquenametemplatename     => 'global',
+                                       labelalphanametemplatename => 'global')->[0];
 
 my $bltxml1 = q|<?xml version="1.0" encoding="UTF-8"?>
 <?xml-model href="tool.rng" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
@@ -212,8 +221,11 @@ my $bltxml1 = q|<?xml version="1.0" encoding="UTF-8"?>
       <bltx:end>2004-04-05T15:00:00</bltx:end>
     </bltx:date>
   </bltx:entry>
+  <bltx:entry id="m1" entrytype="article">
+    <bltx:date>2017</bltx:date>
+  </bltx:entry>
 </bltx:entries>
 |;
 
 eq_or_diff($outvar, encode_utf8($bltxml1), 'bltxml tool mode - 1');
-is_deeply([$main->get_keys], ['b1', 'macmillan', 'dt1', 'macmillan:pub', 'macmillan:loc', 'mv1', NFD('i3Š'), 'xd1'], 'tool mode sorting');
+is_deeply($main->get_keys, ['b1', 'macmillan', 'dt1', 'm1', 'macmillan:pub', 'macmillan:loc', 'mv1', NFD('i3Š'), 'xd1'], 'tool mode sorting');

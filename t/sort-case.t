@@ -42,11 +42,11 @@ $S = { spec => [
                 ],
                ]};
 
-my $main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
-$main->set_sortscheme($S);
+my $main = $biber->datalists->get_list('custom/global//global/global');
+$main->set_sortingtemplate($S);
 
 $biber->prepare;
-is_deeply([$main->get_keys], ['CS1','CS3','CS2'], 'U::C case - 1');
+is_deeply($main->get_keys, ['CS1','CS3','CS2'], 'U::C case - 1');
 
 $biber = Biber->new(noconf => 1);
 $biber->parse_ctrlfile('sort-case.bcf');
@@ -57,6 +57,6 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 # title is sortcase=1, sortupper=0
 # So, all names are the same and it depends on title
 $biber->prepare;
-$main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
-is_deeply([$main->get_keys], ['CS3','CS2','CS1'], 'U::C case - 2');
+$main = $biber->datalists->get_list('custom/global//global/global');
+is_deeply($main->get_keys, ['CS3','CS2','CS1'], 'U::C case - 2');
 
