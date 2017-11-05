@@ -18,7 +18,7 @@ use Biber::Config;
 use Data::Uniqid qw ( suniqid );
 use Encode;
 use File::Spec;
-use File::Slurp;
+use File::Slurper;
 use File::Temp;
 use Log::Log4perl qw(:no_extra_logdie_message);
 use List::AllUtils qw( uniq first );
@@ -187,8 +187,8 @@ sub extract_entries {
   $logger->info("Found BibLaTeXML data file '$filename'");
 
   # Set up XML parser and namespace
-  my $xml = File::Slurp::read_file($filename) or biber_error("Can't read file $filename");
-  $xml = NFD(decode('UTF-8', $xml));# Unicode NFD boundary
+  my $xml = File::Slurper::read_text($filename);
+  $xml = NFD($xml);# Unicode NFD boundary
   my $bltxml = XML::LibXML->load_xml(string => $xml);
   my $xpc = XML::LibXML::XPathContext->new($bltxml);
   $xpc->registerNs($NS, $BIBLATEXML_NAMESPACE_URI);
@@ -1071,17 +1071,26 @@ sub _datetime {
 sub _name {
   my ($bibentry, $entry, $f, $key) = @_;
 
+  my $un = Biber::Config->getblxoption('uniquename', $bibentry->get_field('entrytype'), $key);
+
   foreach my $node ($entry->findnodes("./$NS:names[\@type='$f']")) {
     my $names = new Biber::Entry::Names;
 
-    # Save useprefix attribute
-    if ($node->hasAttribute('useprefix')) {
-      $names->set_useprefix(map_boolean($node->getAttribute('useprefix'), 'tonum'));
-    }
+    # per-namelist options
+    foreach my $nlo (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+      if ($node->hasAttribute($nlo)) {
+        my $nlov = $node->getAttribute($nlo);
+        if ($CONFIG_OPTTYPE_BIBLATEX{$nlo} and
+            $CONFIG_OPTTYPE_BIBLATEX{$nlo} eq 'boolean') {
+          $nlov = map_boolean($nlov, 'tonum');
+        }
+        my $oo = expand_option($nlo, $nlov, $CONFIG_BIBLATEX_NAMELIST_OPTIONS{$nlo}->{INPUT});
 
-    # Save sortnamekeyscheme attribute
-    if ($node->hasAttribute('sortnamekeyscheme')) {
-      $names->set_sortnamekeyscheme($node->getAttribute('sortnamekeyscheme'));
+        foreach my $o ($oo->@*) {
+          my $method = 'set_' . $o->[0];
+          $names->$method($o->[1]);
+        }
+      }
     }
 
     my $numname = 1;
@@ -1097,7 +1106,8 @@ sub _name {
         $useprefix = Biber::Config->getblxoption('useprefix', $bibentry->get_field('entrytype'), $key);
       }
 
-      $names->add_name(parsename($namenode, $f, $key, $numname++, {useprefix => $useprefix}));
+      $names->add_name(parsename($namenode, $f, $key, $numname++, {useprefix => $useprefix,
+                                                                   uniquename => ($un // 0)}));
     }
 
     # Deal with explicit "moreenames" in data source
@@ -1131,8 +1141,8 @@ sub _name {
       nameinitstring    => 'Doe_JF',
       gender            => sm,
       useprefix         => 1,
-      sortnamekeyscheme => 'scheme' }
-      }
+      sortingnamekeytemplatename => 'templatename'
+    }
 
 =cut
 
@@ -1140,15 +1150,6 @@ sub parsename {
   my ($node, $fieldname, $key, $count, $opts) = @_;
   if ($logger->is_debug()) {# performance tune
     $logger->debug('Parsing BibLaTeXML name object ' . $node->nodePath);
-  }
-  # We have to pass this in from higher scopes as we need to actually use the scoped
-  # value in this sub as well as set the name local value in the object
-  my $useprefix = $opts->{useprefix};
-  my $namescope_useprefix;
-
-  # Set name-scope useprefix attribute if it exists
-  if ($node->hasAttribute('useprefix')) {
-    $useprefix = $namescope_useprefix = map_boolean($node->getAttribute('useprefix'), 'tonum');
   }
 
   # generic annotation attribute - individual name scope
@@ -1201,39 +1202,6 @@ sub parsename {
     }
   }
 
-  my $basenamestring = '';
-  my $namestring = '';
-  my $nameinitstring = '';
-
-  # Loop over name parts required for constructing uniquename information
-  # and create the strings needed for this
-  #
-  # Note that with the default uniquenametemplate, we don't conditionalise the *position*
-  # of a prefix on the useprefix option but rather its inclusion at all. This is because, if
-  # useprefix determined the position of the prefix in the uniquename strings:
-  # * As a global setting, it would generate the same uniqueness information and is therefore
-  #   irrelevant
-  # * As a local setting (entry, namelist, name), it would lead to different uniqueness
-  #   information which would be confusing
-
-  # Use nameuniqueness template to construct uniqueness strings
-  foreach my $np (@{Biber::Config->getblxoption('uniquenametemplate')}) {
-    my $npn = $np->{namepart};
-    if ($namec{$npn}) {
-      if ($np->{use}) {         # only ever defined as 1
-        next unless $opts->{"use$npn"};
-      }
-      $namestring .= $namec{$npn};
-      if ($np->{base}) {
-        $nameinitstring .= $namec{$npn};
-        $basenamestring .= $namec{$npn};
-      }
-      else {
-        $nameinitstring .= join('', @{$namec{"${npn}-i"}});
-      }
-    }
-  }
-
   my %nps;
   foreach my $n ($dm->get_constant_value('nameparts')) { # list type so returns list
     $nps{$n} = {string  => $namec{$n} // undef,
@@ -1242,20 +1210,24 @@ sub parsename {
 
   my $newname = Biber::Entry::Name->new(
                                         %nps,
-                                        namestring      => $namestring,
-                                        nameinitstring  => $nameinitstring,
-                                        basenamestring  => $basenamestring,
-                                        gender          => $node->getAttribute('gender')
+                                        gender => $node->getAttribute('gender')
                                        );
 
-  # Set name-scope sortnamekeyscheme attribute if it exists
-  if ($node->hasAttribute('sortnamekeyscheme')) {
-    $newname->set_sortnamekeyscheme($node->getAttribute('sortnamekeyscheme'));
-  }
+  # per-name options
+  foreach my $no (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+    if ($node->hasAttribute($no)) {
+      my $nov = $node->getAttribute($no);
+      if ($CONFIG_OPTTYPE_BIBLATEX{$no} and
+          $CONFIG_OPTTYPE_BIBLATEX{$no} eq 'boolean') {
+        $nov = map_boolean($nov, 'tonum');
+      }
+      my $oo = expand_option($no, $nov, $CONFIG_BIBLATEX_NAME_OPTIONS{$no}->{INPUT});
 
-  # Set name-scope useprefix if it is defined
-  if (defined($namescope_useprefix)) {
-    $newname->set_useprefix($namescope_useprefix);
+      foreach my $o ($oo->@*) {
+        my $method = 'set_' . $o->[0];
+        $newname->$method($o->[1]);
+      }
+    }
   }
 
   return $newname;
@@ -1483,7 +1455,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

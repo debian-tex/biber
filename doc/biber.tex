@@ -26,8 +26,8 @@
 \newcommand*{\biblatex}{Biblatex\xspace}
 \MakeAutoQuote{«}{»}
 
-\gdef\biberversion{2.7}    % BIBER VERSION
-\gdef\biblatexversion{3.7}   % BIBLATEX VERSION
+\gdef\biberversion{2.8}    % BIBER VERSION
+\gdef\biblatexversion{3.8}   % BIBLATEX VERSION
 
 % colour for tables
 \definecolor{Gray}{gray}{0.85}
@@ -151,7 +151,7 @@ example:
 \minisec{1.8}
 \textcolor{red}{Several option names have changed}. Several options have
 changed names to facilitate better semantic classification of options. The
-previous names are supported as legacy aliases. See the \verb+--help+
+previous names are supported as legacy aliases. See the \opt{--help}
 output of the \biber command.
 
 \minisec{0.9.8}
@@ -251,7 +251,9 @@ compatibility matrix for the recent versions.
 \toprule
 \biber\ version & \biblatex\ version\\
 \midrule
-2.6 & 3.5\\
+2.8 & 3.8\\
+2.7 & 3.7\\
+2.6 & 3.5, 3.6\\
 2.5 & 3.4\\
 2.4 & 3.3\\
 2.3 & 3.2\\
@@ -459,10 +461,9 @@ it's fraught with problems and leads to inconsistent expectations and
 behaviour between different datasource types. In your \BibTeX\ data
 sources, please make sure your entries are legal \TeX\ code.
 
-Running \opt{biber --help} will display all options and a brief
-description of each. This is the most useful brief source of usage
-information. \biber\ returns an exit code of 0 on success or 1 if
-there was an error.
+Running \opt{biber --help} will display all options and description of
+each and is the primary source of usage information. \biber\
+returns an exit code of 0 on success or 1 if there was an error.
 
 Most \biber\ options can be specified in long or short format. When
 mentioning options below, they are referred to as
@@ -644,7 +645,9 @@ an example config file which displays the \biber\ defaults:
   <output_fieldcase>upper</output_fieldcase>
   <output_format>bbl</output_format>
   <output_indent>2</output_indent>
-  <output_resolve>0</output_resolve>
+  <output_resolve_xdata>0</output_resolve_xdata>
+  <output_resolve_crossrefs>0</output_resolve_crossrefs>
+  <output_resolve_sets>0</output_resolve_sets>
   <output_safechars>0</output_safechars>
   <output_safecharsset>base</output_safecharsset>
   <quiet>0</quiet>
@@ -1384,7 +1387,7 @@ which are explained in the accompanying text. Items in
 See also the \texttt{nosort} option in section \ref{nosort}.
 
 \begin{lstlisting}[language=xml,escapechar=+,mathescape=true]
-<sorting>
+<sorting scheme="+\textcolor{red}{schemename}+">
   <presort +\textcolor{blue}{type=\textcolor{red}{type}}+>+\textcolor{red}{string}+</presort>
   +\textcolor{blue}{<sortexclusion type=\textcolor{red}{type}>}+
       +\textcolor{blue}{<exclusion>\textcolor{red}{field}</exclusion>}+
@@ -1414,6 +1417,9 @@ the bibliography list and generates a sorting object based on the sorting
 scheme. When this is done, it sorts the entries according to the sorting
 objects it has generated for each entry.
 
+A sorting specification must be named with the \textcolor{red}{schemename}
+attribute. In «tool» mode, this must be set to \texttt{tool}. Otherwise, it
+is a name referenced by a \biblatex refcontext \texttt{sorting} option.
 A sorting specification is comprised of a number of \texttt{sort} elements.
 Sorting is essentially a process of comparing whatever information is in
 the \textcolor{red}{n}th \texttt{sort} element collected for every entry
@@ -2328,7 +2334,7 @@ the input encoding is not (it is by default UTF-8), then the
 config file, you can set up a complex set of mappings to transform
 your datasource however you wish in a semantic manner much more robust
 than just textual search/replace. You can also use the
-\opt{--output-resolve} option which will process any \bibfield{XDATA}
+\opt{--output-resolve} meta-option which will process any \bibfield{XDATA}
 fields/entries, entry aliases and inheritance rules mentioned in the config
 file (see below).
 
@@ -2471,7 +2477,7 @@ it will use the default \file{biber-tool.conf} which is located in the
 default config file contains the default \biblatex source mappings for
 \bibtex datasources and also the default inheritance rules for
 \bibfield{CROSSREF} processing. This means that when you use the
-\opt{--tool-resolve} option, inheritance processing is performed on the
+\opt{--output-resolve} meta-option, inheritance processing is performed on the
 entries and the results of this are «materialised» in the output. For
 example, consider a \file{test.bib} file:
 
@@ -2567,9 +2573,8 @@ Notice here that:
 \end{itemize}
 
 Tool mode can also be used to convert between datasource
-formats\footnote{This is currently rather experimental}. For example,
-if you wish to covert a \bibtex format data file to the experimental
-\texttt{biblatexml} XML format, you can do:
+formats. For example, if you wish to covert a \bibtex format data file to
+the experimental \texttt{biblatexml} XML format, you can do:
 
 \begin{verbatim}
 biber --tool --output-format=biblatexml file.bib
@@ -2619,7 +2624,9 @@ output-fieldcase & \checkmark & - & - & -\\
 output-listsep & \checkmark & - & - & -\\
 output-macro-fields & \checkmark & - & - & -\\
 output-namesep & \checkmark & - & - & -\\
-output-resolve & \checkmark & \checkmark & - & -\\
+output-resolve-xdata & \checkmark & \checkmark & - & -\\
+output-resolve-crossrefs & \checkmark & \checkmark & - & -\\
+output-resolve-sets & \checkmark & \checkmark & - & -\\
 output-xname & \checkmark & - & - & -\\
 output-xnamesep & \checkmark & - & - & -\\
 \bottomrule
@@ -2646,13 +2653,14 @@ tool mode config file by using the \opt{--tool-config} option which will
 show you the location of the config file and exit.
 
 \subsubsection{Customising Tool Mode Sorting}
-A global sorting scheme can be defined in the config file in order to sort
-the entries in tool mode output. See section \ref{sorting} for the format
-of the config file sorting specification. By default, in tool mode the
-sorting scheme is the same as the \biblatex \texttt{none} scheme, that is,
-no sorting is performed. The sorting locale in tool mode defaults to
-«\texttt{en\_US}» if you do not use \biber's \opt{sortlocale} option.
-\bigskip%|<- stop confusing emacs highlighting
+A sorting scheme called «tool» can be defined in the config file in
+order to sort the entries in tool mode output. See section \ref{sorting}
+for the format of the config file sorting specification. By default, in
+tool mode the sorting scheme is the same as the \biblatex \texttt{none}
+scheme, that is, no sorting is performed. The sorting locale in tool mode
+defaults to «\texttt{en\_US}» if you do not use \biber's \opt{sortlocale}
+option.
+\bigskip
 \section{Binaries}\label{binaries}
 
 \biber\ is a Perl application which relies heavily on quite a few
@@ -2916,7 +2924,7 @@ of \biber\ version and locale of course but there should be no errors
 or warnings).
 
 \begin{verbatim}
-INFO - This is Biber 2.7
+INFO - This is Biber 2.8
 INFO - Logfile is 'test.blg'
 INFO - BibLaTeX control file 'test.bcf' validates
 INFO - Converted BibLaTeX control file 'test.bcf' to 'test.bcf.html'

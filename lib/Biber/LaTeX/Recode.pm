@@ -6,7 +6,7 @@ use parent qw(Exporter);
 use Biber::Config;
 use Digest::MD5 qw( md5_hex );
 use Encode;
-use File::Slurp;
+use File::Slurper;
 use File::Spec;
 use IPC::Cmd qw( can_run );
 use IPC::Run3; # This works with PAR::Packer and Windows. IPC::Run doesn't
@@ -31,7 +31,7 @@ Biber::LaTeX::Recode - Encode/Decode chars to/from UTF-8/lacros in LaTeX
 
     use Biber::LaTeX:Recode
 
-    my $string       = 'Muḥammad ibn Mūsā al-Khwārizmī';
+    my $string = 'Muḥammad ibn Mūsā al-Khwārizmī';
     my $latex_string = latex_encode($string);
         # => 'Mu\d{h}ammad ibn M\=us\=a al-Khw\=arizm\={\i}'
 
@@ -112,8 +112,8 @@ sub init_sets {
   }
 
   # Read driver config file
-  my $xml = File::Slurp::read_file($mapdata) or biber_error("Can't read file $mapdata");
-  my $doc = XML::LibXML->load_xml(string => decode('UTF-8', $xml));
+  my $xml = File::Slurper::read_text($mapdata);
+  my $doc = XML::LibXML->load_xml(string => $xml);
   my $xpc = XML::LibXML::XPathContext->new($doc);
 
   my @types = qw(letters diacritics punctuation symbols negatedsymbols superscripts cmdsuperscripts dings greek);
@@ -222,7 +222,7 @@ sub latex_decode {
 
       # first replace all verbatim fields with markers as we mustn't touch these
       $text =~ s/((?:$vs)\s*=\s*)(")\s*([^"]+)\s*(")/verbmark($1,$2,$3,$4)/gie;
-      $text =~ s/((?:$vs)\s*=\s*)({)\s*([^}]+)\s*(})/verbmark($1,$2,$3,$4)/gie;
+      $text =~ s/((?:$vs)\s*=\s*)(\{)\s*([^\}]+)\s*(\})/verbmark($1,$2,$3,$4)/gie;
     }
 
     if ($logger->is_trace()) {# performance tune
@@ -239,7 +239,7 @@ sub latex_decode {
     $text =~ s/\\char(\d+)/"chr($1)"/gee;    # decimal chars
 
     $text =~ s/(\\[a-zA-Z]+)\\(\s+)/$1\{\}$2/g;    # \foo\ bar -> \foo{} bar
-    $text =~ s/([^{]\\\w)([;,.:%])/$1\{\}$2/g;     #} Aaaa\o,  -> Aaaa\o{},
+    $text =~ s/([^\{]\\\w)([;,.:%])/$1\{\}$2/g;     #} Aaaa\o,  -> Aaaa\o{},
 
     foreach my $type ('greek', 'dings', 'punctuation', 'symbols', 'negatedsymbols', 'superscripts', 'cmdsuperscripts', 'letters', 'diacritics') {
       my $map = $remap_d->{$type}{map};
@@ -265,7 +265,14 @@ sub latex_decode {
         $text =~ s/\\($re)(?: \{\}|\s+|\b)/$map->{$1}/ge;
       }
       elsif ($type eq 'diacritics') {
-        $text =~ s/\\($re)\s*\{(\pL\pM*)\}/$2 . $map->{$1}/ge;
+        # Using Unicode INFORMATION SEPARATOR ONE/TWO
+        my $bracemap = {'' => '',
+                        '{' => "\x{1f}",
+                        '}' => "\x{1e}"};
+
+        # Rename protecting braces so that they are not broken by RE manipulations
+        $text =~ s/(\{?)\\($re)\s*\{(\pL\pM*)\}(\}?)/$bracemap->{$1} . $3 . $map->{$2} . $bracemap->{$4}/ge;
+
         # Conditional regexp with code-block condition
         # non letter macros for diacritics (e.g. \=) can be followed by any letter
         # but letter diacritic macros (e.g \c) can't (\cS) horribly Broken
@@ -277,14 +284,14 @@ sub latex_decode {
         #     Any letter is allowed after the space (\c S)
         #   Else
         #     Only a non basic LaTeX letter is allowed (\c-)
-        $text =~ s/\\# slash
+        $text =~ s/(\{?)\\# slash
                    ($re)# the diacritic
                    (\s*)# optional space
                    (# capture paren
-                     (?(?{$1 !~ m:[A-Za-z]$:})# code block condition (is not a letter?)
+                     (?(?{$2 !~ m:[A-Za-z]$:})# code block condition (is not a letter?)
                        \pL # yes pattern
                      | # no pattern
-                       (?(?{$2}) # code block condition (space matched earlier after diacritic?)
+                       (?(?{$3}) # code block condition (space matched earlier after diacritic?)
                          \pL # yes pattern
                        | # no pattern
                          [^A-Za-z]
@@ -292,8 +299,15 @@ sub latex_decode {
                      ) # close conditional
                      \pM* # optional marks
                    ) # capture paren
-                   /$3 . $map->{$1}/gxe;
+                   (\}?)/$bracemap->{$1} . $4 . $map->{$2} . $bracemap->{$5}/gxe;
       }
+    }
+
+    # Replace verbatim field markers
+    $text =~ s/([a-f0-9]{32})/$saveverb->{$1}/gie;
+
+    if ($logger->is_trace()) {# performance tune
+      $logger->trace("String in latex_decode() before brace elimination now -> '$text'");
     }
 
     # Now remove braces around single letters with diacritics (which the replace above
@@ -312,14 +326,17 @@ sub latex_decode {
     #
     # Workaround perl's lack of variable-width negative look-behind -
     # Reverse string (and therefore some of the Re) and use variable width negative look-ahead
+    # Careful here - reversing puts any combining chars before the char so \X can't be used
     $text = reverse $text;
-    $text =~ s/}(\pM+\pL){(?!\pL+\\)/$1/g;
+    $text =~ s/\}(\pM+\pL)\{(?!\pL+\\)/$1/g;
     $text = reverse $text;
 
-    # Replace verbatim field markers
-    $text =~ s/([a-f0-9]{32})/$saveverb->{$1}/gie;
+    # Put brace markers back after doing the brace elimination as we only want to eliminate
+    # braces introduced as part of decoding, not explicit braces in the data
+    $text =~ s/\x{1f}/{/g;
+    $text =~ s/\x{1e}/}/g;
 
-    if ($logger->is_debug()) {# performance tune
+    if ($logger->is_trace()) {# performance tune
       $logger->trace("String in latex_decode() now -> '$text'");
     }
 
@@ -394,8 +411,8 @@ sub latex_encode {
 
   sub _wrap {
     my ($s, $map, $remap_e_raw) = @_;
-    if ($map->{$s} =~ m/^text/) {
-      "\\"  . $map->{$s};
+    if ($map->{$s} =~ m/^(?:text|guillemot)/) {
+      "\\"  . $map->{$s} . '{}';
     }
     elsif ($remap_e_raw->{$s}) {
       $map->{$s};
@@ -424,7 +441,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

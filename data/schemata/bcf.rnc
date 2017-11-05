@@ -47,7 +47,8 @@ start =
       singletitle,
       sortalphaothers?,
       sortlocale,
-      sortscheme,
+      sortingtemplatename,
+      sortsets,
       uniquelist,
       uniquename,
       uniqueprimaryauthor,
@@ -125,7 +126,7 @@ start =
 
     # labelalphanametemplate specification
     element bcf:labelalphanametemplate {
-      attribute type { xsd:string }?, # per-type?
+      attribute name { xsd:string }?,
       element bcf:namepart {
         attribute order { xsd:integer },
         attribute use { "0" | "1" }?,
@@ -158,6 +159,18 @@ start =
         }+
       }+
     }+,
+
+    # Extradate specification
+    element bcf:extradatespec {
+      # Scope of extradate tracking - an ordered set of fields to try
+      element bcf:scope {
+        # A field used to track extradate
+        element bcf:field {
+          attribute order { xsd:integer },
+          text
+        }+
+      }+
+    },
 
     # Cross-reference inheritance specifications
     element bcf:inheritance {
@@ -230,11 +243,24 @@ start =
     # Transliteration specification(s)
     translit*,
     # Uniquename template
-    uniquenametemplate,
+    uniquenametemplate+,
     # Sorting name key specification
-    sortingnamekey,
-    # Global sorting specification
-    sorting,
+    sortingnamekeytemplate+,
+    # presort default strings for different entry types
+    element bcf:presort {
+      attribute type { text }?,
+      text
+    }+,
+    # excludes of certain fields for sorting for specified types
+    element bcf:sortexclusion {
+      attribute type { text },
+      element bcf:exclusion { text }+
+    }*,
+    # forcibly includes certain fields excluded by sortexclusion for sorting for specified types
+    element bcf:sortinclusion {
+      attribute type { text },
+      element bcf:inclusion { text }+
+    }*,
     # Data model specification
     element bcf:datamodel {
       # Constants
@@ -339,24 +365,22 @@ start =
       }?,
       # Section specifications
       secspec+,
+      sorting+,
       listspec+
     }
 
 listspec = 
-    element bcf:sortlist {
+    element bcf:datalist {
       attribute section { xsd:integer },
       attribute type { "entry" | "list" },
-      attribute sortscheme { xsd:string {minLength="1"}},
-      attribute sortnamekeyscheme { xsd:string {minLength="1"}},
+      attribute sortingtemplatename { xsd:string {minLength="1"} },
+      attribute sortingnamekeytemplatename { xsd:string {minLength="1"} },
       attribute labelprefix { xsd:string },
+      attribute uniquenametemplatename { xsd:string },
+      attribute labelalphanametemplatename { xsd:string },      
       # name is only needed for list types
-      attribute name { xsd:string {minLength="1"}},
-      (filter | filteror )*,
-      element bcf:sorting {
-        # locale for entire sorting specification
-        attribute locale { xsd:string {minLength="1"}}?,
-        sort+
-      }?
+      attribute name { xsd:string {minLength="1"} },
+      (filter | filteror )*
     }*
 
 translit =
@@ -371,17 +395,19 @@ translit =
 
 uniquenametemplate = 
   element bcf:uniquenametemplate {
+    attribute name { xsd:string {minLength="1"} },
     element bcf:namepart {
      attribute order { xsd:integer },
       attribute use { "0" | "1" }?,
       attribute base { "0" | "1" }?,
+      attribute disambiguation { "none" | "init" | "initorfull" | "full"}?,
       text
     }+
   }
 
-sortingnamekey = 
-  element bcf:sortingnamekey {
-    attribute keyscheme { text },
+sortingnamekeytemplate = 
+  element bcf:sortingnamekeytemplate {
+    attribute name { text },
     element bcf:keypart {
      attribute order { xsd:integer },
      element bcf:part {
@@ -395,24 +421,11 @@ sortingnamekey =
   }+
 
 sorting = 
-  element bcf:sorting {
+  element bcf:sortingtemplate {
+    # sorting template name
+    attribute name { xsd:string {minLength="1"}},
     # locale for entire sorting specification
     attribute locale { xsd:string {minLength="1"}}?,
-    # presort default strings for different entry types
-    element bcf:presort {
-      attribute type { text }?,
-      text
-    }+,
-    # excludes of certain fields for sorting for specified types
-    element bcf:sortexclusion {
-      attribute type { text },
-      element bcf:exclusion { text }+
-    }*,
-    # forcibly includes certain fields excluded by sortexclusion for sorting for specified types
-    element bcf:sortinclusion {
-      attribute type { text },
-      element bcf:inclusion { text }+
-    }*,
     sort+
   }
 
@@ -680,11 +693,17 @@ sortlocale =
     element bcf:key { "sortlocale" },
     element bcf:value { text }
   }
-sortscheme =
+sortingtemplatename =
   element bcf:option {
     attribute type { "singlevalued" },
-    element bcf:key { "sortscheme" },
+    element bcf:key { "sortingtemplatename" },
     element bcf:value { text }
+  }
+sortsets =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "sortsets" },
+    element bcf:value { "0" | "1" }
   }
 labelnamespec =
   element bcf:option {
@@ -802,7 +821,7 @@ map =
 dmfieldtype =  "field" | "list"
 dmdatatype =  "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "code" | "uri" | "datepart" | "keyword" | "option"
 
-# Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+# Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 # This code is free software.  You can redistribute it and/or
 # modify it under the terms of the Artistic License 2.0.

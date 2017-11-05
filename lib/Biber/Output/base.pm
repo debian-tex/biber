@@ -203,6 +203,9 @@ sub get_output_section {
 =head2 get_output_entries
 
     Get the sorted order output data for all entries in a list as array ref
+    Used really only in tests as it instantiates list dynamic information so
+    we can see it in tests. As a result, we have to NFC() the result to mimic
+    real output since UTF-8 output is assumed in most tests.
 
 =cut
 
@@ -212,7 +215,7 @@ sub get_output_entries {
   my $list = shift;
   return [ map {$self->{output_data}{ENTRIES}{$section}{index}{$_} ||
                 $self->{output_data}{MISSING_ENTRIES}{$section}{index}{$_} ||
-                $self->{output_data}{ALIAS_ENTRIES}{$section}{index}{$_}} $list->get_keys];
+                $self->{output_data}{ALIAS_ENTRIES}{$section}{index}{$_}} $list->get_keys->@*];
 }
 
 
@@ -237,26 +240,27 @@ sub get_output_comments {
 =cut
 
 sub get_output_entry {
-  my $self = shift;
-  my $key = shift;
-  my $list = shift; # might not be set for, for example, tool mode tests
-  my $section = shift;
+  my ($self, $key, $list, $secnum) = @_;
+
   # defaults - mainly for tests
-  if (not defined($section)) {
+  if (not defined($secnum)) {
     if (Biber::Config->getoption('tool') or
         Biber::Config->getoption('output_format') eq 'bibtex') {
-      $section = 99999;
+      $secnum = 99999;
     }
     else {
-      $section = 0;
+      $secnum = 0;
     }
   }
+
+  my $section = $self->get_output_section($secnum);
+
   # Force a return of undef if there is no output for this key to avoid
   # dereferencing errors in tests
-  my $out = $self->{output_data}{ENTRIES}{$section}{index}{$key} ||
-            $self->{output_data}{MISSING_ENTRIES}{$section}{index}{$key} ||
-            $self->{output_data}{ALIAS_ENTRIES}{$section}{index}{$key};
-  my $out_string = $list ? $list->instantiate_entry($out, $key) : $out;
+  my $out = $self->{output_data}{ENTRIES}{$secnum}{index}{$key} ||
+            $self->{output_data}{MISSING_ENTRIES}{$secnum}{index}{$key} ||
+            $self->{output_data}{ALIAS_ENTRIES}{$secnum}{index}{$key};
+  my $out_string = $list ? $list->instantiate_entry($section, $out, $key) : $out;
 
   # If requested to convert UTF-8 to macros ...
   if (Biber::Config->getoption('output_safechars')) {
@@ -289,9 +293,9 @@ sub get_output_entry {
 sub set_output_entry {
   my $self = shift;
   my $entry = shift;
-  my $section = shift;
+  my $secnum = shift;
   my $struc = shift;
-  $self->{output_data}{ENTRIES}{$section}{index}{$entry->get_field('citekey')} = $entry->dump;
+  $self->{output_data}{ENTRIES}{$secnum}{index}{$entry->get_field('citekey')} = $entry->dump;
   return;
 }
 
@@ -396,7 +400,7 @@ sub output {
       my $listlabel = $list->get_label;
       my $listtype = $list->get_type;
       out($target, "  LIST: $listlabel\n\n");
-      foreach my $k ($list->get_keys) {
+      foreach my $k ($list->get_keys->@*) {
         my $entry_string = $data->{ENTRIES}{$secnum}{index}{$k};
         out($target, $entry_string);
       }
@@ -426,7 +430,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

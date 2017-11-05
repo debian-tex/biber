@@ -1653,9 +1653,12 @@
 }
 
 % ISBN tests
+% Also test empty fields
 @MISC{isbn1,
   AUTHOR = {given=Fred, family=Flummox},
-  ISBN   = {0816520666}
+  ISBN   = {0816520666},
+  INSTITUTION = {},
+  LANGUAGE = {}
 }
 
 @MISC{isbn2,
@@ -1670,7 +1673,7 @@
 
 % Extended name format test
 @BOOK{ent1,
-  AUTHOR = {sortnamekeyscheme=snks1 and Simon Smith and family=Brown, prefix=de, given=Brian, sortnamekeyscheme=snks2},
+  AUTHOR = {sortingnamekeytemplatename=snks1 and Simon Smith and family=Brown, prefix=de, given=Brian, sortingnamekeytemplatename=snks2},
 }
 
 % Decode verbatim test
@@ -1679,3 +1682,19 @@
   VERBA = {\=y.\"a}
 }
 
+% source->target overwrite
+@BOOK{over1,
+  USERA = {thing},
+  USERD = {A}
+}
+
+% Test sorting of explicit "and others"
+@BOOK{others1,
+  AUTHOR = {Gauck, Joachim},
+  TITLE = {Title A},
+}
+
+@BOOK{others2,
+  AUTHOR = {Gauck, Joachim and others},
+  TITLE = {Title B},
+}

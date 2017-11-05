@@ -47,7 +47,8 @@ Biber::Config->setoption('bcf', 'biblatexml.bcf');
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->sortlists->get_list(0, 'nty/global/', 'entry', 'nty', 'global', '');
+my $main = $biber->datalists->get_list('custom/global//global/global');
+
 my $bibentries = $section->bibentries;
 
 my $l1 = q|    \entry{bltx1}{misc}{useprefix=false}
@@ -97,16 +98,21 @@ my $l1 = q|    \entry{bltx1}{misc}{useprefix=false}
       \list{publisher}{1}{%
         {Наука}%
       }
-      \strng{namehash}{f29948d2b7207cd79c4466d823d8627c}
+      \strng{namehash}{835d3352054f77020fc38705080e4596}
       \strng{fullhash}{835d3352054f77020fc38705080e4596}
-      \strng{authornamehash}{f29948d2b7207cd79c4466d823d8627c}
+      \strng{bibnamehash}{835d3352054f77020fc38705080e4596}
+      \strng{authorbibnamehash}{835d3352054f77020fc38705080e4596}
+      \strng{authornamehash}{835d3352054f77020fc38705080e4596}
       \strng{authorfullhash}{835d3352054f77020fc38705080e4596}
+      \strng{forewordbibnamehash}{0ee59e598dae22fac8e6d9d2df7e79ec}
       \strng{forewordnamehash}{0ee59e598dae22fac8e6d9d2df7e79ec}
       \strng{forewordfullhash}{0ee59e598dae22fac8e6d9d2df7e79ec}
+      \strng{translatorbibnamehash}{b44eba830fe9817fbe8e53c82f1cbe04}
       \strng{translatornamehash}{b44eba830fe9817fbe8e53c82f1cbe04}
       \strng{translatorfullhash}{b44eba830fe9817fbe8e53c82f1cbe04}
       \field{sortinit}{v}
       \field{sortinithash}{555737dafdcf1396ebfeae5822e5bde2}
+      \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
@@ -156,11 +162,11 @@ my $l2 = q|    \entry{loopkey:a}{book}{}
 |;
 
 
-my $bltx1 = 'mm,,,von!Булгаков!Павел Георгиевич#РРозенфельд!БорисZZ Aбрамович!von#Aхмедов!Ашраф Ахмедович,1980,0,Мухаммад ибн муса алХорезми Около 783 около 850';
+my $bltx1 = 'mm,,,von!Булгаков!Павел Георгиевич#РРозенфельд!Борис-ZZ Aбрамович!von#Aхмедов!Ашраф Ахмедович#+,1980,0,Мухаммад ибн муса ал-Хорезми. Около 783 – около 850';
 
 # Test::Differences doesn't like utf8 unless it's encoded here
 eq_or_diff(encode_utf8($out->get_output_entry('bltx1', $main)), encode_utf8($l1), 'BibLaTeXML - 1');
 eq_or_diff($section->get_citekey_alias('bltx1a1'), 'bltx1', 'Citekey aliases - 1');
 eq_or_diff($section->get_citekey_alias('bltx1a2'), 'bltx1', 'Citekey aliases - 2');
-eq_or_diff(encode_utf8($main->get_sortdata('bltx1')->[0]), encode_utf8($bltx1), 'useprefix at name list and name scope - 1' );
+eq_or_diff(encode_utf8($main->get_sortdata_for_key('bltx1')->[0]), encode_utf8($bltx1), 'useprefix at name list and name scope - 1' );
 eq_or_diff(encode_utf8($out->get_output_entry('loopkey:a', $main)), encode_utf8($l2), 'BibLaTeXML automapcreate - 1');

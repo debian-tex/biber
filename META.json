@@ -39,17 +39,18 @@
             "Encode::EUCJPASCII" : "0",
             "Encode::HanExtra" : "0",
             "Encode::JIS2K" : "0",
-            "File::Slurp" : "0",
+            "File::Slurper" : "0",
             "IPC::Cmd" : "0",
             "IPC::Run3" : "0",
             "LWP::Protocol::https" : "0",
             "LWP::Simple" : "0",
-            "Lingua::Translit" : "0.25",
+            "Lingua::Translit" : "0.27",
             "List::AllUtils" : "0",
             "List::MoreUtils" : "0",
             "List::MoreUtils::XS" : "0",
             "Log::Log4perl" : "0",
             "Mozilla::CA" : "20160104",
+            "PerlIO::utf8_strict" : "0",
             "Regexp::Common" : "0",
             "Sort::Key" : "0",
             "Text::BibTeX" : "0.76",
@@ -57,7 +58,7 @@
             "Text::CSV_XS" : "0",
             "Text::Roman" : "0",
             "URI" : "0",
-            "Unicode::Collate" : "1.14",
+            "Unicode::Collate" : "1.19",
             "Unicode::GCString" : "0",
             "Unicode::LineBreak" : "2016.003",
             "Unicode::Normalize" : "1.25",
@@ -66,7 +67,7 @@
             "XML::LibXSLT" : "0",
             "XML::Writer" : "0",
             "autovivification" : "0",
-            "perl" : "v5.24.0"
+            "perl" : "v5.26.0"
          }
       },
       "test" : {
@@ -86,10 +87,16 @@
       },
       "Biber::Config" : {
          "file" : "lib/Biber/Config.pm",
-         "version" : "2.7"
+         "version" : "2.8"
       },
       "Biber::Constants" : {
          "file" : "lib/Biber/Constants.pm"
+      },
+      "Biber::DataList" : {
+         "file" : "lib/Biber/DataList.pm"
+      },
+      "Biber::DataLists" : {
+         "file" : "lib/Biber/DataLists.pm"
       },
       "Biber::DataModel" : {
          "file" : "lib/Biber/DataModel.pm"
@@ -145,12 +152,6 @@
       "Biber::Sections" : {
          "file" : "lib/Biber/Sections.pm"
       },
-      "Biber::SortList" : {
-         "file" : "lib/Biber/SortList.pm"
-      },
-      "Biber::SortLists" : {
-         "file" : "lib/Biber/SortLists.pm"
-      },
       "Biber::UCollate" : {
          "file" : "lib/Biber/UCollate.pm"
       },
@@ -164,5 +165,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "2.7"
+   "version" : "2.8"
 }

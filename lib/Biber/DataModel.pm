@@ -960,10 +960,10 @@ sub generate_bltxml_schema {
           $writer->endTag();    # attribute
           $writer->endTag();    # optional
 
-          # sortnamekeyscheme attribute
-          $writer->comment('sortnamekeyscheme option');
+          # sortingnamekeytemplatename attribute
+          $writer->comment('sortingnamekeytemplatename option');
           $writer->startTag('optional');
-          $writer->startTag('attribute', 'name' => 'sortnamekeyscheme');
+          $writer->startTag('attribute', 'name' => 'sortingnamekeytemplatename');
           $writer->emptyTag('data', 'type' => 'string');
           $writer->endTag();    # attribute
           $writer->endTag();    # optional
@@ -1001,10 +1001,10 @@ sub generate_bltxml_schema {
           $writer->endTag();    # attribute
           $writer->endTag();    # optional
 
-          # sortnamekeyscheme attribute
-          $writer->comment('sortnamekeyscheme option');
+          # sortingnamekeytemplatename attribute
+          $writer->comment('sortingnamekeytemplatename option');
           $writer->startTag('optional');
-          $writer->startTag('attribute', 'name' => 'sortnamekeyscheme');
+          $writer->startTag('attribute', 'name' => 'sortingnamekeytemplatename');
           $writer->emptyTag('data', 'type' => 'string');
           $writer->endTag();    # attribute
           $writer->endTag();    # optional
@@ -1309,7 +1309,7 @@ sub generate_bblxml_schema {
                                DATA_MODE    => 1,
                                DATA_INDENT  => 2,
                                OUTPUT       => $rng,
-                               PREFIX_MAP   => {$bbl_ns    => $bbl,
+                               PREFIX_MAP   => {$bbl_ns     => $bbl,
                                                 $default_ns => ''});
 
   $writer->xmlDecl();
@@ -1324,7 +1324,7 @@ sub generate_bblxml_schema {
   $writer->startTag('element', 'name' => "$bbl:refsection");
   $writer->emptyTag('attribute', 'name' => 'id');
   $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:sortlist");
+  $writer->startTag('element', 'name' => "$bbl:datalist");
   $writer->emptyTag('attribute', 'name' => 'id');
   $writer->startTag('attribute', 'name' => 'type');
   $writer->startTag('choice');
@@ -1333,6 +1333,40 @@ sub generate_bblxml_schema {
   $writer->endTag();    # choice
   $writer->endTag();    # attribute
   $writer->startTag('oneOrMore');
+  $writer->startTag('choice');
+  # Set parent entries are special
+  $writer->startTag('element', 'name' => "$bbl:entry");
+  $writer->emptyTag('attribute', 'name' => 'key');
+  $writer->startTag('attribute', 'name' => 'type');
+  $writer->startTag('choice');
+  $writer->dataElement('value', 'set');
+  $writer->endTag();    # choice
+  $writer->endTag();    # attribute
+  $writer->startTag('element', 'name' => "$bbl:set");
+  $writer->startTag('oneOrMore');
+  $writer->startTag('element', 'name' => "$bbl:member");
+  $writer->emptyTag('text');# text
+  $writer->endTag();    # member
+  $writer->endTag();    # oneOrMore
+  $writer->endTag();    # set
+  $writer->startTag('oneOrMore');
+  $writer->startTag('element', 'name' => "$bbl:field");
+  $writer->startTag('attribute', 'name' => 'name');
+  $writer->startTag('choice');
+  $writer->dataElement('value', 'labelprefix');
+  $writer->dataElement('value', 'labelalpha');
+  $writer->dataElement('value', 'extraalpha');
+  $writer->dataElement('value', 'annotation');
+  $writer->dataElement('value', 'sortinit');
+  $writer->dataElement('value', 'sortinithash');
+  $writer->dataElement('value', 'label');
+  $writer->endTag();    # choice
+  $writer->endTag();    # attribute
+  $writer->emptyTag('text');# text
+  $writer->endTag();    # field
+  $writer->endTag();    # oneOrMore
+  $writer->endTag(); # entry
+  # Normal entries
   $writer->startTag('element', 'name' => "$bbl:entry");
   $writer->emptyTag('attribute', 'name' => 'key');
   $writer->startTag('attribute', 'name' => 'type');
@@ -1391,17 +1425,6 @@ sub generate_bblxml_schema {
 
   $writer->startTag('interleave');
 
-  # sets
-  $writer->startTag('zeroOrMore');
-  $writer->startTag('element', 'name' => "$bbl:set");
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:member");
-  $writer->emptyTag('text');# text
-  $writer->endTag();    # member
-  $writer->endTag();    # oneOrMore
-  $writer->endTag();    # set
-  $writer->endTag();    # zeroOrMore
-
   $writer->startTag('zeroOrMore');
   $writer->startTag('element', 'name' => "$bbl:inset");
   $writer->startTag('oneOrMore');
@@ -1438,7 +1461,7 @@ sub generate_bblxml_schema {
   $writer->endTag();    # attribute
   $writer->endTag();    # optional
   $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'sortnamekeyscheme');
+  $writer->emptyTag('attribute', 'name' => 'sortingnamekeytemplatename');
   $writer->endTag();    # optional
   $writer->startTag('optional');
   $writer->startTag('attribute', 'name' => 'more');
@@ -1455,18 +1478,24 @@ sub generate_bblxml_schema {
   $writer->endTag();    # attribute
   $writer->endTag();    # optional
   $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'sortnamekeyscheme');
+  $writer->emptyTag('attribute', 'name' => 'sortingnamekeytemplatename');
   $writer->endTag();    # optional
   $writer->emptyTag('attribute', 'name' => 'hash');
   $writer->startTag('optional');
   $writer->startTag('attribute', 'name' => 'uniquename');
   $writer->emptyTag('data', 'type' => 'integer');
   $writer->endTag();    # attribute
+  $writer->startTag('attribute', 'name' => 'uniquepart');
+  $writer->emptyTag('data', 'type' => 'string');
+  $writer->endTag();    # attribute
   $writer->endTag();    # optional
   $writer->startTag('oneOrMore');
   $writer->startTag('element', 'name' => "$bbl:namepart");
   $writer->emptyTag('attribute', 'name' => 'type');
   $writer->emptyTag('attribute', 'name' => 'initials');
+  $writer->startTag('optional');
+  $writer->emptyTag('attribute', 'name' => 'uniquename');
+  $writer->endTag();    # optional
   $writer->emptyTag('text');# text
   $writer->endTag();# namepart
   $writer->endTag();# oneOrMore
@@ -1510,12 +1539,13 @@ sub generate_bblxml_schema {
 
   # fields
   my @fs1 = qw/namehash
+              bibnamehash
               fullhash
               labelalpha
               sortinit
               sortinithash
               sortinithash
-              extrayear
+              extradate
               labelyear
               labelmonth
               labelday
@@ -1546,7 +1576,7 @@ sub generate_bblxml_schema {
 
   # <namelist>namehash and <namelist>fullhash
   my @fs4;
-  map {push @fs4, "${_}namehash";push @fs4, "${_}fullhash"} $dmh->{namelists}->@*;
+  map {push @fs4, "${_}namehash";push @fs4, "${_}bibnamehash";push @fs4, "${_}fullhash"} $dmh->{namelists}->@*;
 
   $writer->startTag('oneOrMore');
   $writer->startTag('element', 'name' => "$bbl:field");
@@ -1747,8 +1777,9 @@ sub generate_bblxml_schema {
 
   $writer->endTag();# interleave element
   $writer->endTag();# entry element
+  $writer->endTag();# choice
   $writer->endTag();# oneOrMore
-  $writer->endTag();# sortlist element
+  $writer->endTag();# datalist element
   $writer->endTag();# oneOrMore
 
   # aliases
@@ -1793,7 +1824,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

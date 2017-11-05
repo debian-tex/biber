@@ -21,7 +21,7 @@ use Biber::Utils;
 use Biber::Config;
 use Encode;
 use File::Spec;
-use File::Slurp;
+use File::Slurper;
 use File::Temp;
 use Log::Log4perl qw(:no_extra_logdie_message);
 use List::AllUtils qw( :all );
@@ -320,11 +320,16 @@ sub extract_entries {
         $section->set_citekey_alias($wanted_key, $rk);
 
         # Make sure there is a real, cited entry for the citekey alias
-        # just in case only the alias is cited
+        # just in case only the alias is cited. However, make sure that the real entry
+        # is actually cited before adding to the section citekeys list in case this real
+        # entry is only needed as an aliased Xref and shouldn't necessarily be in
+        # the bibliography (minXrefs will take care of adding it there if necessary).
         unless ($section->bibentries->entry_exists($rk)) {
           if (my $entry = $cache->{data}{GLOBALDS}{$rk}) {# Look in cache of all datasource keys
             create_entry($rk, $entry, $source, $smaps, \@rkeys);
-            $section->add_citekeys($rk);
+            if ($section->has_cited_citekey($wanted_key)) {
+              $section->add_citekeys($rk);
+            }
           }
         }
 
@@ -711,8 +716,6 @@ sub create_entry {
                     }
                     next;
                   }
-                  $etarget->set($target, encode('UTF-8', NFC($entry->get($fieldsource))));
-                  $etarget->delete($fieldsource);
                 }
                 $etarget->set($target, encode('UTF-8', NFC($entry->get($fieldsource))));
                 $etarget->delete($fieldsource);
@@ -841,7 +844,11 @@ sub _create_entry {
     if ($dm->is_field($f)) {
       my $handler = _get_handler($f);
       my $v = $handler->($bibentry, $e, $f, $k);
-      $bibentry->set_datafield($f, $v) if defined($v);
+
+      # Don't set datafields with empty contents like 'language = {}'
+      if (defined($v) and $e->get($f) ne '') {
+        $bibentry->set_datafield($f, $v);
+      }
     }
     elsif (Biber::Config->getoption('validate_datamodel')) {
       biber_warn("Datamodel: Entry '$k' ($ds): Field '$f' invalid in data model - ignoring", $bibentry);
@@ -891,7 +898,7 @@ sub _literal {
   # year/month
   if ($field eq 'year') {
     return if $bibentry->get_datafield('year');
-    if ($value and not looks_like_number($value)) {
+    if ($value and not looks_like_number($value)and not $entry->get('sortyear')) {
       biber_warn("year field '$value' in entry '$key' is not an integer - this will probably not sort properly.");
     }
   }
@@ -955,13 +962,7 @@ sub _literal {
 sub _uri {
   my ($bibentry, $entry, $field) = @_;
   my $value = $entry->get($field);
-  # Unicode NFC boundary (before hex encoding)
-  if (Biber::Config->getoption('nouri_encode')) {
-    return $value;
-  }
-  else {
-    return URI->new(NFC($value))->as_string;
-  }
+  return $value;
 }
 
 # xSV field form
@@ -1036,21 +1037,29 @@ sub _name {
                                      {binmode => 'utf-8', normalization => 'NFD'});
 
   my $useprefix = Biber::Config->getblxoption('useprefix', $bibentry->get_field('entrytype'), $key);
+  my $un = Biber::Config->getblxoption('uniquename', $bibentry->get_field('entrytype'), $key);
+
   my $names = Biber::Entry::Names->new();
 
   foreach my $name (@tmp) {
 
-    # namelist scope sortnamekeyscheme
-    if ($name =~ m/^sortnamekeyscheme\s*$xnamesep\s*(\S+)$/) {
-      $names->set_sortnamekeyscheme($1);
-      next;
-    }
+    # per-namelist options
+    if ($name =~ m/^(\S+)\s*$xnamesep\s*(\S+)?$/) {
+      my $nlo = lc($1);
+      my $nlov = $2 // 1; # bare options are just boolean numerals
+      if ($CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->{$nlo}) {
+        if ($CONFIG_OPTTYPE_BIBLATEX{$nlo} and
+            $CONFIG_OPTTYPE_BIBLATEX{$nlo} eq 'boolean') {
+          $nlov = map_boolean($nlov, 'tonum');
+      }
+        my $oo = expand_option($nlo, $nlov, $CONFIG_BIBLATEX_NAMELIST_OPTIONS{$nlo}->{INPUT});
 
-    # namelist scope useprefix
-    if ($name =~ m/^useprefix\s*$xnamesep\s*(\S+)$/) {
-      $useprefix = map_boolean($1, 'tonum');
-      $names->set_useprefix($useprefix);
-      next;
+        foreach my $o ($oo->@*) {
+          my $method = 'set_' . $o->[0];
+          $names->$method($o->[1]);
+        }
+        next;
+      }
     }
 
     # Consecutive "and" causes Text::BibTeX::Name to segfault
@@ -1067,7 +1076,14 @@ sub _name {
     my $xnamesep = Biber::Config->getoption('xnamesep');
     if ($name =~ m/(?:$nps)\s*$xnamesep/ and not Biber::Config->getoption('noxname')) {
       # Skip names that don't parse for some reason
-      next unless $no = parsename_x($name, $field, {useprefix => $useprefix}, $key);
+      # uniquename defaults to 0 just in case we are in tool mode otherwise there are spurious
+      # uninitialised warnings
+
+      next unless $no = parsename_x($name,
+                                    $field,
+                                    {useprefix => $useprefix,
+                                     uniquename => ($un // 0)},
+                                    $key);
     }
     else { # Normal bibtex name format
       # Check for malformed names in names which aren't completely escaped
@@ -1089,11 +1105,13 @@ sub _name {
       }
 
       # Skip names that don't parse for some reason
-      next unless $no = parsename($name, $field, {useprefix => $useprefix}, $key);
+      # unique name defaults to 0 just in case we are in tool mode otherwise there are spurious
+      # uninitialised warnings
+      next unless $no = parsename($name, $field);
     }
 
     # Deal with implied "et al" in data source
-    if (lc($no->get_namestring) eq Biber::Config->getoption('others_string')) {
+    if (lc($no->get_rawstring) eq Biber::Config->getoption('others_string')) {
       $names->set_morenames;
     }
     else {
@@ -1102,7 +1120,7 @@ sub _name {
   }
 
   # Don't set if there were no valid names due to special errors above
-  return $names->count_names ? $names : '';
+  return $names->count_names ? $names : undef;
 }
 
 # Dates
@@ -1189,6 +1207,9 @@ sub _datetime {
     if ($sep) {
       if (defined($edate)) { # End date was successfully parsed
         if ($edate) { # End date is an object not "0"
+          # Did this entry get its datepart fields from splitting an EDTF date field?
+          $bibentry->set_field("${datetype}datesplit", 1);
+
           unless ($CONFIG_DATE_PARSERS{end}->missing('year')) {
             $bibentry->set_datafield($datetype . 'endyear', $edate->year);
             # Save era date information
@@ -1249,21 +1270,13 @@ sub _list {
 sub _urilist {
   my ($bibentry, $entry, $field) = @_;
   my $value = $entry->get($field);
-  # Unicode NFC boundary (before hex encoding)
-  my @tmp = Text::BibTeX::split_list(NFC($value),# Unicode NFC boundary
-                                     Biber::Config->getoption('listsep'));
-  @tmp = map {
-    # If there are some escapes in the URI, unescape them
-    if ($_ =~ /\%/) {
-      $_ =~ s/\\%/%/g; # just in case someone BibTeX escaped the "%"
-      # This is what uri_unescape() does but it's faster
-      $_ =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/eg;
-    }
-    $_;
-  } @tmp;
-
-  @tmp = map { URI->new($_)->as_string } @tmp;
-
+  # Unicode NFC boundary (passing to external library)
+  my @tmp = Text::BibTeX::split_list(NFC($value),
+                                     Biber::Config->getoption('listsep'),
+                                     undef,
+                                     undef,
+                                     undef,
+                                     {binmode => 'utf-8', normalization => 'NFD'});
   return [ @tmp ];
 }
 
@@ -1418,33 +1431,32 @@ sub preprocess_file {
 
   # We read the file in the bib encoding and then output to UTF-8, even if it was already UTF-8,
   # just in case there was a BOM so we can delete it as it makes T::B complain
-  # Don't use File::Slurp binmode option - it's completely broken - see module RT queue
-  my $buf = File::Slurp::read_file($filename) or biber_error("Can't read $filename");
-  $buf = NFD(decode(Biber::Config->getoption('input_encoding'), $buf));# Unicode NFD boundary
+  # Might fail due to encountering characters invalid in the encoding so trap and die gracefully
+  my $benc = Biber::Config->getoption('input_encoding');
+  my $buf;
+  unless (eval{$buf = NFD(File::Slurper::read_text($filename, $benc))}) {# Unicode NFD boundary
+    biber_error("Data file '$filename' cannot be read in encoding '$benc': $@");
+  }
 
   # strip UTF-8 BOM if it exists - this just makes T::B complain about junk characters
   $buf =~ s/\A\x{feff}//;
 
-  File::Slurp::write_file($ufilename, encode('UTF-8', NFC($buf))) or
-      biber_error("Can't write $ufilename");# Unicode NFC boundary
+  File::Slurper::write_text($ufilename, NFC($buf));# Unicode NFC boundary
+
+  my $lbuf = NFD(File::Slurper::read_text($ufilename));# Unicode NFD boundary
 
   # Always decode LaTeX to UTF8
-  my $lbuf = File::Slurp::read_file($ufilename) or biber_error("Can't read $ufilename");
-  $lbuf = NFD(decode('UTF-8', $lbuf));# Unicode NFD boundary
-
   $logger->info('Decoding LaTeX character macros into UTF-8');
   if ($logger->is_trace()) {# performance tune
     $logger->trace("Buffer before decoding -> '$lbuf'");
   }
-
   $lbuf = Biber::LaTeX::Recode::latex_decode($lbuf);
 
   if ($logger->is_trace()) {# performance tune
     $logger->trace("Buffer after decoding -> '$lbuf'");
   }
 
-  File::Slurp::write_file($ufilename, encode('UTF-8', NFC($lbuf))) or
-      biber_error("Can't write $ufilename");# Unicode NFC boundary
+  File::Slurper::write_text($ufilename, NFC($lbuf));# Unicode NFC boundary
 
   return $ufilename;
 }
@@ -1454,16 +1466,14 @@ sub preprocess_file {
     Given a name string, this function returns a Biber::Entry::Name object
     with all parts of the name resolved according to the BibTeX conventions.
 
-    parsename('John Doe')
+    parsename('John Doe', 'author', 'key')
     returns an object which internally looks a bit like this:
 
     { given          => {string => 'John', initial => ['J']},
       family         => {string => 'Doe', initial => ['D']},
       prefix         => {string => undef, initial => undef},
       suffix         => {string => undef, initial => undef},
-      basenamestring => 'Doe',
-      namestring     => 'Doe, John',
-      nameinitstring => 'Doe_J',
+      id             => 32RS0Wuj0P,
       strip          => {'given'  => 0,
                          'family' => 0,
                          'prefix' => 0,
@@ -1473,13 +1483,13 @@ sub preprocess_file {
 =cut
 
 sub parsename {
-  my ($namestr, $fieldname, $opts, $key, $testing) = @_;
+  my ($namestr, $fieldname) = @_;
 
   # First sanitise the namestring due to Text::BibTeX::Name limitations on whitespace
   $namestr =~ s/\A\s*|\s*\z//xms; # leading and trailing whitespace
   # Collapse internal whitespace and escaped spaces like in "Christina A. L.\ Thiele"
   $namestr =~ s/\s+|\\\s/ /g;
-  $namestr =~ s/\A\{\{+([^{}]+)\}+\}\z/{$1}/xms; # Allow only one enveloping set of braces
+  $namestr =~ s/\A\{\{+([^\{\}]+)\}+\}\z/{$1}/xms; # Allow only one enveloping set of braces
 
   # If requested, try to correct broken initials with no space between them.
   # This can slightly mess up some other names like {{U.K. Government}} etc.
@@ -1537,53 +1547,10 @@ sub parsename {
   $namec{'prefix-i'} = inits($nd_name->format($pi_f));
   $namec{'suffix-i'} = inits($nd_name->format($si_f));
 
-  my $basenamestring = '';
-  my $namestring = '';
-  my $nameinitstring = '';
-
   # basic bibtex names have a fixed data model
   foreach my $np ('prefix', 'family', 'given', 'suffix') {
     if ($namec{$np}) {
       ($namec{"${np}-strippedflag"}, $namec{"${np}-stripped"}) = remove_outer($namec{$np});
-    }
-  }
-
-  # Use nameuniqueness template to construct uniqueness strings
-  foreach my $np (Biber::Config->getblxoption('uniquenametemplate')->@*) {
-    my $npn = $np->{namepart};
-    if ($namec{$npn}) {
-      if ($np->{use}) {         # only ever defined as 1
-        next unless $opts->{"use$npn"};
-      }
-      $namestring .= $namec{"${npn}-stripped"};
-
-      if ($np->{base}) {
-        $nameinitstring .= $namec{"${npn}-stripped"};
-        $basenamestring .= $namec{"${npn}-stripped"};
-      }
-      else {
-        $nameinitstring .= join('', $namec{"${npn}-i"}->@*);
-      }
-    }
-  }
-
-  # output is always NFC and so when testing the output of this routine, need NFC
-  if ($testing) {
-    # basic bibtex names have a fixed data model
-    foreach my $np ('prefix', 'family', 'given', 'suffix') {
-      if ($namec{$np}) {
-        $namec{"${np}-stripped"} = NFC($namec{"${np}-stripped"});
-        $namec{"${np}-i"}        = [ map {NFC($_)} $namec{"${np}-i"}->@* ];
-      }
-    }
-    if ($basenamestring) {
-      $basenamestring = NFC($basenamestring);
-    }
-    if ($namestring) {
-      $namestring = NFC($namestring);
-    }
-    if ($nameinitstring) {
-      $nameinitstring = NFC($nameinitstring);
     }
   }
 
@@ -1595,21 +1562,12 @@ sub parsename {
     $strip->{$np} = $namec{"${np}-strippedflag"};
   }
 
-  if ($logger->is_trace()) {# performance tune
-    $logger->trace("namestring for '$key' (parsename): $namestring");
-    $logger->trace("nameinitstring for '$key' (parsename): $nameinitstring");
-  }
-
-
   # The "strip" entry tells us which of the name parts had outer braces
   # stripped during processing so we can add them back when printing the
   # .bbl so as to maintain maximum BibTeX compatibility
   return  Biber::Entry::Name->new(
                                   %nameparts,
-                                  namestring     => $namestring,
-                                  nameinitstring => $nameinitstring,
-                                  basenamestring => $basenamestring,
-                                  strip          => $strip
+                                  strip => $strip
                                  );
 }
 
@@ -1625,11 +1583,9 @@ sub parsename {
       family         => {string => 'Doe', initial => ['D']},
       prefix         => {string => undef, initial => undef},
       suffix         => {string => undef, initial => undef},
-      basenamestring => 'Doe',
-      namestring     => 'Doe, John',
-      nameinitstring => 'Doe_J',
-      sortnamekeyscheme => 'scheme' }
-      }
+      id             => 32RS0Wuj0P,
+      sortingnamekeytemplatename => 'template name',
+    }
 
 =cut
 
@@ -1644,16 +1600,17 @@ sub parsename_x {
     my ($npn, $npv) = $np =~ m/^(.+)\s*$xnamesep\s*(.+)$/x;
     $npn = lc($npn);
 
-    # name scope sortnamekeyscheme
-    if ($npn eq 'sortnamekeyscheme') {
-      $pernameopts{sortnamekeyscheme} = $npv;
-      next;
-    }
+    # per-name options
+    if ($CONFIG_SCOPEOPT_BIBLATEX{NAME}->{$npn}) {
+      if ($CONFIG_OPTTYPE_BIBLATEX{$npn} and
+          $CONFIG_OPTTYPE_BIBLATEX{$npn} eq 'boolean') {
+        $npv = map_boolean($npv, 'tonum');
+      }
+      my $oo = expand_option($npn, $npv, $CONFIG_BIBLATEX_NAME_OPTIONS{$npn}->{INPUT});
 
-    # name scope useprefix
-    if ($npn eq 'useprefix') {
-      $opts->{useprefix} = map_boolean($npv, 'tonum');
-      $pernameopts{useprefix} = $npv;
+      foreach my $o ($oo->@*) {
+        $pernameopts{$o->[0]} = $o->[1];
+      }
       next;
     }
 
@@ -1697,53 +1654,10 @@ sub parsename_x {
     }
   }
 
-  my $basenamestring = '';
-  my $namestring = '';
-  my $nameinitstring = '';
-
-  # Loop over name parts required for constructing uniquename information
-  # and create the strings needed for this
-  #
-  # Note that with the default uniquenametemplate, we don't conditionalise the *position*
-  # of a prefix on the useprefix option but rather its inclusion at all. This is because, if
-  # useprefix determined the position of the prefix in the uniquename strings:
-  # * As a global setting, it would generate the same uniqueness information and is therefore
-  #   irrelevant
-  # * As a local setting (entry, namelist, name), it would lead to different uniqueness
-  #   information which would be confusing
-  foreach my $np (Biber::Config->getblxoption('uniquenametemplate')->@*) {
-    my $namepart = $np->{namepart};
-    my $useopt;
-    my $useoptval;
-
-    if ($np->{use}) {# only ever defined as 1
-      $useopt = "use$namepart";
-      $useoptval = $opts->{$useopt};
-    }
-
-    # No use attribute conditionals or the attribute is specified and matches the option
-    if (exists($namec{$namepart}) and
-        (not $useopt or ($useopt and defined($useoptval) and $useoptval == $np->{use}))) {
-      $namestring .= $namec{$namepart};
-      if ($np->{base}) {# all of base part is included in initstr
-        $nameinitstring .= $namec{$namepart};
-        $basenamestring .= $namec{$namepart};
-      }
-      else {
-        $nameinitstring .= join('', $namec{"${namepart}-i"}->@*);
-      }
-    }
-  }
-
   my %nameparts;
   foreach my $n (keys %nps) {
     $nameparts{$n} = {string  => $namec{$n} // undef,
                       initial => exists($namec{$n}) ? $namec{"${n}-i"} : undef};
-  }
-
-  if ($logger->is_trace()) {# performance tune
-    $logger->trace("namestring for '$key' (parsename_x): $namestring");
-    $logger->trace("nameinitstring for '$key' (parsename_x): $nameinitstring");
   }
 
   # The "strip" entry tells us which of the name parts had outer braces
@@ -1751,9 +1665,6 @@ sub parsename_x {
   # .bbl so as to maintain maximum BibTeX compatibility
   return  Biber::Entry::Name->new(
                                   %nameparts,
-                                  namestring     => $namestring,
-                                  nameinitstring => $nameinitstring,
-                                  basenamestring => $basenamestring,
                                   %pernameopts
                                  );
 }
@@ -1855,7 +1766,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

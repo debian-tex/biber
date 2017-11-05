@@ -41,18 +41,18 @@ sub new {
   my $obj = shift;
   my $self = $class->SUPER::new($obj);
 
-  $self->{output_data}{HEAD} = <<EOF;
-digraph Biberdata {
-  compound = true;
-  edge [ arrowhead=open ];
-  graph [ style=filled, rankdir=LR ];
-  node [
-    fontsize=10,
-    fillcolor=white,
-    style=filled,
-    shape=box ];
+  $self->{output_data}{HEAD} = <<~EOF;
+    digraph Biberdata {
+      compound = true;
+      edge [ arrowhead=open ];
+      graph [ style=filled, rankdir=LR ];
+      node [
+        fontsize=10,
+        fillcolor=white,
+        style=filled,
+        shape=box ];
 
-EOF
+    EOF
 
   return $self;
 }
@@ -373,7 +373,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2016 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
