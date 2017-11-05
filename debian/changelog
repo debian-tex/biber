@@ -1,8 +1,11 @@
-biber (2.7-3) UNRELEASED; urgency=medium
+biber (2.8-1) unstable; urgency=medium
 
   * fix unescaped { (Closes: #870617)
+  * New upstream version 2.8
+  * bump deps for new biber
+  * break against TL with old biblatex
 
- -- Norbert Preining <preining@debian.org>  Tue, 08 Aug 2017 09:39:23 +0900
+ -- Norbert Preining <preining@debian.org>  Sun, 05 Nov 2017 22:02:05 +0900
 
 biber (2.7-2) unstable; urgency=medium
 
