@@ -62,7 +62,6 @@ Build-Depends: debhelper (>= 9),
 		texlive-xetex,
 		tipa,
 		fonts-cmu
-Build-Conflicts: libunicode-collate-perl
 Standards-Version: 4.1.1
 Vcs-Git: git://anonscm.debian.org/debian-tex/biber.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=debian-tex/biber.git
