@@ -22,17 +22,18 @@ Build-Depends: debhelper (>= 9),
 		libfile-slurper-perl,
 		libfile-which-perl,
 		libipc-run3-perl,
+		liblingua-translit-perl,
 		liblist-allutils-perl,
 		liblist-moreutils-perl,
 		liblog-log4perl-perl,
 		liblwp-protocol-https-perl,
 		libmodule-build-perl | perl (<< 5.22),
+		libperlio-utf8-strict-perl,
 		libreadonly-perl,
 		libregexp-common-perl,
 		libtext-bibtex-perl (>= 0.85),
 		libtext-csv-perl,
 		libtext-csv-xs-perl,
-		libunicode-collate-perl (>= 1.18),
 		libunicode-linebreak-perl,
 		libwww-perl,
 		libxml-libxml-simple-perl,
@@ -61,6 +62,7 @@ Build-Depends: debhelper (>= 9),
 		texlive-xetex,
 		tipa,
 		fonts-cmu
+Build-Conflicts: libunicode-collate-perl
 Standards-Version: 4.1.1
 Vcs-Git: git://anonscm.debian.org/debian-tex/biber.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=debian-tex/biber.git
