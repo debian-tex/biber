@@ -10,7 +10,7 @@ Last-Update: 2013-08-29
 
 --- biber.orig/lib/Biber.pm
 +++ biber/lib/Biber.pm
-@@ -3363,7 +3363,7 @@
+@@ -3373,7 +3373,7 @@
  
          $dlist->add_uniquelistcount($namelist);
        }
