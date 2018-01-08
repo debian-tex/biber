@@ -64,8 +64,8 @@ Build-Depends: debhelper (>= 9),
 		tipa,
 		fonts-cmu
 Standards-Version: 4.1.1
-Vcs-Git: git://anonscm.debian.org/debian-tex/biber.git
-Vcs-Browser: http://anonscm.debian.org/gitweb/?p=debian-tex/biber.git
+Vcs-Git: https://salsa.debian.org/tex-team/biber.git
+Vcs-Browser: https://salsa.debian.org/tex-team/biber
 Homepage: http://biblatex-biber.sourceforge.net/
 
 Package: biber
