@@ -38,7 +38,7 @@ Last-Update: 2013-08-29
  
 --- biber.orig/lib/Biber/Entry/Name.pm
 +++ biber/lib/Biber/Entry/Name.pm
-@@ -33,7 +33,7 @@
+@@ -32,7 +32,7 @@
  
  =head1 NAME
  
