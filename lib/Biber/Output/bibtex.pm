@@ -222,12 +222,7 @@ sub set_output_entry {
   # Verbatim fields
   foreach my $vfield ($dmh->{vfields}->@*) {
     if ( my $vf = $be->get_field($vfield) ) {
-      if ($vfield eq 'url') {
-        $acc{$casing->('urlraw')} = $vf;
-      }
-      else {
-        $acc{$casing->($vfield)} = $vf;
-      }
+      $acc{$casing->($vfield)} = $vf;
     }
   }
 
@@ -507,39 +502,39 @@ sub construct_datetime {
                   'autumn' => 23,
                   'winter' => 24 );
 
-  # Did the date fields come from interpreting an EDTF 5.2.2 unspecified date?
-  # If so, do the reverse of Biber::Utils::parse_date_edtf_unspecified()
+  # Did the date fields come from interpreting an ISO8601-2:2016 unspecified date?
+  # If so, do the reverse of Biber::Utils::parse_date_unspecified()
   if (my $unspec = $be->get_field("${d}dateunspecified")) {
 
-    # 1990/1999 -> 199u
+    # 1990/1999 -> 199X
     if ($unspec eq 'yearindecade') {
       my ($decade) = $be->get_field("${d}year") =~ m/^(\d+)\d$/;
-      $overridey = "${decade}u";
+      $overridey = "${decade}X";
       $be->del_field("${d}endyear");
     }
-    # 1900/1999 -> 19uu
+    # 1900/1999 -> 19XX
     elsif ($unspec eq 'yearincentury') {
       my ($century) = $be->get_field("${d}year") =~ m/^(\d+)\d\d$/;
-      $overridey = "${century}uu";
+      $overridey = "${century}XX";
       $be->del_field("${d}endyear");
     }
-    # 1999-01/1999-12 => 1999-uu
+    # 1999-01/1999-12 => 1999-XX
     elsif ($unspec eq 'monthinyear') {
-      $overridem = 'uu';
+      $overridem = 'XX';
       $be->del_field("${d}endyear");
       $be->del_field("${d}endmonth");
     }
-    # 1999-01-01/1999-01-31 -> 1999-01-uu
+    # 1999-01-01/1999-01-31 -> 1999-01-XX
     elsif ($unspec eq 'dayinmonth') {
-      $overrided = 'uu';
+      $overrided = 'XX';
       $be->del_field("${d}endyear");
       $be->del_field("${d}endmonth");
       $be->del_field("${d}endday");
     }
-    # 1999-01-01/1999-12-31 -> 1999-uu-uu
+    # 1999-01-01/1999-12-31 -> 1999-XX-XX
     elsif ($unspec eq 'dayinyear') {
-      $overridem = 'uu';
-      $overrided = 'uu';
+      $overridem = 'XX';
+      $overrided = 'XX';
       $be->del_field("${d}endyear");
       $be->del_field("${d}endmonth");
       $be->del_field("${d}endday");
@@ -571,14 +566,21 @@ sub construct_datetime {
       $be->del_field("${d}day");
     }
 
-    # Uncertain start date
-    if ($be->get_field("${d}dateuncertain")) {
-      $datestring .= '?';
+    # Uncertain and approximate start date
+    if ($be->get_field("${d}dateuncertain") and
+        $be->get_field("${d}dateapproximate")) {
+      $datestring .= '%';
     }
+    else {
+      # Uncertain start date
+      if ($be->get_field("${d}dateuncertain")) {
+        $datestring .= '?';
+      }
 
-    # Circa start date
-    if ($be->get_field("${d}datecirca")) {
-      $datestring .= '~';
+      # Approximate start date
+      if ($be->get_field("${d}dateapproximate")) {
+        $datestring .= '~';
+      }
     }
 
     # If start hour, there must be minute and second
@@ -620,14 +622,21 @@ sub construct_datetime {
         $be->del_field("${d}endday");
       }
 
-      # Uncertain start date
-      if ($be->get_field("${d}enddateuncertain")) {
-        $datestring .= '?';
+      # Uncertain and approximate end date
+      if ($be->get_field("${d}enddateuncertain") and
+          $be->get_field("${d}enddateapproximate")) {
+        $datestring .= '%';
       }
+      else {
+        # Uncertain end date
+        if ($be->get_field("${d}enddateuncertain")) {
+          $datestring .= '?';
+        }
 
-      # Circa start date
-      if ($be->get_field("${d}enddatecirca")) {
-        $datestring .= '~';
+        # Approximate end date
+        if ($be->get_field("${d}enddateapproximate")) {
+          $datestring .= '~';
+        }
       }
 
       # If end hour, there must be minute and second
@@ -667,7 +676,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

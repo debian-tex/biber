@@ -55,7 +55,7 @@ our @EXPORT = qw{ locate_biber_file makenamesid makenameid stringify_hash
   bcp472locale rangelen match_indices process_comment map_boolean
   parse_range parse_range_alt maploopreplace get_transliterator
   call_transliterator normalise_string_bblxml gen_initials join_name_parts
-  split_xsv edtf_monthday tzformat expand_option};
+  split_xsv date_monthday tzformat expand_option};
 
 =head1 FUNCTIONS
 
@@ -76,6 +76,7 @@ sub locate_biber_file {
   my $filename = shift;
   my $filenamepath = $filename; # default if nothing else below applies
   my $foundfile;
+
   # If input_directory is set, perhaps the file can be found there so
   # construct a path to test later
   if (my $indir = Biber::Config->getoption('input_directory')) {
@@ -88,23 +89,17 @@ sub locate_biber_file {
   }
 
   # Filename is absolute
-  if (File::Spec->file_name_is_absolute($filename) and -e $filename) {
-    return $filename;
+  if (File::Spec->file_name_is_absolute($filename) and my $f = file_exist_check($filename)) {
+    return $f;
   }
 
   # File is input_directory or output_directory
-  if (defined($foundfile) and -e $foundfile) {
-    return $foundfile;
+  if (defined($foundfile) and my $f = file_exist_check($foundfile)) {
+    return $f;
   }
 
-  # NFD filesystem: File is relative to cwd
-  if (-e NFD($filename)) {
-    return NFD($filename);
-  }
-
-  # NFC filesystem: File is relative to cwd
-  if (-e NFC($filename)) {
-    return NFC($filename);
+  if (my $f = file_exist_check($filename)) {
+    return $f;
   }
 
   # File is where control file lives
@@ -119,7 +114,9 @@ sub locate_biber_file {
 
     my $path = "$ctlvolume$ctldir$filename";
 
-    return $path if -e $path;
+    if (my $f = file_exist_check($path)) {
+      return $f;
+    }
   }
 
   # File is in kpse path
@@ -145,7 +142,8 @@ sub locate_biber_file {
       chomp $found;
       $found =~ s/\cM\z//xms; # kpsewhich in cygwin sometimes returns ^M at the end
       # filename can be UTF-8 and run3() isn't clever with UTF-8
-      return decode_utf8($found);
+      my $f = file_exist_check(decode_utf8($found));
+      return $f;
     }
     else {
       if ($logger->is_debug()) {# performance tune
@@ -153,6 +151,32 @@ sub locate_biber_file {
       }
     }
   }
+  return undef;
+}
+
+=head2 
+
+  Check existence of NFC/NFD file variants and return correct one.
+  Account for windows file encodings
+
+=cut
+
+sub file_exist_check {
+  my $filename = shift;
+  if ($^O =~ /Win/) {
+    require Win32;
+    my $f = Win32::GetANSIPathName($filename);
+    return $f if -e $f;
+  }
+  else {
+    if (-e NFC($filename)) {
+      return NFC($filename);
+    }
+    if (-e NFD($filename)) {
+      return NFD($filename);
+    }
+  }
+
   return undef;
 }
 
@@ -742,6 +766,7 @@ sub normalise_utf8 {
 
 sub inits {
   my $istring = shift;
+  $istring =~ s/[{}]//; # Remove any spurious braces left by btparse inits routines
   return [ split(/(?<!\\)~/, $istring) ];
 }
 
@@ -1011,7 +1036,7 @@ sub expand_option {
 
 =head2 parse_date_range
 
-  Parse of EDTF date range
+  Parse of ISO8601 date range
   Returns two-element array ref: [start DT object, end DT object]
 
 =cut
@@ -1020,49 +1045,45 @@ sub parse_date_range {
   my ($bibentry, $datetype, $datestring) = @_;
   my ($sd, $sep, $ed) = $datestring =~ m|^([^/]+)?(/)?([^/]+)?$|;
   my $unspec;
-  if ($sd =~ /u/ and $sd !~ /unknown/) {# EDTF 5.2.2 Unspecified format but not 5.2.3
-    ($sd, $sep, $ed, $unspec) = parse_date_edtf_unspecified($sd);
+  if ($sd =~ /X/) {# ISO8601-2 4.3 unspecified format
+    ($sd, $sep, $ed, $unspec) = parse_date_unspecified($sd);
   }
   # Set start date unknown flag
-  if ($sd) {
-    if (fc($sd) eq fc('unknown') or fc($sd) eq fc('*')) {
-      $bibentry->set_field($datetype . 'dateunknown',1);
-    }
+  if ($sep and not $sd) {
+    $bibentry->set_field($datetype . 'dateunknown',1);
   }
   # Set end date unknown flag
-  if ($ed) {
-    if (fc($ed) eq fc('unknown') or fc($ed) eq fc('*')) {
-      $bibentry->set_field($datetype . 'enddateunknown',1);
-    }
+  if ($sep and not $ed) {
+    $bibentry->set_field($datetype . 'enddateunknown',1);
   }
   return (parse_date_start($sd), parse_date_end($ed), $sep, $unspec);
 }
 
-=head2 parse_date_edtf_unspecified
+=head2 parse_date_unspecified
 
-  Parse of EDTF 5.2.2 Unspecified format into date range
+  Parse of ISO8601-2:2016 4.3 unspecified format into date range
   Returns range plus specification of granularity of unspecified
 
 =cut
 
-sub parse_date_edtf_unspecified {
+sub parse_date_unspecified {
   my $d = shift;
 
-  # 199u -> 1990/1999
-  if ($d =~ m/^(\d{3})u$/) {
+  # 199X -> 1990/1999
+  if ($d =~ m/^(\d{3})X$/) {
     return ("${1}0", '/', "${1}9", 'yearindecade');
   }
-  # 19uu -> 1900/1999
-  elsif ($d =~ m/^(\d{2})uu$/) {
+  # 19XX -> 1900/1999
+  elsif ($d =~ m/^(\d{2})XX$/) {
     return ("${1}00", '/', "${1}99", 'yearincentury');
   }
-  # 1999-uu -> 1999-01/1999-12
-  elsif ($d =~ m/^(\d{4})\p{Dash}uu$/) {
+  # 1999-XX -> 1999-01/1999-12
+  elsif ($d =~ m/^(\d{4})\p{Dash}XX$/) {
     return ("${1}-01", '/', "${1}-12", 'monthinyear');
   }
-  # 1999-01-uu -> 1999-01-01/1999-01-31
+  # 1999-01-XX -> 1999-01-01/1999-01-31
   # (understands different months and leap years)
-  elsif ($d =~ m/^(\d{4})\p{Dash}(\d{2})\p{Dash}uu$/) {
+  elsif ($d =~ m/^(\d{4})\p{Dash}(\d{2})\p{Dash}XX$/) {
 
     sub leapyear {
       my $year = shift;
@@ -1082,8 +1103,8 @@ sub parse_date_edtf_unspecified {
 
     return ("${1}-${2}-01", '/', "${1}-${2}-" . $monthdays{$2}, 'dayinmonth');
   }
-  # 1999-uu-uu -> 1999-01-01/1999-12-31
-  elsif ($d =~ m/^(\d{4})\p{Dash}uu\p{Dash}uu$/) {
+  # 1999-XX-XX -> 1999-01-01/1999-12-31
+  elsif ($d =~ m/^(\d{4})\p{Dash}XX\p{Dash}XX$/) {
     return ("${1}-01-01", '/', "${1}-12-31", 'dayinyear');
   }
 }
@@ -1120,9 +1141,7 @@ sub parse_date {
   # Must do this to make sure meta-information from sub-class Biber::Date::Format is reset
   $obj->init();
   return 0 unless $string;
-  return 0 if $string eq 'unknown'; # EDTF 5.2.3
-  return 0 if $string eq '*';       # ISO8601-2 equivalent for "unknown"
-  return 0 if $string eq 'open';    # EDTF 5.2.3
+  return 0 if $string eq '..';    # ISO8601-2 4.4 (open date)
 
   my $dt = eval {$obj->parse_datetime($string)};
 
@@ -1157,13 +1176,13 @@ sub parse_date {
   return $dt;
 }
 
-=head2 edtf_monthday
+=head2 date_monthday
 
-  Force month/day to EDTF format with leading zero
+  Force month/day to ISO8601-2:2016 format with leading zero
 
 =cut
 
-sub edtf_monthday {
+sub date_monthday {
   my $md = shift;
   return $md ? sprintf('%.2d', $md) : undef;
 }
@@ -1524,7 +1543,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

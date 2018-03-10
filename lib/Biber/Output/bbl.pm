@@ -443,10 +443,10 @@ sub set_output_entry {
     }
 
     # Circa dates
-    if ($be->get_field("${d}datecirca")) {
+    if ($be->get_field("${d}dateapproximate")) {
       $acc .= "      \\true{${d}datecirca}\n";
     }
-    if ($be->get_field("${d}enddatecirca")) {
+    if ($be->get_field("${d}enddateapproximate")) {
       $acc .= "      \\true{${d}enddatecirca}\n";
     }
 
@@ -738,7 +738,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

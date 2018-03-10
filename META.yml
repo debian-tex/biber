@@ -24,7 +24,7 @@ provides:
     file: lib/Biber/Annotation.pm
   Biber::Config:
     file: lib/Biber/Config.pm
-    version: '2.9'
+    version: '2.11'
   Biber::Constants:
     file: lib/Biber/Constants.pm
   Biber::DataList:
@@ -103,7 +103,7 @@ requires:
   Text::CSV_XS: '0'
   Text::Roman: '0'
   URI: '0'
-  Unicode::Collate: '1.21'
+  Unicode::Collate: '1.25'
   Unicode::GCString: '0'
   Unicode::LineBreak: '2016.003'
   Unicode::Normalize: '1.25'
@@ -115,4 +115,4 @@ requires:
   perl: v5.26.0
 resources:
   license: http://dev.perl.org/licenses/
-version: '2.9'
+version: '2.11'

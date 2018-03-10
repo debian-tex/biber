@@ -251,7 +251,7 @@ sub tool_mode_setup {
   $bib_sections->add_section($bib_section);
 
   # Always resolve date meta-information in tool mode
-  Biber::Config->setblxoption('datecirca', 1);
+  Biber::Config->setblxoption('dateapproximate', 1);
   Biber::Config->setblxoption('dateera', 1);
   Biber::Config->setblxoption('dateuncertain', 1);
 
@@ -298,7 +298,7 @@ sub parse_ctrlfile {
   my $ctrl_file_path = locate_biber_file($ctrl_file);
   Biber::Config->set_ctrlfile_path($ctrl_file_path);
 
-  biber_error("Cannot find control file '$ctrl_file'! - did you pass the \"backend=biber\" option to BibLaTeX?") unless ($ctrl_file_path and -e $ctrl_file_path);
+  biber_error("Cannot find control file '$ctrl_file'! - Did latex run successfully on your .tex file before you ran biber?") unless ($ctrl_file_path and -e $ctrl_file_path);
 
   # Early check to make sure .bcf is well-formed. If not, this means that the last biblatex run
   # exited prematurely while writing the .bcf. This results is problems for latexmk. So, if the
@@ -997,13 +997,8 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
 
     $self->sections->add_section($bib_section);
 
-    # Global sorting in non tool mode bibtex output is citeorder so override the .bcf here
-    Biber::Config->setblxoption('sortingtemplatename', 'none');
-    # Global locale in non tool mode bibtex output is default
-    Biber::Config->setblxoption('sortlocale', 'english');
-
     my $datalist = Biber::DataList->new(section => 99999,
-                                        sortingtemplatename => 'none',
+                                        sortingtemplatename => Biber::Config->getblxoption('sortingtemplatename'),
                                         sortingnamekeytemplatename => 'global',
                                         uniquenametemplatename => 'global',
                                         labelalphanametemplatename => 'global',
@@ -2005,8 +2000,8 @@ sub process_extradate {
     foreach my $scope ($edspec->@*) {
       # Use the first field in the scope which we find and ignore the rest
       foreach my $field ($scope->@*) {
-        if (my $val = $be->get_field($field)) {
-          $datestring .= $val;
+        if (defined($be->get_field($field))) {
+          $datestring .= $be->get_field($field);
           $edscope = $field;
           last;
         }
@@ -2301,7 +2296,7 @@ sub process_labeldate {
 
         # Did we find a labeldate - this is equivalent to checking for a year/endyear
         # as that is always present if there is a labeldate
-        if ($be->get_field($ldy) or $be->get_field($ldey)) {
+        if (defined($be->get_field($ldy)) or defined($be->get_field($ldey))) {
           # set source to field or date field prefix for a real date field
           $be->set_labeldate_info({'field' => {year       => $ldy,
                                                month      => $ldm,
@@ -4092,22 +4087,9 @@ sub fetch_data {
 
   # (Re-)define the old BibTeX month macros to what biblatex wants unless user stops this
   unless (Biber::Config->getoption('nostdmacros')) {
-    my %months = ('jan' => '1',
-                  'feb' => '2',
-                  'mar' => '3',
-                  'apr' => '4',
-                  'may' => '5',
-                  'jun' => '6',
-                  'jul' => '7',
-                  'aug' => '8',
-                  'sep' => '9',
-                  'oct' => '10',
-                  'nov' => '11',
-                  'dec' => '12');
-
-    foreach my $mon (keys %months) {
+    foreach my $mon (keys %MONTHS) {
       Text::BibTeX::delete_macro($mon);
-      Text::BibTeX::add_macro_text($mon, $months{$mon});
+      Text::BibTeX::add_macro_text($mon, $MONTHS{$mon});
     }
   }
 
@@ -4533,7 +4515,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

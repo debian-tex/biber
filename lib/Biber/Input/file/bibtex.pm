@@ -118,9 +118,9 @@ sub extract_entries {
   my $smaps = [];
   # Maps are applied in order USER->STYLE->DRIVER
   if (defined(Biber::Config->getoption('sourcemap'))) {
-    # User maps
-    if (my $m = first {$_->{datatype} eq 'bibtex' and $_->{level} eq 'user' } Biber::Config->getoption('sourcemap')->@* ) {
-      push $smaps->@*, $m;
+    # User maps, allow multiple \DeclareSourcemap
+    if (my @m = grep {$_->{datatype} eq 'bibtex' and $_->{level} eq 'user' } Biber::Config->getoption('sourcemap')->@* ) {
+      push $smaps->@*, @m;
     }
     # Style maps
     # Allow multiple style maps from multiple \DeclareStyleSourcemap
@@ -356,6 +356,7 @@ sub extract_entries {
     # This is not so bad as they have a clean structure (see error.c in libbtparse)
     open my $tbe, '<', $tberr_name;
     while (<$tbe>) {
+      next if /overriding\sexisting\sdefinition\sof\smacro/; # ignore macro redefs
       if (/error:/) {
         chomp;
         biber_error("BibTeX subsystem: $_");
@@ -504,7 +505,12 @@ sub create_entry {
               }
               $rkeys->@* = grep {$newkey ne $_} $rkeys->@*;
 
-              # Need to add the clone key to the section if allkeys is set since all keys
+              # Add to the section if explicitly nocited in the map
+              if ($step->{map_entry_nocite}) {
+                $section->add_citekeys($newkey);
+              }
+
+              # Need to add the new key to the section if allkeys is set since all keys
               # are cleared for allkeys sections initially
               if ($section->is_allkeys) {
                 $section->add_citekeys($newkey);
@@ -528,6 +534,11 @@ sub create_entry {
                 $logger->debug("Source mapping (type=$level, key=$key): created '$clonekey', removing from dependent list");
               }
               $rkeys->@* = grep {$clonekey ne $_} $rkeys->@*;
+
+              # Add to the section if explicitly nocited in the map
+              if ($step->{map_entry_nocite}) {
+                $section->add_citekeys($clonekey);
+              }
 
               # Need to add the clone key to the section if allkeys is set since all keys
               # are cleared for allkeys sections initially
@@ -1164,9 +1175,9 @@ sub _datetime {
       $bibentry->set_field($datetype . 'datejulian', 1) if $CONFIG_DATE_PARSERS{start}->julian;
       $bibentry->set_field($datetype . 'enddatejulian', 1) if $CONFIG_DATE_PARSERS{end}->julian;
 
-      # Save circa information
-      $bibentry->set_field($datetype . 'datecirca', 1) if $CONFIG_DATE_PARSERS{start}->circa;
-      $bibentry->set_field($datetype . 'enddatecirca', 1) if $CONFIG_DATE_PARSERS{end}->circa;
+      # Save approximate information
+      $bibentry->set_field($datetype . 'dateapproximate', 1) if $CONFIG_DATE_PARSERS{start}->approximate;
+      $bibentry->set_field($datetype . 'enddateapproximate', 1) if $CONFIG_DATE_PARSERS{end}->approximate;
 
       # Save uncertain date information
       $bibentry->set_field($datetype . 'dateuncertain', 1) if $CONFIG_DATE_PARSERS{start}->uncertain;
@@ -1348,9 +1359,15 @@ sub cache_data {
       my $S = qr/$Srx/;
       foreach my $id (split(/$S/, $ids)) {
 
+        # Skip aliases which are this very key (deep recursion ...)
+        if (fc($id) eq fc($key)) {
+          biber_warn("BAD RECURSION! Entry alias '$id' is identical to the entry key, skipping ...");
+          next;
+        }
+
         # Skip aliases which are also real entry keys
         if ($section->has_everykey($id)) {
-          biber_warn("Citekey alias '$id' is also a real entry key, skipping ...");
+          biber_warn("Entry alias '$id' is also a real entry key, skipping ...");
           next;
         }
 
@@ -1358,13 +1375,13 @@ sub cache_data {
         if (exists($cache->{data}{citekey_aliases}{$id})) {
           my $otherid = $cache->{data}{citekey_aliases}{$id};
           if ($otherid ne $key) {
-            biber_warn("Citekey alias '$id' already has an alias '$otherid', skipping ...");
+            biber_warn("Entry alias '$id' already has an alias '$otherid', skipping ...");
           }
         }
         else {
           $cache->{data}{citekey_aliases}{$id} = $key;
           if ($logger->is_debug()) {# performance tune
-            $logger->debug("Citekey '$id' is an alias for citekey '$key'");
+            $logger->debug("Entry alias '$id' is an alias for citekey '$key'");
           }
         }
       }
@@ -1433,6 +1450,10 @@ sub preprocess_file {
   # just in case there was a BOM so we can delete it as it makes T::B complain
   # Might fail due to encountering characters invalid in the encoding so trap and die gracefully
   my $benc = Biber::Config->getoption('input_encoding');
+  if ($benc eq 'ascii') {
+    $logger->info("Reading ascii input as UTF-8");
+    $benc = 'UTF-8';
+  }
   my $buf;
   unless (eval{$buf = NFD(File::Slurper::read_text($filename, $benc))}) {# Unicode NFD boundary
     biber_error("Data file '$filename' cannot be read in encoding '$benc': $@");
@@ -1510,9 +1531,12 @@ sub parse_decode {
     }
   }
 
-  # We will read in the same .bib again later to do the real parsing
-  # and since macro defs are global, need to reset them to avoid redef warnings
-  Text::BibTeX::delete_all_macros();
+  # (Re-)define the old BibTeX month macros to what biblatex wants unless user stops this
+  unless (Biber::Config->getoption('nostdmacros')) {
+    foreach my $mon (keys %MONTHS) {
+      Text::BibTeX::add_macro_text($mon, $MONTHS{$mon});
+    }
+  }
 
   return $lbuf;
 }
@@ -1822,7 +1846,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

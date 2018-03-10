@@ -93,8 +93,8 @@ sub extract_entries {
   # Maps are applied in order USER->STYLE->DRIVER
   if (defined(Biber::Config->getoption('sourcemap'))) {
     # User maps
-    if (my $m = first {$_->{datatype} eq 'biblatexml' and $_->{level} eq 'user' } @{Biber::Config->getoption('sourcemap')} ) {
-      push $smaps->@*, $m;
+    if (my @m = grep {$_->{datatype} eq 'biblatexml' and $_->{level} eq 'user' } @{Biber::Config->getoption('sourcemap')} ) {
+      push $smaps->@*, @m;
     }
     # Style maps
     # Allow multiple style maps from multiple \DeclareStyleSourcemap
@@ -893,7 +893,7 @@ sub _range {
 }
 
 # Date fields
-# NOTE - the biblatex options controlling era, circa and uncertain meta-information
+# NOTE - the biblatex options controlling era, approximate and uncertain meta-information
 # output are in the .bcf but biber does not used them as it always outputs this information
 sub _datetime {
   my ($bibentry, $entry, $f, $key) = @_;
@@ -918,8 +918,8 @@ sub _datetime {
 
         # Save julian
         $bibentry->set_field($datetype . 'datejulian', 1) if $CONFIG_DATE_PARSERS{start}->julian;
-        # Save circa information
-        $bibentry->set_field($datetype . 'datecirca', 1) if $CONFIG_DATE_PARSERS{start}->circa;
+        # Save approximate information
+        $bibentry->set_field($datetype . 'dateapproximate', 1) if $CONFIG_DATE_PARSERS{start}->approximate;
 
         # Save uncertain date information
         $bibentry->set_field($datetype . 'dateuncertain', 1) if $CONFIG_DATE_PARSERS{start}->uncertain;
@@ -970,8 +970,8 @@ sub _datetime {
           # Save julian
           $bibentry->set_field($datetype . 'enddatejulian', 1) if $CONFIG_DATE_PARSERS{end}->julian;
 
-          # Save circa information
-          $bibentry->set_field($datetype . 'enddatecirca', 1) if $CONFIG_DATE_PARSERS{end}->circa;
+          # Save approximate information
+          $bibentry->set_field($datetype . 'enddateapproximate', 1) if $CONFIG_DATE_PARSERS{end}->approximate;
 
           # Save uncertain date information
           $bibentry->set_field($datetype . 'enddateuncertain', 1) if $CONFIG_DATE_PARSERS{end}->uncertain;
@@ -1019,8 +1019,8 @@ sub _datetime {
 
         # Save julian
         $bibentry->set_field($datetype . 'datejulian', 1) if $CONFIG_DATE_PARSERS{start}->julian;
-        # Save circa information
-        $bibentry->set_field($datetype . 'datecirca', 1) if $CONFIG_DATE_PARSERS{start}->circa;
+        # Save approximate information
+        $bibentry->set_field($datetype . 'dateapproximate', 1) if $CONFIG_DATE_PARSERS{start}->approximate;
 
         # Save uncertain date information
         $bibentry->set_field($datetype . 'dateuncertain', 1) if $CONFIG_DATE_PARSERS{start}->uncertain;
@@ -1455,7 +1455,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
