@@ -985,6 +985,7 @@ my %internal_dispatch_sorting = (
                                  'labelday'        =>  [\&_sort_labeldate,     ['day']],
                                  'presort'         =>  [\&_sort_presort,       []],
                                  'sortname'        =>  [\&_sort_sortname,      []],
+                                 'entrytype'       =>  [\&_sort_entrytype,     []],
                                  'entrykey'        =>  [\&_sort_entrykey,      []]);
 
 # The value is an array pointer, first element is a code pointer, second is
@@ -1073,6 +1074,7 @@ sub _generatesortinfo {
 
   $BIBER_SORT_NULL = 0;
   $BIBER_SORT_FINAL = '';
+  $BIBER_SUPPRESS_FINAL = 1;
 
   foreach my $sortset ($sortingtemplate->{spec}->@*) {
     my $s = $self->_sortset($sortset, $citekey, $secnum, $section, $be, $dlist);
@@ -1086,8 +1088,14 @@ sub _generatesortinfo {
 
     # We have already found a "final" item so if this item returns null,
     # copy in the "final" item string as it's the master key for this entry now
-    if ($BIBER_SORT_FINAL and not $BIBER_SORT_NULL) {
-      push $sortobj->@*, $BIBER_SORT_FINAL;
+    # (but suppress this when the final item is found so that entries without
+    #  the final item don't always sort before entries with the final item)
+    # This means that final items are always blank in all sort keys across all entries
+    # and so have no impact until later sort items where the final item becomes the
+    # sorting key for every subsequent sorting item.
+    if (my $f = $BIBER_SORT_FINAL) {
+      push $sortobj->@*, ($BIBER_SUPPRESS_FINAL ? '' : $f);
+      $BIBER_SUPPRESS_FINAL = 0;
     }
     else {
       push $sortobj->@*, $s;
@@ -1210,6 +1218,11 @@ sub _sort_editort {
 sub _sort_entrykey {
   my ($self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) = @_;
   return _process_sort_attributes($citekey, $sortelementattributes);
+}
+
+sub _sort_entrytype {
+  my ($self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) = @_;
+  return _process_sort_attributes($be->get_field('entrytype'), $sortelementattributes);
 }
 
 sub _sort_labelalpha {
@@ -1564,7 +1577,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

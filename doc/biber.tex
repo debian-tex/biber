@@ -26,8 +26,8 @@
 \newcommand*{\biblatex}{Biblatex\xspace}
 \MakeAutoQuote{«}{»}
 
-\gdef\biberversion{2.9}    % BIBER VERSION
-\gdef\biblatexversion{3.8}   % BIBLATEX VERSION
+\gdef\biberversion{2.11}    % BIBER VERSION
+\gdef\biblatexversion{3.11}   % BIBLATEX VERSION
 
 % colour for tables
 \definecolor{Gray}{gray}{0.85}
@@ -111,7 +111,9 @@ were possible. This change has some normalisation consequences:
 \item Fields which are not defined in the data model described in the
   default \file{biber-tool.conf} are ignored and are neither read nor
   output. If custom fields are required, they should be defined in the data
-  model by using a custom tool mode config file (see below).
+  model by using a custom tool mode config file (see below). If you would
+  like to have ignored fields reported on, use the
+  \opt{--validate-datamodel} option.
 \end{itemize}
 
 \minisec{1.9}
@@ -251,6 +253,8 @@ compatibility matrix for the recent versions.
 \toprule
 \biber\ version & \biblatex\ version\\
 \midrule
+2.11 & 3.11\\
+2.10 & 3.10\\
 2.9 & 3.9\\
 2.8 & 3.8\\
 2.7 & 3.7\\
@@ -659,7 +663,7 @@ an example config file which displays the \biber\ defaults:
   <validate_bltxml>0</validate_bltxml>
   <validate_config>0</validate_config>
   <validate_control>0</validate_control>
-  <validate_structure>0</validate_structure>
+  <validate_datamodel>0</validate_datamodel>
   <wraplines>0</wraplines>
   <xsvsep>\s*,\s*</xsvsep>
 </config>

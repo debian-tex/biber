@@ -1698,3 +1698,15 @@
   AUTHOR = {Gauck, Joachim and others},
   TITLE = {Title B},
 }
+
+% Test recursion mistake in IDs
+@BOOK{recurse1,
+  IDS = {recurse1},
+  AUTHOR = {Reginald Roberts}
+}
+
+% Test sorting key for final entries with no other data
+@BOOK{final,
+  note = {foo},
+  sortkey = {zzzz},
+}

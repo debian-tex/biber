@@ -248,6 +248,7 @@ sub latex_decode {
 
         # Rename protecting braces so that they are not broken by RE manipulations
         $text =~ s/(\{?)\\($re)\s*\{(\pL\pM*)\}(\}?)/$bracemap->{$1} . $3 . $map->{$2} . $bracemap->{$4}/ge;
+        $text =~ s/(\{?)(\pL\pM*)(\}?)/$bracemap->{$1} . $2 . $bracemap->{$3}/ge;
 
         # Conditional regexp with code-block condition
         # non letter macros for diacritics (e.g. \=) can be followed by any letter
@@ -305,7 +306,6 @@ sub latex_decode {
     $text = reverse $text;
     $text =~ s/\}(\pM*\pL)\{(?!(?:\}[^}]+\{)*\pL+\\)/$1/g;
     $text = reverse $text;
-
     # Put brace markers back after doing the brace elimination as we only want to eliminate
     # braces introduced as part of decoding, not explicit braces in the data
     $text =~ s/\x{1f}/{/g;
@@ -416,7 +416,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

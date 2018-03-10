@@ -1637,16 +1637,16 @@ sub generate_bblxml_schema {
   $writer->endTag();    # choice
   $writer->endTag();    # attribute
   $writer->endTag();    # optional
-  # dateparts may have a circa attributes
+  # dateparts may have a approximate attributes
   $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'startcirca');
+  $writer->startTag('attribute', 'name' => 'startapproximate');
   $writer->startTag('choice');
   $writer->dataElement('value', 'true');
   $writer->endTag();    # choice
   $writer->endTag();    # attribute
   $writer->endTag();    # optional
   $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'endcirca');
+  $writer->startTag('attribute', 'name' => 'endapproximate');
   $writer->startTag('choice');
   $writer->dataElement('value', 'true');
   $writer->endTag();    # choice
@@ -1829,7 +1829,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

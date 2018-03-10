@@ -22,7 +22,7 @@ use Unicode::Normalize;
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
-our $VERSION = '2.9';
+our $VERSION = '2.11';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -330,6 +330,7 @@ sub _config_file_set {
                                                             qr/\Amap\z/,
                                                             qr/\Amap_step\z/,
                                                             qr/\Aper_type\z/,
+                                                            qr/\Aper_nottype\z/,
                                                             qr/\Aper_datasource\z/,
                                                             qr/\Atype_pair\z/,
                                                             qr/\Ainherit\z/,
@@ -1378,7 +1379,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2017 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
