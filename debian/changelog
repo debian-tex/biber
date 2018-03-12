@@ -1,10 +1,10 @@
-biber (2.11-1) unstable; urgency=medium
+biber (2.11-1) experimental; urgency=medium
 
   * New upstream version 2.11
   * switch vcs to salsa
   * update patches
 
- -- Norbert Preining <preining@debian.org>  Sat, 10 Mar 2018 13:26:59 +0900
+ -- Norbert Preining <preining@debian.org>  Mon, 12 Mar 2018 10:45:01 +0900
 
 biber (2.9-1) unstable; urgency=medium
 
