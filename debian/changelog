@@ -3,8 +3,9 @@ biber (2.11-1) experimental; urgency=medium
   * New upstream version 2.11
   * switch vcs to salsa
   * update patches
+  * bump conflicts against TL << 2018
 
- -- Norbert Preining <preining@debian.org>  Mon, 12 Mar 2018 10:45:01 +0900
+ -- Norbert Preining <preining@debian.org>  Mon, 12 Mar 2018 10:46:00 +0900
 
 biber (2.9-1) unstable; urgency=medium
 
