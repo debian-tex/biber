@@ -1,3 +1,9 @@
+biber (2.11-2) unstable; urgency=medium
+
+  * TeX Live 2018 release
+
+ -- Norbert Preining <preining@debian.org>  Mon, 16 Apr 2018 13:24:10 +0900
+
 biber (2.11-1) experimental; urgency=medium
 
   * New upstream version 2.11
