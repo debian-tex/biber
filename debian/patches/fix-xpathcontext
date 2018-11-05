@@ -8,7 +8,7 @@ Thanks to Don Armstrong for providing the idea
 
 --- biber.orig/lib/Biber/Input/file/biblatexml.pm
 +++ biber/lib/Biber/Input/file/biblatexml.pm
-@@ -180,7 +180,8 @@
+@@ -182,7 +182,8 @@ sub extract_entries {
    $xml = NFD($xml);# Unicode NFD boundary
    my $bltxml = XML::LibXML->load_xml(string => $xml);
    my $xpc = XML::LibXML::XPathContext->new($bltxml);

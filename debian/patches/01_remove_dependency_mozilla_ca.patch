@@ -13,7 +13,7 @@ Comment: fixes to adapt to biber 1.8
 
 --- biber.orig/lib/Biber/Input/file/biblatexml.pm
 +++ biber/lib/Biber/Input/file/biblatexml.pm
-@@ -119,17 +119,6 @@
+@@ -121,17 +121,6 @@ sub extract_entries {
          # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
          # We have to explicitly set the cert path because otherwise the https module
          # can't find the .pem when PAR::Packer'ed
@@ -33,7 +33,7 @@ Comment: fixes to adapt to biber 1.8
          unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
 --- biber.orig/lib/Biber/Input/file/bibtex.pm
 +++ biber/lib/Biber/Input/file/bibtex.pm
-@@ -145,17 +145,6 @@
+@@ -145,17 +145,6 @@ sub extract_entries {
          # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
          # We have to explicitly set the cert path because otherwise the https module
          # can't find the .pem when PAR::Packer'ed
