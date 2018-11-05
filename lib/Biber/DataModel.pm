@@ -334,8 +334,10 @@ sub is_field {
   my $self = shift;
   my $field = shift;
   my $ann = $CONFIG_META_MARKERS{annotation};
+  my $nam = $CONFIG_META_MARKERS{namedannotation};
 
-  if ($field =~ m/^(.+)(?:$ann)$/) {
+  # Ignore any annotation marker and optional annotation name
+  if ($field =~ m/^(.+)(?:$ann)(?:$nam.+)?$/) {
     return $self->{fieldsbyname}{$1} ? 1 : 0;
   }
   else {
@@ -938,6 +940,9 @@ sub generate_bltxml_schema {
     }
   }
 
+  # Annotations
+  $writer->emptyTag('ref', 'name' => "mannotation");
+
   $writer->endTag();# interleave
   $writer->endTag();# entry element
   $writer->endTag();# oneOrMore
@@ -989,10 +994,6 @@ sub generate_bltxml_schema {
           $writer->emptyTag('data', 'type' => 'boolean');
           $writer->endTag();    # attribute
           $writer->endTag();    # optional
-
-          # generic annotation attribute
-          $writer->emptyTag('ref', 'name' => "annotation");
-
           $writer->startTag('oneOrMore');
 
           # Individual name element
@@ -1016,10 +1017,6 @@ sub generate_bltxml_schema {
 
           # gender attribute ref
           $writer->emptyTag('ref', 'name' => 'gender');
-
-          # generic annotation attribute
-          $writer->emptyTag('ref', 'name' => "annotation");
-
           # namepart element
           $writer->startTag('oneOrMore');
           $writer->startTag('element', 'name' => "$bltx:namepart");
@@ -1028,17 +1025,13 @@ sub generate_bltxml_schema {
           foreach my $np ($dm->get_constant_value('nameparts')) {# list type so returns list
             $writer->dataElement('value', $np);
           }
+
           $writer->endTag();    # choice
           $writer->endTag();    # attribute
           $writer->startTag('optional');
           $writer->emptyTag('attribute', 'name' => 'initial');
           $writer->endTag();    # optional
-
-          # generic annotation attribute
-          $writer->emptyTag('ref', 'name' => "annotation");
-
           $writer->startTag('choice');
-          $writer->emptyTag('text');# text
           $writer->startTag('oneOrMore');
           $writer->startTag('element', 'name' => "$bltx:namepart");
           $writer->startTag('optional');
@@ -1047,6 +1040,7 @@ sub generate_bltxml_schema {
           $writer->emptyTag('text');# text
           $writer->endTag();    # (sub)namepart element
           $writer->endTag();    # oneOrMore
+          $writer->emptyTag('text');# text
           $writer->endTag();    # choice
           $writer->endTag();    # namepart element
           $writer->endTag();    # oneOrMore
@@ -1064,18 +1058,11 @@ sub generate_bltxml_schema {
             $writer->startTag('optional');
             $writer->startTag('element', 'name' => "$bltx:$list");
 
-            # generic annotation attribute
-            $writer->emptyTag('ref', 'name' => "annotation");
-
             $writer->startTag('choice');
             $writer->emptyTag('text');# text
             $writer->startTag('element', 'name' => "$bltx:list");
             $writer->startTag('oneOrMore');
             $writer->startTag('element', 'name' => "$bltx:item");
-
-            # generic annotation attribute
-            $writer->emptyTag('ref', 'name' => "annotation");
-
             $writer->emptyTag('text');# text
             $writer->endTag(); # item element
             $writer->endTag(); # oneOrMore element
@@ -1094,10 +1081,6 @@ sub generate_bltxml_schema {
           foreach my $field ($dm->get_fields_of_type($ft, $dt)->@*) {
             $writer->startTag('optional');
             $writer->startTag('element', 'name' => "$bltx:$field");
-
-            # generic annotation attribute
-            $writer->emptyTag('ref', 'name' => "annotation");
-
             $writer->emptyTag('data', 'type' => 'anyURI');
             $writer->endTag();   # $field element
             $writer->endTag();# optional
@@ -1112,9 +1095,6 @@ sub generate_bltxml_schema {
           foreach my $field ($dm->get_fields_of_type($ft, $dt)->@*) {
             $writer->startTag('optional');
             $writer->startTag('element', 'name' => "$bltx:$field");
-
-            # generic annotation attribute
-            $writer->emptyTag('ref', 'name' => "annotation");
 
             $writer->startTag('element', 'name' => "$bltx:list");
             $writer->startTag('oneOrMore');
@@ -1164,10 +1144,6 @@ sub generate_bltxml_schema {
             }
             else {
               $writer->startTag('element', 'name' => "$bltx:$field");
-
-              # generic annotation attribute
-              $writer->emptyTag('ref', 'name' => "annotation");
-
               $writer->startTag('choice');
               $writer->startTag('list');
               $writer->startTag('oneOrMore');
@@ -1188,6 +1164,7 @@ sub generate_bltxml_schema {
         }
         elsif ($ft eq 'field' and $dt eq 'date') {
           # date field element definition
+          # Can't strongly type dates as we allow full ISO8601 meta characters
           # =============================
           my @types = map { s/date$//r } $dm->get_fields_of_type($ft, $dt)->@*;
           $writer->startTag('zeroOrMore');
@@ -1202,24 +1179,17 @@ sub generate_bltxml_schema {
           $writer->endTag(); # choice
           $writer->endTag(); # attribute
           $writer->endTag(); # optional
-
-          # generic annotation attribute
-          $writer->emptyTag('ref', 'name' => "annotation");
-
           $writer->startTag('choice');
-          $writer->emptyTag('data', 'type' => 'date');
-          $writer->emptyTag('data', 'type' => 'gYear');
+          $writer->emptyTag('data', 'type' => 'string');
           $writer->startTag('group');
           $writer->startTag('element', 'name' => "$bltx:start");
           $writer->startTag('choice');
-          $writer->emptyTag('data', 'type' => 'date');
-          $writer->emptyTag('data', 'type' => 'gYear');
+          $writer->emptyTag('data', 'type' => 'string');
           $writer->endTag(); # choice
           $writer->endTag(); # start element
           $writer->startTag('element', 'name' => "$bltx:end");
           $writer->startTag('choice');
-          $writer->emptyTag('data', 'type' => 'date');
-          $writer->emptyTag('data', 'type' => 'gYear');
+          $writer->emptyTag('data', 'type' => 'string');
           $writer->emptyTag('empty');
           $writer->endTag(); # choice
           $writer->endTag(); # end element
@@ -1236,10 +1206,6 @@ sub generate_bltxml_schema {
           foreach my $field ($dm->get_fields_of_type($ft, $dt)->@*) {
             $writer->startTag('optional');
             $writer->startTag('element', 'name' => "$bltx:$field");
-
-            # generic annotation attribute
-            $writer->emptyTag('ref', 'name' => "annotation");
-
             $writer->emptyTag('text');# text
             $writer->endTag(); # $field element
             $writer->endTag();# optional
@@ -1268,13 +1234,28 @@ sub generate_bltxml_schema {
   $writer->endTag();# define
   # ===========================
 
-  # generic annotation attribute definition
-  # =====================================
-  $writer->comment('generic annotation attribute definition');
-  $writer->startTag('define', 'name' => 'annotation');
+  # generic meta annotation element definition
+  # ===========================================
+  $writer->comment('generic annotation element definition');
+  $writer->startTag('define', 'name' => 'mannotation');
+  $writer->startTag('zeroOrMore');
+  $writer->startTag('element', 'name' => "$bltx:mannotation");
+  $writer->emptyTag('attribute', 'name' => 'field');
   $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'annotation');
+  $writer->emptyTag('attribute', 'name' => 'name');
   $writer->endTag(); # optional
+  $writer->startTag('optional');
+  $writer->emptyTag('attribute', 'name' => 'item');
+  $writer->endTag(); # optional
+  $writer->startTag('optional');
+  $writer->emptyTag('attribute', 'name' => 'part');
+  $writer->endTag(); # optional
+  $writer->startTag('optional');
+  $writer->emptyTag('attribute', 'name' => 'literal');
+  $writer->endTag(); # optional
+  $writer->emptyTag('text');# text
+  $writer->endTag(); # mannotation element
+  $writer->endTag(); # zeroOrMore
   $writer->endTag();# define
   # ===========================
 
@@ -1440,6 +1421,17 @@ sub generate_bblxml_schema {
   $writer->endTag();    # inset
   $writer->endTag();    # zeroOrMore
 
+  # Per-entry options
+  $writer->startTag('zeroOrMore');
+  $writer->startTag('element', 'name' => "$bbl:options");
+  $writer->startTag('oneOrMore');
+  $writer->startTag('element', 'name' => "$bbl:option");
+  $writer->emptyTag('text');# text
+  $writer->endTag();    # option
+  $writer->endTag();    # oneOrMore
+  $writer->endTag();    # options
+  $writer->endTag();    # zeroOrMore
+
   # names
   my @names = grep {not $dm->field_is_skipout($_)} $dm->get_fields_of_type('list', 'name')->@*;
 
@@ -1550,6 +1542,7 @@ sub generate_bblxml_schema {
               sortinit
               sortinithash
               sortinithash
+              extraname
               extradate
               labelyear
               labelmonth
@@ -1741,6 +1734,13 @@ sub generate_bblxml_schema {
     $writer->endTag();          # optional
   }
 
+  # nocite
+  $writer->startTag('optional');
+  $writer->startTag('element', 'name' => "$bbl:nocite");
+  $writer->emptyTag('empty');
+  $writer->endTag();# nocite
+  $writer->endTag();# optional
+
   # keywords
   $writer->startTag('optional');
   $writer->startTag('element', 'name' => "$bbl:keywords");
@@ -1763,7 +1763,15 @@ sub generate_bblxml_schema {
   $writer->endTag();# choice
   $writer->endTag();# scope attribute
   $writer->emptyTag('attribute', 'name' => 'field');
+  $writer->emptyTag('attribute', 'name' => 'name');
   $writer->emptyTag('attribute', 'name' => 'value');
+  $writer->startTag('attribute', 'name' => 'literal');
+  $writer->startTag('choice');
+  foreach my $s ('1', '0') {
+    $writer->dataElement('value', $s);
+  }
+  $writer->endTag();# choice
+  $writer->endTag();# literal attribute
   $writer->startTag('optional');
   $writer->emptyTag('attribute', 'name' => 'item');
   $writer->endTag();# optional

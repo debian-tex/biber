@@ -55,7 +55,7 @@ our @EXPORT = qw{ locate_biber_file makenamesid makenameid stringify_hash
   bcp472locale rangelen match_indices process_comment map_boolean
   parse_range parse_range_alt maploopreplace get_transliterator
   call_transliterator normalise_string_bblxml gen_initials join_name_parts
-  split_xsv date_monthday tzformat expand_option};
+  split_xsv date_monthday tzformat expand_option strip_annotation};
 
 =head1 FUNCTIONS
 
@@ -272,6 +272,8 @@ sub strip_noinit {
     my $re = $opt->{value};
     $string =~ s/$re//gxms;
   }
+  # remove latex macros (assuming they have only ASCII letters)
+  $string =~ s/\\[A-Za-z]+\s*\{?([^\}]+)\}?/$1/g;
   return $string;
 }
 
@@ -837,9 +839,14 @@ sub filter_entry_options {
 =cut
 
 sub imatch {
-  my ($value, $val_match, $negmatch) = @_;
+  my ($value, $val_match, $negmatch, $ci) = @_;
   return 0 unless $val_match;
-  $val_match = qr/$val_match/;
+  if ($ci) {
+    $val_match = qr/$val_match/i;
+  }
+  else {
+    $val_match = qr/$val_match/;
+  }
   if ($negmatch) {# "!~" doesn't work here as we need an array returned
     return $value =~ m/$val_match/xmsg ? () : (1);
   }
@@ -857,9 +864,14 @@ sub imatch {
 =cut
 
 sub ireplace {
-  my ($value, $val_match, $val_replace) = @_;
+  my ($value, $val_match, $val_replace, $ci) = @_;
   return $value unless $val_match;
-  $val_match = qr/$val_match/;
+  if ($ci) {
+    $val_match = qr/$val_match/i;
+  }
+  else {
+    $val_match = qr/$val_match/;
+  }
   # Tricky quoting because of later evals
   $val_replace = '"' . $val_replace . '"';
   $value =~ s/$val_match/$val_replace/eegxms;
@@ -1365,6 +1377,19 @@ sub parse_range {
   }
 }
 
+=head2 strip_annotation
+
+  Removes annotation marker from a field name
+
+=cut
+
+sub strip_annotation {
+  my $string = shift;
+  my $ann = $CONFIG_META_MARKERS{annotation};
+  my $nam = $CONFIG_META_MARKERS{namedannotation};
+  return $string =~ s/$ann$nam?.*$//r;
+}
+
 =head2 parse_range_alt
 
   Parses a range of values into a two-value array ref.
@@ -1450,8 +1475,8 @@ sub get_transliterator {
 sub call_transliterator {
   my ($target, $from, $to, $text) = @_;
   if (my $tr = get_transliterator($target, $from, $to)) {
-    # using Lingua::Translit
-    return $tr->translit($text);
+    # using Lingua::Translit, NFC boundary as we are talking to external module
+    return $tr->translit(NFC($text));
   }
   else {
     return $text;

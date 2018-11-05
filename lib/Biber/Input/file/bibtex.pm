@@ -104,7 +104,7 @@ sub TBSIG {
 =cut
 
 sub extract_entries {
-  my ($source, $keys) = @_;
+  my ($source, $encoding, $keys) = @_;
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
   my $filename;
@@ -239,7 +239,7 @@ sub extract_entries {
     if ($logger->is_debug()) {# performance tune
       $logger->debug("Caching data for BibTeX format file '$filename' for section $secnum");
     }
-    cache_data($filename);
+    cache_data($filename, $encoding);
   }
   else {
     if ($logger->is_debug()) {# performance tune
@@ -648,15 +648,24 @@ sub create_entry {
               $fieldcontinue = 1;
             }
 
-              if ($fieldcontinue) {
-                $last_field = $fieldsource;
-                $last_fieldval = $fieldsource eq 'entrykey' ? $etarget->key : $etarget->get($fieldsource);
+            if ($fieldcontinue) {
+              $last_field = $fieldsource;
+              $last_fieldval = $fieldsource eq 'entrykey' ? $etarget->key : $etarget->get($fieldsource);
 
               my $negmatch = 0;
+              my $nm;
               # Negated matches are a normal match with a special flag
-              if (my $nm = $step->{map_notmatch}) {
+              if ($nm = $step->{map_notmatch} or $nm = $step->{map_notmatchi}) {
                 $step->{map_match} = $nm;
                 $negmatch = 1;
+              }
+
+              my $caseinsensitive = 0;
+              my $mi;
+              # Case insensitive matches are a normal match with a special flag
+              if ($mi = $step->{map_matchi} or $mi = $step->{map_notmatchi}) {
+                $step->{map_match} = $mi;
+                $caseinsensitive = 1;
               }
 
               # map fields to targets
@@ -676,7 +685,7 @@ sub create_entry {
                     $logger->debug("Source mapping (type=$level, key=$etargetkey): Doing match/replace '$m' -> '$r' on field '$fieldsource'");
                   }
                   $etarget->set($fieldsource,
-                                encode('UTF-8', NFC(ireplace($last_fieldval, $m, $r))));
+                                encode('UTF-8', NFC(ireplace($last_fieldval, $m, $r, $caseinsensitive))));
                 }
                 else {
                   # Now re-instate any unescaped $1 .. $9 to get round these being
@@ -685,7 +694,7 @@ sub create_entry {
                   # Be aware that imatch() uses m//g so @imatches can have multiple paren group
                   # captures which might be useful
                   $m =~ s/(?<!\\)\$(\d)/$imatches[$1-1]/ge;
-                  unless (@imatches = imatch($last_fieldval, $m, $negmatch)) {
+                  unless (@imatches = imatch($last_fieldval, $m, $negmatch, $caseinsensitive)) {
                     # Skip the rest of the map if this step doesn't match and match is final
                     if ($step->{map_final}) {
                       if ($logger->is_debug()) { # performance tune
@@ -883,17 +892,30 @@ sub _annotation {
   my ($bibentry, $entry, $field, $key) = @_;
   my $value = $entry->get($field);
   my $ann = quotemeta(Biber::Config->getoption('annotation_marker'));
+  my $nam = quotemeta(Biber::Config->getoption('named_annotation_marker'));
+  # Get annotation name, "default" if none
+  my $name = 'default';
+  if ($field =~ s/^(.+$ann)$nam(.+)$/$1/) {
+    $name = $2;
+  }
   $field =~ s/$ann$//;
+
   foreach my $a (split(/\s*;\s*/, $value)) {
     my ($count, $part, $annotations) = $a =~ /^\s*(\d+)?:?([^=]+)?=(.+)/;
+    # Is the annotations a literal annotation?
+    my $literal = 0;
+    if ($annotations =~ m/^\s*"(.+)"\s*$/) {
+      $literal = 1;
+      $annotations = $1;
+    }
     if ($part) {
-      Biber::Annotation->set_annotation('part', $key, $field, $annotations, $count, $part);
+      Biber::Annotation->set_annotation('part', $key, $field, $name, $annotations, $literal, $count, $part);
     }
     elsif ($count) {
-      Biber::Annotation->set_annotation('item', $key, $field, $annotations, $count);
+      Biber::Annotation->set_annotation('item', $key, $field, $name, $annotations, $literal, $count);
     }
     else {
-      Biber::Annotation->set_annotation('field', $key, $field, $annotations);
+      Biber::Annotation->set_annotation('field', $key, $field, $name, $annotations, $literal);
     }
   }
   return;
@@ -997,6 +1019,7 @@ sub _verbatim {
 # m-  -> [m, '']
 # -n  -> ['', n]
 # -   -> ['', undef]
+
 sub _range {
   my ($bibentry, $entry, $field, $key) = @_;
   my $values_ref;
@@ -1010,8 +1033,9 @@ sub _range {
     $value =~ s/~/ /g; # Some normalisation for malformed fields
     $value =~ m/\A\s*(\P{Pd}+)\s*\z/xms ||# Simple value without range
       $value =~ m/\A\s*(\{[^\}]+\}|[^\p{Pd} ]+)\s*(\p{Pd}+)\s*(\{[^\}]+\}|\P{Pd}*)\s*\z/xms ||
-        $value =~ m/\A\s*(.+)(\p{Pd}{2,})(.+)\s*\z/xms;# M-1--M-4
-    my $start = $1;
+        $value =~ m/\A\s*(.+)(\p{Pd}{2,})(.+)\s*\z/xms || # M-1--M-4
+          $value =~ m/\A\s*(.+)(\p{Pd}+)(.+)\s*\z/xms;# blah M-1
+        my $start = $1;
     my $end;
     if ($2) {
       $end = $3;
@@ -1299,7 +1323,7 @@ sub _urilist {
 =cut
 
 sub cache_data {
-  my $filename = shift;
+  my ($filename, $encoding) = @_;
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
 
@@ -1307,7 +1331,7 @@ sub cache_data {
   $cache->{preamble}{$filename} = [];
 
   # Convert/decode file
-  my $pfilename = preprocess_file($filename);
+  my $pfilename = preprocess_file($filename, $encoding);
 
   my $bib = Text::BibTeX::File->new();
   $bib->open($pfilename, {binmode => 'utf-8', normalization => 'NFD'}) or biber_error("Cannot create Text::BibTeX::File object from $pfilename: $!");
@@ -1437,7 +1461,7 @@ sub cache_data {
 =cut
 
 sub preprocess_file {
-  my $filename = shift;
+  my ($filename, $benc) = @_;
 
   # Put the utf8 encoded file into the global biber tempdir
   # We have to do this in case we can't write to the location of the
@@ -1449,7 +1473,6 @@ sub preprocess_file {
   # We read the file in the bib encoding and then output to UTF-8, even if it was already UTF-8,
   # just in case there was a BOM so we can delete it as it makes T::B complain
   # Might fail due to encountering characters invalid in the encoding so trap and die gracefully
-  my $benc = Biber::Config->getoption('input_encoding');
   if ($benc eq 'ascii') {
     $logger->info("Reading ascii input as UTF-8");
     $benc = 'UTF-8';
@@ -1778,7 +1801,9 @@ sub _hack_month {
 
 sub _get_handler {
   my $field = shift;
-  if ($field =~ m/$CONFIG_META_MARKERS{annotation}$/) {
+  my $ann = $CONFIG_META_MARKERS{annotation};
+  my $nam = $CONFIG_META_MARKERS{namedannotation};
+  if ($field =~ m/$ann(?:$nam.+)?$/) {
     return $handlers->{custom}{annotation};
   }
   else {

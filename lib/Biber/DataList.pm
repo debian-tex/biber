@@ -686,6 +686,29 @@ sub set_visible_bib {
   return;
 }
 
+=head2 get_visible_sort
+
+  Gets sort name list visibility
+
+=cut
+
+sub get_visible_sort {
+  my ($self, $nlid) = @_;
+  return $self->{state}{namelistdata}{$nlid}{vissort};
+}
+
+=head2 set_visible_sort
+
+  Gets sort name list visibility
+
+=cut
+
+sub set_visible_sort {
+  my ($self, $nlid, $s) = @_;
+  $self->{state}{namelistdata}{$nlid}{vissort} = $s;
+  return;
+}
+
 =head2 get_visible_alpha
 
   Gets alpha name list visibility
@@ -766,10 +789,12 @@ sub set_unul_changed {
 sub reset_seen_extra {
   my $self = shift;
   $self->{state}{seen_extradate} = {};
+  $self->{state}{seen_extraname} = {};
   $self->{state}{seen_extratitle} = {};
   $self->{state}{seen_extratitleyear} = {};
   $self->{state}{seen_extraalpha} = {};
   $self->{state}{seen_namedateparts} = {};
+  $self->{state}{seen_labelname} = {};
   $self->{state}{seen_nametitle} = {};
   $self->{state}{seen_titleyear} = {};
   return;
@@ -784,6 +809,28 @@ sub reset_seen_extra {
 sub incr_seen_extradate {
   my ($self, $ey) = @_;
   return ++$self->{state}{seen_extradate}{$ey};
+}
+
+=head2 incr_seen_extraname
+
+    Increment and return the counter for extraname
+
+=cut
+
+sub incr_seen_extraname {
+  my ($self, $en) = @_;
+  return ++$self->{state}{seen_extraname}{$en};
+}
+
+=head2 incr_seen_labelname
+
+    Increment and return a counter used to track extraname
+
+=cut
+
+sub incr_seen_labelname {
+  my ($self, $ln) = @_;
+  return ++$self->{state}{seen_labelname}{$ln};
 }
 
 =head2 incr_seen_extratitle
@@ -866,6 +913,16 @@ sub incr_seen_namedateparts {
   return;
 }
 
+=head2 get_seen_labelname
+
+    Get the count of a labelname hash for tracking extraname
+
+=cut
+
+sub get_seen_labelname {
+  my ($self, $ln) = @_;
+  return $self->{state}{seen_labelname}{$ln} // 0;
+}
 
 =head2 get_seen_nametitle
 
@@ -1410,6 +1467,31 @@ sub set_extradatedata_for_key {
   return;
 }
 
+=head2 set_extranamedata_for_key
+
+  Saves extraname field data for a key
+
+=cut
+
+sub set_extranamedata_for_key {
+  my ($self, $key, $en) = @_;
+  return unless defined($key);
+  $self->{state}{extranamedata}{$key} = $en;
+  return;
+}
+
+=head2 get_extranamedata_for_key
+
+    Gets the extraname field data for a key
+
+=cut
+
+sub get_extranamedata_for_key {
+  my ($self, $key) = @_;
+  return unless defined($key);
+  return $self->{state}{extranamedata}{$key};
+}
+
 =head2 set_extradatedata
 
     Saves extradate field data for all keys
@@ -1423,7 +1505,7 @@ sub set_extradatedata {
 }
 
 
-=head2 get_extradatedata
+=head2 get_extradatedata_for_key
 
     Gets the extradate field data for a key
 
@@ -1859,6 +1941,12 @@ sub instantiate_entry {
       }
     }
 
+    # extraname
+    if (my $e = $self->get_extranamedata_for_key($key)) {
+      my $str = "\\field{extraname}{$e}";
+      $entry_string =~ s|<BDS>EXTRANAME</BDS>|$str|gxms;
+    }
+
     # extradate
     if (my $e = $self->get_extradatedata_for_key($key)) {
       my $str = "\\field{extradate}{$e}";
@@ -2049,6 +2137,12 @@ sub instantiate_entry {
           $entry_string =~ s|hash="\[BDS\]$nid-PERNAMEHASH\[/BDS\]"?,?||gxms;
         }
       }
+    }
+
+    # extraname
+    if (my $e = $self->get_extranamedata_for_key($key)) {
+      my $str = "<bbl:field name=\"extraname\">$e</bbl:field>";
+      $entry_string =~ s|<BDS>EXTRANAME</BDS>|$str|gxms;
     }
 
     # extradate

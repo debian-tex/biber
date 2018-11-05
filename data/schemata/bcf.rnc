@@ -39,10 +39,12 @@ start =
       maxalphanames,
       maxbibnames,
       maxcitenames,
+      maxsortnames,
       maxitems,
       minalphanames,
       minbibnames,
       mincitenames,
+      minsortnames,
       minitems,
       singletitle,
       sortalphaothers?,
@@ -74,10 +76,12 @@ start =
       maxalphanames?,
       maxbibnames?,
       maxcitenames?,
+      maxsortnames?,
       maxitems?,
       minalphanames?,
       minbibnames?,
       mincitenames?,
+      minsortnames?,
       minitems?,
       singletitle?,
       skipbib?,
@@ -387,6 +391,7 @@ translit =
   element bcf:transliteration {
     attribute entrytype { "*" | xsd:string {minLength="1"} },
     element bcf:translit {
+      attribute langids { xsd:string {minLength="1"} }?,
       attribute target { "*" | xsd:string {minLength="1"} },
       attribute from { xsd:string {minLength="1"} },
       attribute to { xsd:string {minLength="1"} }
@@ -479,6 +484,7 @@ secspec =
         attribute members { xsd:string {minLength="1"}},
         xsd:string {minLength="1"}) |
       ( attribute order { xsd:integer },
+        attribute nocite { xsd:boolean }?,
         xsd:string {minLength="1"} )
     }*
   }
@@ -663,6 +669,12 @@ maxcitenames =
     element bcf:key { "maxcitenames" },
     element bcf:value { xsd:integer }
   }
+maxsortnames =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "maxsortnames" },
+    element bcf:value { xsd:integer }
+  }
 minitems =
   element bcf:option {
     attribute type { "singlevalued" },
@@ -685,6 +697,12 @@ mincitenames =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "mincitenames" },
+    element bcf:value { xsd:integer }
+  }
+minsortnames =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "minsortnames" },
     element bcf:value { xsd:integer }
   }
 sortlocale =
@@ -805,7 +823,9 @@ map =
           attribute map_append { "1" }?,
           attribute map_final { "1" }?,
           attribute map_match { xsd:string {minLength="1"} }?,
+          attribute map_matchi { xsd:string {minLength="1"} }?,
           attribute map_notmatch { xsd:string {minLength="1"} }?,
+          attribute map_notmatchi { xsd:string {minLength="1"} }?,
           attribute map_replace { xsd:string }?,
           ( attribute map_null { "1" } |
             attribute map_origfield { "1" } |

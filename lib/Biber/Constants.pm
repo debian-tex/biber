@@ -42,9 +42,9 @@ our @EXPORT = qw{
 
 # Version of biblatex control file which this release expects. Matched against version
 # passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '3.4';
+our $BCF_VERSION = '3.5';
 # Format version of the .bbl. Used when writing the .bbl
-our $BBL_VERSION = '2.9';
+our $BBL_VERSION = '3.0';
 
 # Global flags needed for sorting
 our $BIBER_SORT_FINAL;
@@ -128,6 +128,7 @@ our $CONFIG_DEFAULT_BIBER = {
   listsep                                     => { content => 'and' },
   mincrossrefs                                => { content => 2 },
   minxrefs                                    => { content => 2 },
+  named_annotation_marker                     => { content => q/:/ },
   namesep                                     => { content => 'and' },
   no_bblxml_schema                            => { content => 0 },
   no_bltxml_schema                            => { content => 0 },
@@ -144,6 +145,7 @@ our $CONFIG_DEFAULT_BIBER = {
   others_string                               => { content => 'others' },
   output_align                                => { content => 0 },
   output_annotation_marker                    => { content => '+an' },
+  output_named_annotation_marker              => { content => ':' },
   output_encoding                             => { content => 'UTF-8' },
   output_field_order                          => { content => 'options,abstract,names,lists,dates' },
   output_format                               => { content => 'bbl' },
@@ -204,8 +206,10 @@ our %CONFIG_DEFAULT_BIBLATEX = (
                                 minbibnames   => 100,
                                 maxalphanames => 100,
                                 maxcitenames  => 100,
+                                maxsortnames  => 100,
                                 minalphanames => 100,
                                 mincitenames  => 100,
+                                minsortnames  => 100,
                                 minitems      => 100,
                                 useprefix     => 0
                                );
@@ -535,12 +539,14 @@ our %CONFIG_BIBLATEX_ENTRY_OPTIONS =
    minbibnames       => {OUTPUT => 1},
    maxcitenames      => {OUTPUT => 1},
    mincitenames      => {OUTPUT => 1},
+   maxsortnames      => {OUTPUT => 1},
+   minsortnames      => {OUTPUT => 1},
    maxalphanames     => {OUTPUT => 0},
    minalphanames     => {OUTPUT => 0},
-   maxnames          => {OUTPUT => ['maxcitenames', 'maxbibnames'],
-                         INPUT  => ['maxcitenames', 'maxbibnames']},
-   minnames          => {OUTPUT => ['mincitenames', 'minbibnames'],
-                         INPUT  => ['mincitenames', 'minbibnames']},
+   maxnames          => {OUTPUT => ['maxcitenames', 'maxbibnames', 'maxsortnames'],
+                         INPUT  => ['maxcitenames', 'maxbibnames', 'maxsortnames']},
+   minnames          => {OUTPUT => ['mincitenames', 'minbibnames', 'minsortnames'],
+                         INPUT  => ['mincitenames', 'minbibnames', 'minsortnames']},
    nametemplates     => {OUTPUT => ['sortingnamekeytemplatename',
                                     'uniquenametemplatename',
                                     'labelalphanametemplatename'],
