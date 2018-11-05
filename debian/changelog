@@ -1,3 +1,12 @@
+biber (2.12-1) unstable; urgency=medium
+
+  * New upstream version 2.12
+  * unfuzzify patches
+  * bump standards version, no changes necessary
+  * tighten breaks against tl-bibtex-extra with correct biblatex version
+
+ -- Norbert Preining <preining@debian.org>  Mon, 05 Nov 2018 13:41:40 +0900
+
 biber (2.11-2) unstable; urgency=medium
 
   * TeX Live 2018 release
