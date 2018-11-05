@@ -63,7 +63,7 @@ Build-Depends: debhelper (>= 9),
 		texlive-xetex,
 		tipa,
 		fonts-cmu
-Standards-Version: 4.1.1
+Standards-Version: 4.2.1
 Vcs-Git: https://salsa.debian.org/tex-team/biber.git
 Vcs-Browser: https://salsa.debian.org/tex-team/biber
 Homepage: http://biblatex-biber.sourceforge.net/
