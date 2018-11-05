@@ -378,7 +378,7 @@ sub parse_ctrlfile {
   my $bcfxml = XML::LibXML::Simple::XMLin($buf,
                                           'ForceContent' => 1,
                                           'ForceArray' => [
-                                                           qr/\Acitekey\z/,
+                                                           qr/\A(?:no)*citekey\z/,
                                                            qr/\Aoption\z/,
                                                            qr/\Aoptions\z/,
                                                            qr/\Avalue\z/,
@@ -420,6 +420,7 @@ sub parse_ctrlfile {
                                                            qr/\Aalsoset\z/,
                                                            qr/\Aconstraints\z/,
                                                            qr/\Aconstraint\z/,
+                                                           qr/\Aentryfields\z/,
                                                            qr/\Aentrytype\z/,
                                                            qr/\Adatetype\z/,
                                                            qr/\Adatalist\z/,
@@ -787,7 +788,8 @@ sub parse_ctrlfile {
                $_->{name} eq $datasource->{content}} $bibdatasources{$data->{section}[0]}->@*) {
         push $bibdatasources{$data->{section}[0]}->@*, { type     => $datasource->{type},
                                                          name     => $datasource->{content},
-                                                         datatype => $datasource->{datatype} };
+                                                         datatype => $datasource->{datatype},
+                                                         encoding => $datasource->{encoding} // Biber::Config->getoption('input_encoding')};
       }
     }
   }
@@ -817,13 +819,39 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
     $bib_section->set_datasources($bibdatasources{$secnum}) unless
       $bib_section->get_datasources;
 
+    my @prekeys = ();
     my @keys = ();
+    # Pre-process to deal with situation where key is both \nocite'd and \cited
+    # \cite'd takes priority
     foreach my $keyc ($section->{citekey}->@*) {
-      my $key = NFD($keyc->{content});# Key is already UTF-8 - it comes from UTF-8 XML
+      my $key = NFD($keyc->{content}); # Key is already UTF-8 - it comes from UTF-8 XML
+      if ($keyc->{nocite}) {# \nocite'd
+        # Don't add if there is an identical key without nocite since \cite takes precedence
+        unless (first {$key eq NFD($_->{content})} @prekeys) {
+          push @prekeys, $keyc;
+        }
+      }
+      else {# \cite'd
+        # If there is already a nocite of this key, remove the nocite attribute and don't add
+        if (first {($key eq NFD($_->{content})) and $_->{nocite}} @prekeys) {
+          @prekeys = map {delete($_->{nocite}) if $key eq NFD($_->{content});$_} @prekeys;
+        }
+        else {
+          push @prekeys, $keyc;
+        }
+      }
+    }
+
+    # Loop over all section keys
+    foreach my $keyc (@prekeys) {
+      my $key = NFD($keyc->{content}); # Key is already UTF-8 - it comes from UTF-8 XML
       # Stop reading citekeys if we encounter "*" as a citation as this means
       # "all keys"
       if ($key eq '*') {
         $bib_section->set_allkeys(1);
+        if ($keyc->{nocite}) {
+          $bib_section->set_allkeys_nocite(1);
+        }
         $key_flag = 1; # There is at least one key, used for error reporting below
       }
       elsif (not Biber::Config->get_seenkey($key, $secnum)) {
@@ -837,6 +865,10 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
         }
         else {
           next if $bib_section->is_allkeys; # Skip if we have already encountered '*'
+          # Track nocite information
+          if ($keyc->{nocite}) {
+            $bib_section->add_nocite($key);
+          }
           # Set order information - there is no order on dynamic key defs above
           # as they are a definition, not a cite
           Biber::Config->set_keyorder($secnum, $key, $keyc->{order});
@@ -1560,7 +1592,7 @@ sub process_namedis {
       }
 
       # First construct base part ...
-      my $base;
+      my $base = ''; # Might no be any base parts at all so make sure it's not undefined
       my $baseparts;
 
       foreach my $np (Biber::Config->getblxoption('uniquenametemplate')->{$untname}->@*) {
@@ -1590,7 +1622,7 @@ sub process_namedis {
 
       $namestring .= $base;
       push $namestrings->@*, $base;
-      push $namedisschema->@*, ['base' => $baseparts];
+      push $namedisschema->@*, ['base' => $baseparts] if defined($baseparts);
 
       # ... then add non-base parts by incrementally adding to the last disambiguation level
       foreach my $np (Biber::Config->getblxoption('uniquenametemplate')->{$untname}->@*) {
@@ -1689,6 +1721,9 @@ sub process_entries_static {
   }
   foreach my $citekey ( $section->get_citekeys ) {
 
+    # generate nocite information
+    $self->process_nocite($citekey);
+
     # generate labelname name
     $self->process_labelname($citekey);
 
@@ -1779,6 +1814,9 @@ sub process_entries_post {
 
     # generate information for tracking extradate
     $self->process_extradate($citekey, $dlist);
+
+    # generate information for tracking extraname
+    $self->process_extraname($citekey, $dlist);
 
     # generate information for tracking extratitle
     $self->process_extratitle($citekey, $dlist);
@@ -2018,6 +2056,41 @@ sub process_extradate {
   return;
 }
 
+=head2 process_extraname
+
+    Track labelname only for generation of extraname
+
+=cut
+
+sub process_extraname {
+  my ($self, $citekey, $dlist) = @_;
+  my $secnum = $self->get_current_section;
+  my $section = $self->sections->get_section($secnum);
+  my $be = $section->bibentry($citekey);
+  my $bee = $be->get_field('entrytype');
+
+  if (Biber::Config->getblxoption('skiplab', $bee, $citekey)) {
+    return;
+  }
+
+  if ($logger->is_trace()) {# performance tune
+    $logger->trace("Creating extraname information for '$citekey'");
+  }
+
+  my $namehash;
+  if (my $lni = $be->get_labelname_info) {
+    $namehash = $self->_getnamehash_u($citekey, $be->get_field($lni), $dlist);
+  }
+
+  # Don't bother with extraname when there is no labelname
+  if (defined($namehash)) {
+    $dlist->set_entryfield($citekey, 'labelnamehash', $namehash);
+    $dlist->incr_seen_labelname($namehash);
+  }
+
+  return;
+}
+
 =head2 process_extratitle
 
     Track labelname/labeltitle combination for generation of extratitle
@@ -2147,7 +2220,10 @@ sub process_sets {
       my $me = $section->bibentry($member);
       process_entry_options($member, [ 'skiplab', 'skipbiblist', 'uniquename=0', 'uniquelist=0' ]);
 
-      if ($me->get_field('entryset')) {
+      # Use get_datafield() instead of get_field() because we add 'entryset' below
+      # and if the same entry is used in more than one set, it will pass this test
+      # and generate an error if we use get_field()
+      if ($me->get_datafield('entryset')) {
         biber_warn("Field 'entryset' is no longer needed in set member entries in Biber - ignoring in entry '$member'", $me);
         $me->del_field('entryset');
       }
@@ -2166,6 +2242,22 @@ sub process_sets {
       my $me = $section->bibentry($citekey);
       process_entry_options($citekey, [ 'skiplab', 'skipbiblist', 'uniquename=0', 'uniquelist=0' ]);
     }
+  }
+}
+
+=head2 process_nocite
+
+    Generate nocite information
+
+=cut
+
+sub process_nocite {
+  my ($self, $citekey) = @_;
+  my $secnum = $self->get_current_section;
+  my $section = $self->sections->get_section($secnum);
+  my $be = $section->bibentry($citekey);
+  if ($section->get_nocite($citekey) || $section->is_allkeys_nocite) {
+    $be->set_field('nocite', '1');
   }
 }
 
@@ -2534,6 +2626,8 @@ sub process_visible_names {
     my $mincn = Biber::Config->getblxoption('mincitenames', $bee, $citekey);
     my $maxbn = Biber::Config->getblxoption('maxbibnames', $bee, $citekey);
     my $minbn = Biber::Config->getblxoption('minbibnames', $bee, $citekey);
+    my $maxsn = Biber::Config->getblxoption('maxsortnames', $bee, $citekey);
+    my $minsn = Biber::Config->getblxoption('minsortnames', $bee, $citekey);
     my $maxan = Biber::Config->getblxoption('maxalphanames', $bee, $citekey);
     my $minan = Biber::Config->getblxoption('minalphanames', $bee, $citekey);
 
@@ -2543,6 +2637,7 @@ sub process_visible_names {
       my $count = $nl->count_names;
       my $visible_names_cite;
       my $visible_names_bib;
+      my $visible_names_sort;
       my $visible_names_alpha;
 
       # Cap min*names for this entry at $count. Why? Because imagine we have this:
@@ -2554,6 +2649,7 @@ sub process_visible_names {
       # to operate on undef at index 3 and die
       my $l_mincn = $count < $mincn ? $count : $mincn;
       my $l_minbn = $count < $minbn ? $count : $minbn;
+      my $l_minsn = $count < $minsn ? $count : $minsn;
       my $l_minan = $count < $minan ? $count : $minan;
 
       # If name list was truncated in bib with "and others", this means that the
@@ -2585,13 +2681,26 @@ sub process_visible_names {
       if ($count > $maxbn) {
         # Visibility to the uniquelist point if uniquelist is requested
         # We know at this stage that if uniquelist is set, there are more than maxbibnames
-        # names. We also know that uniquelist > mincitenames because it is a further
-        # disambiguation on top of mincitenames so can't be less as you can't disambiguate
+        # names. We also know that uniquelist > minbibnames because it is a further
+        # disambiguation on top of minbibnames so can't be less as you can't disambiguate
         # by losing information
         $visible_names_bib = $dlist->get_uniquelist($nl->get_id) // $l_minbn;
       }
       else { # visibility is simply the full list
         $visible_names_bib = $count;
+      }
+
+      # max/minsortnames
+      if ($count > $maxsn) {
+        # Visibility to the uniquelist point if uniquelist is requested
+        # We know at this stage that if uniquelist is set, there are more than maxsortnames
+        # names. We also know that uniquelist > minsortnames because it is a further
+        # disambiguation on top of minsortnames so can't be less as you can't disambiguate
+        # by losing information
+        $visible_names_sort = $dlist->get_uniquelist($nl->get_id) // $l_minsn;
+      }
+      else { # visibility is simply the full list
+        $visible_names_sort = $count;
       }
 
       if ($logger->is_trace()) { # performance shortcut
@@ -2604,6 +2713,7 @@ sub process_visible_names {
       my $nlid = $be->get_field($n)->get_id;
       $dlist->set_visible_cite($nlid, $visible_names_cite);
       $dlist->set_visible_bib($nlid, $visible_names_bib);
+      $dlist->set_visible_sort($nlid, $visible_names_sort);
       $dlist->set_visible_alpha($nlid, $visible_names_alpha);
     }
   }
@@ -3516,6 +3626,13 @@ sub generate_contextdata {
     # Only generate extra* information if skiplab is not set.
     # Don't forget that skiplab is implied for set members
     unless (Biber::Config->getblxoption('skiplab', $bee, $key)) {
+      # extraname
+      if (my $labelnamehash = $dlist->get_entryfield($key, 'labelnamehash')) {
+        if ($dlist->get_seen_labelname($labelnamehash) > 1) {
+          my $v = $dlist->incr_seen_extraname($labelnamehash);
+          $dlist->set_extranamedata_for_key($key, $v);
+        }
+      }
       # extradate
       if (Biber::Config->getblxoption('labeldateparts', $bee)) {
         my $namedateparts = $dlist->get_entryfield($key, 'namedateparts');
@@ -4104,6 +4221,7 @@ sub fetch_data {
     last unless (@remaining_keys or $section->is_allkeys);
     my $type = $datasource->{type};
     my $name = $datasource->{name};
+    my $encoding = $datasource->{encoding};
     my $datatype = $datasource->{datatype};
     if ($datatype eq 'biblatexml') {
       my $outfile;
@@ -4136,7 +4254,7 @@ sub fetch_data {
       $logger->info("Looking for $datatype format $type '$name' for section $secnum");
     }
 
-    @remaining_keys = "${package}::extract_entries"->($name, \@remaining_keys);
+    @remaining_keys = "${package}::extract_entries"->($name, $encoding, \@remaining_keys);
   }
 
   # error reporting
@@ -4304,11 +4422,12 @@ sub get_dependents {
         last unless $missing->@*;
         my $type = $datasource->{type};
         my $name = $datasource->{name};
+        my $encoding = $datasource->{encoding};
         my $datatype = $datasource->{datatype};
         my $package = 'Biber::Input::' . $type . '::' . $datatype;
         eval "require $package" or
           biber_error("Error loading data source package '$package': $@");
-        $missing->@* = "${package}::extract_entries"->($name, $missing);
+        $missing->@* = "${package}::extract_entries"->($name, $encoding, $missing);
       }
     }
 

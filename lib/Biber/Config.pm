@@ -22,7 +22,7 @@ use Unicode::Normalize;
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
-our $VERSION = '2.11';
+our $VERSION = '2.12';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -219,6 +219,8 @@ sub _initopts {
 
   # cache meta markers since they are referenced in the oft-called _get_handler
   $CONFIG_META_MARKERS{annotation} = quotemeta(Biber::Config->getoption('annotation_marker'));
+
+  $CONFIG_META_MARKERS{namedannotation} = quotemeta(Biber::Config->getoption('named_annotation_marker'));
   $CONFIG_META_MARKERS{xname} = quotemeta(Biber::Config->getoption('xname_marker'));
 
   # Setting up Log::Log4perl

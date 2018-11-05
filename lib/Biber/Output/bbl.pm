@@ -337,6 +337,11 @@ sub set_output_entry {
     }
   }
 
+  # Output extraname if there is a labelname
+  if ($be->get_labelname_info) {
+    $acc .= "      <BDS>EXTRANAME</BDS>\n";
+  }
+
   if ( Biber::Config->getblxoption('labelalpha', $bee) ) {
     $acc .= "      <BDS>LABELALPHA</BDS>\n";
   }
@@ -490,6 +495,11 @@ sub set_output_entry {
     }
   }
 
+  # Output nocite boolean
+  if ($be->get_field('nocite')) {
+    $acc .= "      \\true{nocite}\n";
+  }
+
   foreach my $rfield ($dmh->{ranges}->@*) {
     # Performance - as little as possible here - loop over DM fields for every entry
     if ( my $rf = $be->get_field($rfield) ) {
@@ -552,22 +562,31 @@ sub set_output_entry {
 
   # Output annotations
   foreach my $f (Biber::Annotation->get_annotated_fields('field', $key)) {
-    my $v = Biber::Annotation->get_annotation('field', $key, $f);
-    $acc .= "      \\annotation{field}{$f}{}{}{$v}\n";
+    foreach my $n (Biber::Annotation->get_annotations('field', $key, $f)) {
+      my $v = Biber::Annotation->get_annotation('field', $key, $f, $n);
+      my $l = Biber::Annotation->is_literal_annotation('field', $key, $f, $n);
+      $acc .= "      \\annotation{field}{$f}{$n}{}{}{$l}{$v}\n";
+    }
   }
 
   foreach my $f (Biber::Annotation->get_annotated_fields('item', $key)) {
-    foreach my $c (Biber::Annotation->get_annotated_items('item', $key, $f)) {
-      my $v = Biber::Annotation->get_annotation('item', $key, $f, $c);
-      $acc .= "      \\annotation{item}{$f}{$c}{}{$v}\n";
+    foreach my $n (Biber::Annotation->get_annotations('item', $key, $f)) {
+      foreach my $c (Biber::Annotation->get_annotated_items('item', $key, $f, $n)) {
+        my $v = Biber::Annotation->get_annotation('item', $key, $f, $n, $c);
+        my $l = Biber::Annotation->is_literal_annotation('item', $key, $f, $n, $c);
+        $acc .= "      \\annotation{item}{$f}{$n}{$c}{}{$l}{$v}\n";
+      }
     }
   }
 
   foreach my $f (Biber::Annotation->get_annotated_fields('part', $key)) {
-    foreach my $c (Biber::Annotation->get_annotated_items('part', $key, $f)) {
-      foreach my $p (Biber::Annotation->get_annotated_parts('part', $key, $f, $c)) {
-        my $v = Biber::Annotation->get_annotation('part', $key, $f, $c, $p);
-        $acc .= "      \\annotation{part}{$f}{$c}{$p}{$v}\n";
+    foreach my $n (Biber::Annotation->get_annotations('part', $key, $f)) {
+      foreach my $c (Biber::Annotation->get_annotated_items('part', $key, $f, $n)) {
+        foreach my $p (Biber::Annotation->get_annotated_parts('part', $key, $f, $n, $c)) {
+          my $v = Biber::Annotation->get_annotation('part', $key, $f, $n, $c, $p);
+          my $l = Biber::Annotation->is_literal_annotation('part', $key, $f, $n, $c, $p);
+          $acc .= "      \\annotation{part}{$f}{$n}{$c}{$p}{$l}{$v}\n";
+        }
       }
     }
   }

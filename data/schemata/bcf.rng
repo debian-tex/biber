@@ -59,10 +59,12 @@
         <ref name="maxalphanames"/>
         <ref name="maxbibnames"/>
         <ref name="maxcitenames"/>
+        <ref name="maxsortnames"/>
         <ref name="maxitems"/>
         <ref name="minalphanames"/>
         <ref name="minbibnames"/>
         <ref name="mincitenames"/>
+        <ref name="minsortnames"/>
         <ref name="minitems"/>
         <ref name="singletitle"/>
         <optional>
@@ -121,6 +123,9 @@
             <ref name="maxcitenames"/>
           </optional>
           <optional>
+            <ref name="maxsortnames"/>
+          </optional>
+          <optional>
             <ref name="maxitems"/>
           </optional>
           <optional>
@@ -131,6 +136,9 @@
           </optional>
           <optional>
             <ref name="mincitenames"/>
+          </optional>
+          <optional>
+            <ref name="minsortnames"/>
           </optional>
           <optional>
             <ref name="minitems"/>
@@ -966,6 +974,13 @@
       </attribute>
       <oneOrMore>
         <element name="bcf:translit">
+          <optional>
+            <attribute name="langids">
+              <data type="string">
+                <param name="minLength">1</param>
+              </data>
+            </attribute>
+          </optional>
           <attribute name="target">
             <choice>
               <value>*</value>
@@ -1246,6 +1261,11 @@
               <attribute name="order">
                 <data type="integer"/>
               </attribute>
+              <optional>
+                <attribute name="nocite">
+                  <data type="boolean"/>
+                </attribute>
+              </optional>
               <data type="string">
                 <param name="minLength">1</param>
               </data>
@@ -1707,6 +1727,19 @@
       </element>
     </element>
   </define>
+  <define name="maxsortnames">
+    <element name="bcf:option">
+      <attribute name="type">
+        <value>singlevalued</value>
+      </attribute>
+      <element name="bcf:key">
+        <value>maxsortnames</value>
+      </element>
+      <element name="bcf:value">
+        <data type="integer"/>
+      </element>
+    </element>
+  </define>
   <define name="minitems">
     <element name="bcf:option">
       <attribute name="type">
@@ -1753,6 +1786,19 @@
       </attribute>
       <element name="bcf:key">
         <value>mincitenames</value>
+      </element>
+      <element name="bcf:value">
+        <data type="integer"/>
+      </element>
+    </element>
+  </define>
+  <define name="minsortnames">
+    <element name="bcf:option">
+      <attribute name="type">
+        <value>singlevalued</value>
+      </attribute>
+      <element name="bcf:key">
+        <value>minsortnames</value>
       </element>
       <element name="bcf:value">
         <data type="integer"/>
@@ -2094,7 +2140,21 @@
                 </attribute>
               </optional>
               <optional>
+                <attribute name="map_matchi">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+              </optional>
+              <optional>
                 <attribute name="map_notmatch">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+              </optional>
+              <optional>
+                <attribute name="map_notmatchi">
                   <data type="string">
                     <param name="minLength">1</param>
                   </data>
