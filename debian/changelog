@@ -1,3 +1,9 @@
+biber (2.12-2) unstable; urgency=medium
+
+  * update VCS and my email
+
+ -- Norbert Preining <norbert@preining.info>  Thu, 28 Feb 2019 23:39:35 +0900
+
 biber (2.12-1) unstable; urgency=medium
 
   * New upstream version 2.12
