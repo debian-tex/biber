@@ -1,6 +1,8 @@
 biber (2.12-3) UNRELEASED; urgency=medium
 
-  * Add Build-Conflicts: libunicode-collate-perl (Closes: #929197).
+  * Add me to list of Uploaders.
+  + Add patch from upstream to fix FTBFS with higher versions of
+    libunicode-collate-perl (Closes: #929197).
 
  -- Hilmar Preusse <hille42@web.de>  Mon, 29 Jul 2019 21:38:08 +0200
 

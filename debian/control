@@ -1,6 +1,8 @@
 Source: biber
 Maintainer: Debian TeX maintainers <debian-tex-maint@lists.debian.org>
-Uploaders: Danai SAE-HAN (韓達耐) <danai@debian.org>, Norbert Preining <norbert@preining.info>
+Uploaders: Danai SAE-HAN (韓達耐) <danai@debian.org>,
+           Norbert Preining <norbert@preining.info>,
+           Hilmar Preusse <hille42@web.de>
 Section: perl
 Priority: optional
 Build-Depends: debhelper (>= 9),
@@ -34,6 +36,7 @@ Build-Depends: debhelper (>= 9),
 		libtext-bibtex-perl (>= 0.85),
 		libtext-csv-perl,
 		libtext-csv-xs-perl,
+		libunicode-collate-perl (>= 1.27),
 		libunicode-linebreak-perl,
 		libwww-perl,
 		libxml-libxml-simple-perl,
@@ -62,7 +65,6 @@ Build-Depends: debhelper (>= 9),
 		texlive-xetex,
 		tipa,
 		fonts-cmu
-Build-Conflicts: libunicode-collate-perl
 Standards-Version: 4.2.1
 Vcs-Git: https://github.com/debian-tex/biber.git
 Vcs-Browser: https://github.com/debian-tex/biber
