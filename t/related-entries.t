@@ -44,7 +44,7 @@ my $shs = $biber->datalists->get_list('shorthand/global//global/global', 0, 'lis
 
 my $k1 = q|    \entry{key1}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,hash=a517747c3d12f99244ae598910d979c5}{%
+        {{un=0,uniquepart=base,hash=a517747c3d12f99244ae598910d979c5}{%
            family={Author},
            familyi={A\bibinitperiod}}}%
       }
@@ -56,7 +56,7 @@ my $k1 = q|    \entry{key1}{article}{}
       \strng{authorfullhash}{a517747c3d12f99244ae598910d979c5}
       \field{extraname}{1}
       \field{sortinit}{1}
-      \field{sortinithash}{2174f786c6195e7fe2ee1c229b416e29}
+      \field{sortinithash}{50c6687d7fc80f50136d75228e3c59ba}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -77,7 +77,7 @@ my $k1 = q|    \entry{key1}{article}{}
 
 my $k2 = q|    \entry{key2}{inbook}{}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,hash=a517747c3d12f99244ae598910d979c5}{%
+        {{un=0,uniquepart=base,hash=a517747c3d12f99244ae598910d979c5}{%
            family={Author},
            familyi={A\bibinitperiod}}}%
       }
@@ -95,17 +95,19 @@ my $k2 = q|    \entry{key2}{inbook}{}
       \strng{authorfullhash}{a517747c3d12f99244ae598910d979c5}
       \field{extraname}{2}
       \field{sortinit}{2}
-      \field{sortinithash}{cbff857e587bcb4635511624d773949e}
+      \field{sortinithash}{ed39bb39cf854d5250e95b1c1f94f4ed}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{booktitle}{Booktitle}
+      \field{month}{2}
       \field{relatedstring}{First}
       \field{relatedtype}{reprintof}
       \field{shorthand}{RK2}
       \field{title}{Reprint Title}
       \field{year}{2009}
+      \true{dateuncertain}
       \field{dateera}{ce}
       \field{related}{c2add694bf942dc77b376592d9c862cd}
       \field{pages}{34\bibrangedash 60}
@@ -114,7 +116,7 @@ my $k2 = q|    \entry{key2}{inbook}{}
 |;
 
 
-my $kck1 = q|    \entry{c2add694bf942dc77b376592d9c862cd}{article}{dataonly}
+my $kck1 = q|    \entry{c2add694bf942dc77b376592d9c862cd}{article}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
       \name{author}{1}{}{%
         {{hash=a517747c3d12f99244ae598910d979c5}{%
            family={Author},
@@ -137,13 +139,14 @@ my $kck1 = q|    \entry{c2add694bf942dc77b376592d9c862cd}{article}{dataonly}
       \field{title}{Original Title}
       \field{volume}{12}
       \field{year}{1998}
+      \field{dateera}{ce}
       \field{related}{78f825aaa0103319aaa1a30bf4fe3ada,3631578538a2d6ba5879b31a9a42f290}
       \field{pages}{125\bibrangedash 150}
       \range{pages}{26}
     \endentry
 |;
 
-my $kck2 = q|    \entry{78f825aaa0103319aaa1a30bf4fe3ada}{inbook}{dataonly}
+my $kck2 = q|    \entry{78f825aaa0103319aaa1a30bf4fe3ada}{inbook}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
       \name{author}{1}{}{%
         {{hash=a517747c3d12f99244ae598910d979c5}{%
            family={Author},
@@ -166,18 +169,21 @@ my $kck2 = q|    \entry{78f825aaa0103319aaa1a30bf4fe3ada}{inbook}{dataonly}
       \field{labeltitlesource}{title}
       \field{clonesourcekey}{key2}
       \field{booktitle}{Booktitle}
+      \field{month}{2}
       \field{relatedstring}{First}
       \field{relatedtype}{reprintof}
       \field{shorthand}{RK2}
       \field{title}{Reprint Title}
       \field{year}{2009}
+      \true{dateuncertain}
+      \field{dateera}{ce}
       \field{related}{c2add694bf942dc77b376592d9c862cd}
       \field{pages}{34\bibrangedash 60}
       \range{pages}{27}
     \endentry
 |;
 
-my $kck3 = q|    \entry{3631578538a2d6ba5879b31a9a42f290}{inbook}{dataonly}
+my $kck3 = q|    \entry{3631578538a2d6ba5879b31a9a42f290}{inbook}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
       \name{author}{1}{}{%
         {{hash=a517747c3d12f99244ae598910d979c5}{%
            family={Author},
@@ -200,17 +206,20 @@ my $kck3 = q|    \entry{3631578538a2d6ba5879b31a9a42f290}{inbook}{dataonly}
       \field{labeltitlesource}{title}
       \field{clonesourcekey}{key3}
       \field{booktitle}{Booktitle}
+      \field{month}{1}
       \field{relatedtype}{translationof}
       \field{shorthand}{RK3}
       \field{title}{Reprint Title}
       \field{year}{2010}
+      \true{datecirca}
+      \field{dateera}{bce}
       \field{related}{caf8e34be07426ae7127c1b4829983c1}
       \field{pages}{33\bibrangedash 57}
       \range{pages}{25}
     \endentry
 |;
 
-my $kck4 = q|    \entry{caf8e34be07426ae7127c1b4829983c1}{inbook}{dataonly,useeditor=false,uniquename=false}
+my $kck4 = q|    \entry{caf8e34be07426ae7127c1b4829983c1}{inbook}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false,useeditor=false}
       \name{author}{1}{}{%
         {{hash=a517747c3d12f99244ae598910d979c5}{%
            family={Author},
@@ -233,9 +242,11 @@ my $kck4 = q|    \entry{caf8e34be07426ae7127c1b4829983c1}{inbook}{dataonly,useed
       \field{labeltitlesource}{title}
       \field{clonesourcekey}{key4}
       \field{booktitle}{Booktitle}
+      \field{season}{summer}
       \field{shorthand}{RK4}
       \field{title}{Orig Language Title}
       \field{year}{2011}
+      \field{dateera}{ce}
       \field{pages}{33\bibrangedash 57}
       \range{pages}{25}
     \endentry
@@ -243,24 +254,24 @@ my $kck4 = q|    \entry{caf8e34be07426ae7127c1b4829983c1}{inbook}{dataonly,useed
 
 my $c1 = q|    \entry{c1}{book}{}
       \field{sortinit}{3}
-      \field{sortinithash}{a4b52e5432884761f50fb9571273b93e}
+      \field{sortinithash}{a37a8ef248a93c322189792c34fc68c9}
       \field{related}{9ab62b5ef34a985438bfdf7ee0102229}
     \endentry
 |;
 
-my $c2k = q|    \entry{9ab62b5ef34a985438bfdf7ee0102229}{book}{dataonly}
+my $c2k = q|    \entry{9ab62b5ef34a985438bfdf7ee0102229}{book}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
       \field{clonesourcekey}{c2}
       \field{related}{0a3d72134fb3d6c024db4c510bc1605b}
     \endentry
 |;
 
-my $c3k = q|    \entry{0a3d72134fb3d6c024db4c510bc1605b}{book}{dataonly}
+my $c3k = q|    \entry{0a3d72134fb3d6c024db4c510bc1605b}{book}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
       \field{clonesourcekey}{c3}
       \field{related}{9ab62b5ef34a985438bfdf7ee0102229}
     \endentry
 |;
 
-my $s1 = q|    \entry{8ddf878039b70767c4a5bcf4f0c4f65e}{book}{dataonly,skipbib=false,usecustom=false}
+my $s1 = q|    \entry{8ddf878039b70767c4a5bcf4f0c4f65e}{book}{skipbib=false,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false,usecustom=false}
       \name{author}{1}{}{%
         {{hash=a517747c3d12f99244ae598910d979c5}{%
            family={Author},
@@ -309,7 +320,7 @@ eq_or_diff( $out->get_output_entry('8ddf878039b70767c4a5bcf4f0c4f65e', $main), $
 
 my $un1 = q|    \entry{kullback}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,hash=34c5bbf9876c37127c3abe4e7d7a7198}{%
+        {{un=0,uniquepart=base,hash=34c5bbf9876c37127c3abe4e7d7a7198}{%
            family={Kullback},
            familyi={K\bibinitperiod},
            given={Solomon},
@@ -330,7 +341,7 @@ my $un1 = q|    \entry{kullback}{book}{}
       \strng{authorfullhash}{34c5bbf9876c37127c3abe4e7d7a7198}
       \field{extraname}{1}
       \field{sortinit}{5}
-      \field{sortinithash}{3c19c3776b658b3558e9e2e4840c01e2}
+      \field{sortinithash}{5dd416adbafacc8226114bc0202d5fdd}
       \field{extradatescope}{year}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
@@ -343,7 +354,7 @@ my $un1 = q|    \entry{kullback}{book}{}
 
 my $un2 = q|    \entry{kullback:related}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,hash=34c5bbf9876c37127c3abe4e7d7a7198}{%
+        {{un=0,uniquepart=base,hash=34c5bbf9876c37127c3abe4e7d7a7198}{%
            family={Kullback},
            familyi={K\bibinitperiod},
            given={Solomon},
@@ -364,7 +375,7 @@ my $un2 = q|    \entry{kullback:related}{book}{}
       \strng{authorfullhash}{34c5bbf9876c37127c3abe4e7d7a7198}
       \field{extraname}{2}
       \field{sortinit}{6}
-      \field{sortinithash}{57e57fb8451e7fcfa45d1e069f6d3136}
+      \field{sortinithash}{7851c86048328b027313775d8fbd2131}
       \field{extradatescope}{year}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}

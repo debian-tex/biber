@@ -125,7 +125,7 @@ sub set_output_entry {
 
       # Namelist scope useprefix
       if (defined($names->get_useprefix)) {# could be 0
-        push @namelist, 'useprefix=' . Biber::Utils::map_boolean($names->get_useprefix, 'tostring');
+        push @namelist, 'useprefix=' . map_boolean('useprefix', $names->get_useprefix, 'tostring');
       }
 
       # Namelist scope sortingnamekeytemplatename
@@ -160,8 +160,8 @@ sub set_output_entry {
 
   # Per-entry options
   my @entryoptions;
-  foreach my $opt (Biber::Config->getblxentryoptions($key)) {
-    push @entryoptions, $opt . '=' . Biber::Config->getblxoption($opt, undef, $key);
+  foreach my $opt (Biber::Config->getblxentryoptions($secnum, $key)) {
+    push @entryoptions, $opt . '=' . Biber::Config->getblxoption($secnum, $opt, undef, $key);
   }
   $acc{$casing->('options')} = join(',', @entryoptions) if @entryoptions;
 
@@ -207,6 +207,9 @@ sub set_output_entry {
 
   # XSV fields
   foreach my $field ($dmh->{xsv}->@*) {
+    # keywords is by default field/xsv/keyword but it is in fact
+    # output with its own special macro below
+    next if $field eq 'keywords';
     if (my $f = $be->get_field($field)) {
       $acc{$casing->($field)} .= join(',', $f->@*);
     }
@@ -343,9 +346,9 @@ sub output {
 
   # Bibtex output uses just one special section, always sorted by global sorting spec
   foreach my $key ($Biber::MASTER->datalists->get_lists_by_attrs(section => 99999,
-                                                                 name => Biber::Config->getblxoption('sortingtemplatename') . '/global//global/global',
+                                                                 name => Biber::Config->getblxoption(undef, 'sortingtemplatename') . '/global//global/global',
                                                                  type => 'entry',
-                                                                 sortingtemplatename => Biber::Config->getblxoption('sortingtemplatename'),
+                                                                 sortingtemplatename => Biber::Config->getblxoption(undef, 'sortingtemplatename'),
                                                                  sortingnamekeytemplatename => 'global',
                                                                  labelprefix => '',
                                                                  uniquenametemplatename => 'global',
@@ -668,7 +671,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

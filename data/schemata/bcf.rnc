@@ -46,7 +46,13 @@ start =
       mincitenames,
       minsortnames,
       minitems,
+      nohashothers,
+      noroman,
+      nosortothers,
       singletitle,
+      skipbib,
+      skipbiblist,
+      skiplab,      
       sortalphaothers?,
       sortlocale,
       sortingtemplatename,
@@ -83,10 +89,13 @@ start =
       mincitenames?,
       minsortnames?,
       minitems?,
+      nohashothers?,
+      noroman?,
+      nosortothers?,
       singletitle?,
       skipbib?,
-      skiplab?,
       skipbiblist?,
+      skiplab?,
       skiplos?,
       sortalphaothers?,
       uniquelist?,
@@ -103,7 +112,15 @@ start =
       attribute type { "GLOBAL" | "ENTRYTYPE" | "ENTRY" | "NAMELIST" | "NAME" },
       element bcf:option {
         attribute datatype { "boolean" | "integer" | "string" | "xml" },
-        xsd:string
+        # Applies to ENTRY, NAMELIST and NAME scope
+        # Only set for meta-options and if defined, what biber should split
+        # the option into on reading it
+        attribute backendin {xsd:string}?,
+        # Applies to ENTRY, NAMELIST and NAME scope
+        # Determines whether biber will write the option to its ouput (e.g.
+        # .bbl) because biblatex needs to know the value.
+        attribute backendout {xsd:boolean}?,
+      xsd:string
       }+
     }*,
     
@@ -122,7 +139,7 @@ start =
     element bcf:sourcemap {
       element bcf:maps {
         attribute datatype { "bibtex" | "biblatexml" },
-        attribute map_overwrite { "0" | "1" }?,
+        attribute map_overwrite { xsd:boolean }?,
         attribute level { "user" | "style" | "driver" }?,
         map+
       }+
@@ -133,10 +150,10 @@ start =
       attribute name { xsd:string }?,
       element bcf:namepart {
         attribute order { xsd:integer },
-        attribute use { "0" | "1" }?,
-        attribute pre { "0" | "1" }?,
+        attribute use { xsd:boolean }?,
+        attribute pre { xsd:boolean }?,
         attribute substring_width { xsd:integer }?,
-        attribute substring_compound { "0" | "1" }?,
+        attribute substring_compound { xsd:boolean }?,
         attribute substring_side { "left" | "right" }?,
         text
       }+
@@ -148,7 +165,7 @@ start =
       element bcf:labelelement {
         attribute order { xsd:integer },
         element bcf:labelpart {          
-          attribute final { "0" | "1" }?,
+          attribute final { xsd:boolean }?,
           attribute pad_char { xsd:string {minLength="1"}}?,
           attribute pad_side { "left" | "right" }?,
           attribute substring_width { xsd:integer | "v" | "vf" | "l" }?,
@@ -158,7 +175,7 @@ start =
           attribute ifnames { text }?,
           attribute names { text }?,
           attribute namessep { string }?,
-          attribute noalphaothers { "0" | "1" }?,
+          attribute noalphaothers { xsd:boolean }?,
           xsd:string
         }+
       }+
@@ -403,8 +420,8 @@ uniquenametemplate =
     attribute name { xsd:string {minLength="1"} },
     element bcf:namepart {
      attribute order { xsd:integer },
-      attribute use { "0" | "1" }?,
-      attribute base { "0" | "1" }?,
+      attribute use { xsd:boolean }?,
+      attribute base { xsd:boolean }?,
       attribute disambiguation { "none" | "init" | "initorfull" | "full"}?,
       text
     }+
@@ -418,8 +435,8 @@ sortingnamekeytemplate =
      element bcf:part {
        attribute type { "namepart" | "literal" },
        attribute order { xsd:integer },
-       attribute use { "0" | "1" }?,
-       attribute inits { "0" | "1" }?,
+       attribute use { xsd:boolean }?,
+       attribute inits { xsd:boolean }?,
         text
       }+
     }+
@@ -444,13 +461,15 @@ sort =
     # Sort ascending or descending
     attribute sort_direction { "ascending" | "descending" }?,
     # Sort case sensitive or not?
-    attribute sortcase { "0" | "1" }?,
+    attribute sortcase { xsd:boolean }?,
     # Sort upper before lower?
-    attribute sortupper { "0" | "1" }?,
+    attribute sortupper { xsd:boolean }?,
     # sortset specific override for locale
     attribute locale { xsd:string {minLength="1"}}?,
     # A sort item specification - a field or pseudo-field to get sort information from
     element bcf:sortitem {
+      # Is this sortitem a literal string?
+      attribute literal { xsd:boolean }?,
       # order of this item in the set of all other item specifications
       attribute order { xsd:integer },
       # Just use a part of the item information for sorting?
@@ -505,25 +524,25 @@ usenames =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { xsd:string {pattern = "use.*"} },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }+
 useprefix =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "useprefix" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 labelalpha =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "labelalpha" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 labeltitle =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "labeltitle" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 labeltitlespec =
   element bcf:option {
@@ -539,13 +558,13 @@ labeltitleyear =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "labeltitleyear" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 labeldateparts =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "labeldateparts" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 labeldatespec =
   element bcf:option {
@@ -561,83 +580,101 @@ singletitle =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "singletitle" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 skipbib =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "skipbib" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 skiplab =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "skiplab" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 skiplos =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "skiplos" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 skipbiblist =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "skipbiblist" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
-# 0 = do not provide uniquelist information
-# 1 = disambiguate lists regardless of year
-# 2 = disambiguate lists only when year is the same
+# false = do not provide uniquelist information
+# true = disambiguate lists regardless of year
+# minyear = disambiguate lists only when year is the same
 uniquelist =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "uniquelist" },
-    element bcf:value { "0" | "1" | "2" }
+    element bcf:value { "false" | "true" | "minyear" }
   }
-# 0 = do not provide uniquename information
-# 1 = disambiguate with initials, only up to maxcitenames/uniquelist
-# 2 = disambiguate with full name or initials, only up to maxcitenames/uniquelist
-# 3 = disambiguate with initials, ignore maxcitenames/uniquelist
-# 4 = disambiguate with full name or initials, ignore maxcitenames/uniquelist
-# 5 = disambiguate with initials, only between identical lists in different entries
-# 6 = disambiguate with full name or initials, only between identical lists in different entries
+nohashothers =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "nohashothers" },
+    element bcf:value { xsd:boolean }
+  }
+noroman =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "noroman" },
+    element bcf:value { xsd:boolean }
+  }
+nosortothers =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "nosortothers" },
+    element bcf:value { xsd:boolean }
+  }
+# false = do not provide uniquename information
+# init = disambiguate with initials, only up to maxcitenames/uniquelist
+# full (true) = disambiguate with full name or initials, only up to maxcitenames/uniquelist
+# allinit = disambiguate with initials, ignore maxcitenames/uniquelist
+# allfull = disambiguate with full name or initials, ignore maxcitenames/uniquelist
+# mininit = disambiguate with initials, only between identical lists in different entries
+# minfull = disambiguate with full name or initials, only between identical lists in different entries
 uniquename =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "uniquename" },
-    element bcf:value { "0" | "1" | "2" | "3" | "4" | "5" | "6" }
+    element bcf:value { "false" | "init" | "full" | "allinit" | "allfull" | "mininit" | "minfull" }
   }
 uniqueprimaryauthor =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "uniqueprimaryauthor" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 uniquetitle =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "uniquetitle" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 uniquebaretitle =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "uniquebaretitle" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 uniquework =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "uniquework" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 julian =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "julian" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 gregorianstart =
   element bcf:option {
@@ -721,7 +758,7 @@ sortsets =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "sortsets" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 labelnamespec =
   element bcf:option {
@@ -749,7 +786,7 @@ debug =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "debug" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 wrapline =
   element bcf:option {
@@ -773,7 +810,7 @@ sortcase =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "sortcase" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 alphaothers =
   element bcf:option {
@@ -787,7 +824,7 @@ sortupper =
   element bcf:option {
     attribute type { "singlevalued" },
     element bcf:key { "sortupper" },
-    element bcf:value { "0" | "1" }
+    element bcf:value { xsd:boolean }
   }
 sortalphaothers =
   element bcf:option {
@@ -800,11 +837,12 @@ sortalphaothers =
 
 map =
   element bcf:map {
-    attribute map_overwrite { "0" | "1" }?,
+    attribute map_overwrite { xsd:boolean }?,
     attribute map_foreach { xsd:string {minLength="1"} }?,
     attribute refsection { xsd:integer }?,
     element bcf:per_datasource { xsd:string {minLength="1"} }*,
     element bcf:per_type { xsd:string {minLength="1"} }*,
+    element bcf:per_nottype { xsd:string {minLength="1"} }*,
     element bcf:map_step {
       (
         ( attribute map_entry_clone { xsd:string {minLength="1"} }
@@ -821,6 +859,7 @@ map =
           attribute map_field_set { xsd:string {minLength="1"} }?,
           attribute map_entry_null { "1" }?,
           attribute map_append { "1" }?,
+          attribute map_appendstrict { "1" }?,
           attribute map_final { "1" }?,
           attribute map_match { xsd:string {minLength="1"} }?,
           attribute map_matchi { xsd:string {minLength="1"} }?,
@@ -841,7 +880,7 @@ map =
 dmfieldtype =  "field" | "list"
 dmdatatype =  "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "code" | "uri" | "datepart" | "keyword" | "option"
 
-# Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+# Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 # This code is free software.  You can redistribute it and/or
 # modify it under the terms of the Artistic License 2.0.

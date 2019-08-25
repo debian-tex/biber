@@ -40,7 +40,7 @@ Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 Biber::Config->setoption('xsvsep', '\s*\|\s*');
 
 # Biblatex options
-Biber::Config->setblxoption('labeldatespec', [ {content => 'date', type => 'field'} ]);
+Biber::Config->setblxoption(undef,'labeldatespec', [ {content => 'date', type => 'field'} ]);
 
 # Now generate the information
 $biber->prepare;
@@ -83,7 +83,7 @@ my $bln = [ {content => 'author'}, {content => 'editor'} ];
 
 my $l1 = q|    \entry{L1}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
+        {{un=0,uniquepart=base,hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
            family={Doe},
            familyi={D\bibinitperiod},
            given={John},
@@ -100,7 +100,7 @@ my $l1 = q|    \entry{L1}{book}{}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
-      \field{sortinithash}{2ef1bd9a78cc71eb74d7231c635177b8}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -118,9 +118,9 @@ my $l1 = q|    \entry{L1}{book}{}
     \endentry
 |;
 
-my $l2 = q|    \entry{L2}{book}{maxcitenames=3,maxbibnames=3,maxsortnames=3,maxitems=2}
+my $l2 = q|    \entry{L2}{book}{maxalphanames=10,maxbibnames=3,maxcitenames=3,maxitems=2}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,hash=19eec87c959944d6d9c72434a42856ba}{%
+        {{un=0,uniquepart=base,hash=19eec87c959944d6d9c72434a42856ba}{%
            family={Edwards},
            familyi={E\bibinitperiod},
            given={Ellison},
@@ -137,7 +137,7 @@ my $l2 = q|    \entry{L2}{book}{maxcitenames=3,maxbibnames=3,maxsortnames=3,maxi
       \strng{authornamehash}{19eec87c959944d6d9c72434a42856ba}
       \strng{authorfullhash}{19eec87c959944d6d9c72434a42856ba}
       \field{sortinit}{E}
-      \field{sortinithash}{f615fb9c6fba11c6f962fb3fd599810e}
+      \field{sortinithash}{c554bd1a0b76ea92b9f105fe36d9c7b0}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -152,7 +152,7 @@ my $l2 = q|    \entry{L2}{book}{maxcitenames=3,maxbibnames=3,maxsortnames=3,maxi
 
 my $l3 = q|    \entry{L3}{book}{blah=10}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,hash=490250da1f3b92580d97563dc96c6c84}{%
+        {{un=0,uniquepart=base,hash=490250da1f3b92580d97563dc96c6c84}{%
            family={Bluntford},
            familyi={B\bibinitperiod},
            given={Bunty},
@@ -169,7 +169,7 @@ my $l3 = q|    \entry{L3}{book}{blah=10}
       \strng{authornamehash}{490250da1f3b92580d97563dc96c6c84}
       \strng{authorfullhash}{490250da1f3b92580d97563dc96c6c84}
       \field{sortinit}{B}
-      \field{sortinithash}{276475738cc058478c1677046f857703}
+      \field{sortinithash}{8de16967003c7207dae369d874f1456e}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -182,11 +182,11 @@ my $l3 = q|    \entry{L3}{book}{blah=10}
     \endentry
 |;
 
-ok(Biber::Config->getblxoption('uniquename') == 1, "Single-valued option") ;
-is_deeply(Biber::Config->getblxoption('labelnamespec'), [ {content => 'author'} ], "Multi-valued options");
+ok(Biber::Config->getblxoption(undef,'uniquename') eq 'init', "Single-valued option") ;
+is_deeply(Biber::Config->getblxoption(undef,'labelnamespec'), [ {content => 'author'} ], "Multi-valued options");
 ok(Biber::Config->getoption('mincrossrefs') == 88, "Setting Biber options via control file");
-ok(Biber::Config->getblxoption('useprefix', 'book') == 1 , "Per-type single-valued options");
-is_deeply(Biber::Config->getblxoption('labelnamespec', 'book'), $bln, "Per-type multi-valued options");
+ok(Biber::Config->getblxoption(undef,'useprefix', 'book') == 1 , "Per-type single-valued options");
+is_deeply(Biber::Config->getblxoption(undef,'labelnamespec', 'book'), $bln, "Per-type multi-valued options");
 eq_or_diff($bibentries->entry('L1')->get_labeldate_info->{field}{year}, 'year', 'Global labelyear setting' ) ;
 eq_or_diff( $out->get_output_entry('L1', $main), $l1, 'Global labelyear setting - labelyear should be YEAR') ;
 eq_or_diff( $out->get_output_entry('L2', $main), $l2, 'Entry-local biblatex option mappings - 1') ;

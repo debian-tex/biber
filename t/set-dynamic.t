@@ -51,11 +51,11 @@ my $out = $biber->get_output_obj;
 my $string1 = q|    \entry{DynSet}{set}{}
       \set{Dynamic1,Dynamic2,Dynamic3}
       \field{sortinit}{1}
-      \field{sortinithash}{2174f786c6195e7fe2ee1c229b416e29}
+      \field{sortinithash}{50c6687d7fc80f50136d75228e3c59ba}
     \endentry
 |;
 
-my $string2 = q|    \entry{Dynamic1}{book}{}
+my $string2 = q|    \entry{Dynamic1}{book}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
       \inset{DynSet}
       \name{author}{1}{}{%
         {{hash=252caa7921a061ca92087a1a52f15b78}{%
@@ -71,7 +71,7 @@ my $string2 = q|    \entry{Dynamic1}{book}{}
       \strng{authornamehash}{252caa7921a061ca92087a1a52f15b78}
       \strng{authorfullhash}{252caa7921a061ca92087a1a52f15b78}
       \field{sortinit}{8}
-      \field{sortinithash}{07edf88d4ea82509b9c4b4d13f41c452}
+      \field{sortinithash}{1b24cab5087933ef0826a7cd3b99e994}
       \field{labeldatesource}{year}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
@@ -82,7 +82,7 @@ my $string2 = q|    \entry{Dynamic1}{book}{}
     \endentry
 |;
 
-my $string3 = q|    \entry{Dynamic2}{book}{}
+my $string3 = q|    \entry{Dynamic2}{book}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
       \inset{DynSet}
       \name{author}{1}{}{%
         {{hash=894a5fe6de820f5dcce84a65581667f4}{%
@@ -98,7 +98,7 @@ my $string3 = q|    \entry{Dynamic2}{book}{}
       \strng{authornamehash}{894a5fe6de820f5dcce84a65581667f4}
       \strng{authorfullhash}{894a5fe6de820f5dcce84a65581667f4}
       \field{sortinit}{9}
-      \field{sortinithash}{1dd72ab054147731c9d824b49aba0534}
+      \field{sortinithash}{54047ffb55bdefa0694bbd554c1b11a0}
       \field{labeldatesource}{year}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
@@ -108,7 +108,7 @@ my $string3 = q|    \entry{Dynamic2}{book}{}
     \endentry
 |;
 
-my $string4 = q|    \entry{Dynamic3}{book}{}
+my $string4 = q|    \entry{Dynamic3}{book}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
       \inset{DynSet}
       \name{author}{1}{}{%
         {{hash=fc3cc97631ceaecdde2aee6cc60ab42b}{%
@@ -124,7 +124,7 @@ my $string4 = q|    \entry{Dynamic3}{book}{}
       \strng{authornamehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{authorfullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \field{sortinit}{1}
-      \field{sortinithash}{2174f786c6195e7fe2ee1c229b416e29}
+      \field{sortinithash}{50c6687d7fc80f50136d75228e3c59ba}
       \field{labeldatesource}{year}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
@@ -151,7 +151,8 @@ my $string5 = q|    \entry{Dynamic3}{book}{}
       \strng{authornamehash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \strng{authorfullhash}{fc3cc97631ceaecdde2aee6cc60ab42b}
       \field{sortinit}{1}
-      \field{sortinithash}{2174f786c6195e7fe2ee1c229b416e29}
+      \field{sortinithash}{50c6687d7fc80f50136d75228e3c59ba}
+      \field{extradatescope}{labelyear}
       \field{labeldatesource}{year}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}

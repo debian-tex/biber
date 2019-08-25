@@ -103,31 +103,27 @@ sub relclone {
           $logger->debug("Created new related clone for '$relkey' with clone key '$clonekey'");
         }
 
-        # *datesplit is a special non datafield and needs to be copied for things like era
-        # output
-        foreach my $df ($dmh->{datefields}->@*) {
-          $df =~ s/date$//;
-          if (my $ds = $self->get_field("${df}datesplit")) {
-            $relclone->set_field("${df}datesplit", $ds);
-          }
-        }
-
         # Set related clone options
         if (my $relopts = $self->get_field('relatedoptions')) {
           # Check if this clone was also directly cited. If so, set skipbib/skipbiblist
           # if they are unset as otherwise this entry would appear twice in bibliographies
           # but with different keys.
           if ($section->has_citekey($relkey)) {
-            $relopts = remove_entry_options($relopts, {skipbib => 1, skipbiblist => 1});
-            push @$relopts, ('skipbib=true', 'skipbiblist=true');
+            $relopts = merge_entry_options($relopts, ['skipbib', 'skipbiblist']);
           }
-          process_entry_options($clonekey, $relopts);
+
+          process_entry_options($clonekey, $relopts, $secnum);
           $relclone->set_datafield('options', $relopts);
         }
         else {
-          process_entry_options($clonekey, ['skiplab','skipbiblist','uniquename=0','uniquelist=0']);
-          # Preserve options already in the clone but add 'dataonly'
-          $relclone->set_datafield('options', [ 'dataonly', @{$relclone->get_datafield('options') || []} ]);
+          # related clone needs its own options plus all the dataonly opts, any conflicts and
+          # explicit options win
+
+          my $relopts = merge_entry_options(['skipbib', 'skiplab','skipbiblist','uniquename=false','uniquelist=false'], $relentry->get_field('options'));
+
+          # Preserve options already in the clone but add 'dataonly' options
+          process_entry_options($clonekey, $relopts, $secnum);
+          $relclone->set_datafield('options', $relopts);
         }
 
         $section->bibentries->add_entry($clonekey, $relclone);
@@ -163,15 +159,32 @@ sub relclone {
 sub clone {
   my ($self, $newkey) = @_;
   my $new = new Biber::Entry;
+  my $dmh = Biber::Config->get_dm_helpers;
+
   while (my ($k, $v) = each(%{$self->{datafields}})) {
     $new->{datafields}{$k} = $v;
   }
   while (my ($k, $v) = each(%{$self->{origfields}})) {
     $new->{origfields}{$k} = $v;
   }
+
+  # clone derived date fields
+  foreach my $df ($dmh->{datefields}->@*) {
+    $df =~ s/date$//;
+    foreach my $dsf ('dateunspecified', 'datesplit', 'datejulian',
+                     'enddatejulian', 'dateapproximate', 'enddateapproximate',
+                     'dateuncertain', 'enddateuncertain', 'season', 'endseason',
+                     'era', 'endera') {
+      if (my $ds = $self->{derivedfields}{"$df$dsf"}) {
+        $new->{derivedfields}{"$df$dsf"} = $ds;
+      }
+    }
+  }
+
   # Need to add entrytype and datatype
   $new->{derivedfields}{entrytype} = $self->{derivedfields}{entrytype};
   $new->{derivedfields}{datatype} = $self->{derivedfields}{datatype};
+
   # put in key if specified
   if ($newkey) {
     $new->{derivedfields}{citekey} = $newkey;
@@ -645,7 +658,7 @@ sub inherit_from {
 
   my $type        = $self->get_field('entrytype');
   my $parenttype  = $parent->get_field('entrytype');
-  my $inheritance = Biber::Config->getblxoption('inheritance');
+  my $inheritance = Biber::Config->getblxoption(undef, 'inheritance');
   my %processed;
   # get defaults
   my $defaults = $inheritance->{defaults};
@@ -672,7 +685,7 @@ sub inherit_from {
           ($type_pair->{target} eq '*' or $type_pair->{target} eq $type)) {
         foreach my $field ($inherit->{field}->@*) {
           # Skip for fields in the per-entry noinerit datafield set
-          if (my $niset = Biber::Config->getblxoption('noinherit', undef, $target_key) and
+          if (my $niset = Biber::Config->getblxoption($secnum, 'noinherit', undef, $target_key) and
              exists($field->{target})) {
             if (first {$field->{target} eq $_} $DATAFIELD_SETS{$niset}->@*) {
               next;
@@ -732,7 +745,7 @@ sub inherit_from {
 
     foreach my $field (@fields) {
       # Skip for fields in the per-entry noinherit datafield set
-      if (my $niset = Biber::Config->getblxoption('noinherit', undef, $target_key)) {
+      if (my $niset = Biber::Config->getblxoption($secnum, 'noinherit', undef, $target_key)) {
         if (first {$field eq $_} $DATAFIELD_SETS{$niset}->@*) {
           next;
         }
@@ -796,7 +809,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

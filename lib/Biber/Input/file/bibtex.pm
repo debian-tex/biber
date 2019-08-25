@@ -66,6 +66,7 @@ my $handlers = {
                                           },
                             'xsv'      => {
                                            'entrykey' => \&_xsv,
+                                           'literal'  => \&_xsv,
                                            'keyword'  => \&_xsv,
                                            'option'   => \&_xsv,
                                           }
@@ -104,14 +105,26 @@ sub TBSIG {
 =cut
 
 sub extract_entries {
-  my ($source, $encoding, $keys) = @_;
+  my ($filename, $encoding, $keys) = @_;
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
-  my $filename;
   my @rkeys = $keys->@*;
-  my $tf; # Up here so that the temp file has enough scope to survive until we've used it
+
   if ($logger->is_trace()) {# performance tune
     $logger->trace("Entering extract_entries() in driver 'bibtex'");
+  }
+
+  # Check for empty files because they confuse btparse
+  unless (-s $filename) { # File is empty
+    biber_warn("Data source '$filename' is empty, ignoring");
+    return @rkeys;
+  }
+
+  # Check for files with no macros - they also confuse btparse
+  my $tbuf = File::Slurper::read_text($filename, $encoding);
+  unless ($tbuf =~ m/\@/) {
+    biber_warn("Data source '$filename' contains no BibTeX entries/macros, ignoring");
+    return @rkeys;
   }
 
   # Get a reference to the correct sourcemap sections, if they exist
@@ -130,82 +143,6 @@ sub extract_entries {
     # Driver default maps
     if (my $m = first {$_->{datatype} eq 'bibtex' and $_->{level} eq 'driver'} Biber::Config->getoption('sourcemap')->@* ) {
       push $smaps->@*, $m;
-    }
-  }
-
-  # If it's a remote data file, fetch it first
-  if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms) {
-    $logger->info("Data source '$source' is a remote BibTeX data source - fetching ...");
-    if (my $cf = $REMOTE_MAP{$source}) {
-      $logger->info("Found '$source' in remote source cache");
-      $filename = $cf;
-    }
-    else {
-      if ($1) { # HTTPS/FTPS
-        # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
-        # We have to explicitly set the cert path because otherwise the https module
-        # can't find the .pem when PAR::Packer'ed
-        # Have to explicitly try to require Mozilla::CA here to get it into %INC below
-        # It may, however, have been removed by some biber unpacked dists
-        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
-            not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
-            not defined(Biber::Config->getoption('ssl-nointernalca')) and
-            eval {require Mozilla::CA}) {
-          # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
-          (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
-          $dir =~ s/\/$//;      # splitpath sometimes leaves a trailing '/'
-          $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
-        }
-
-        # fallbacks for, e.g., linux
-        unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
-          foreach my $ca_bundle (qw{
-                                     /etc/ssl/certs/ca-certificates.crt
-                                     /etc/pki/tls/certs/ca-bundle.crt
-                                     /etc/ssl/ca-bundle.pem
-                                 }) {
-            next if ! -e $ca_bundle;
-            $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
-            last;
-          }
-          foreach my $ca_path (qw{
-                                   /etc/ssl/certs/
-                                   /etc/pki/tls/
-                               }) {
-            next if ! -d $ca_path;
-            $ENV{PERL_LWP_SSL_CA_PATH} = $ca_path;
-            last;
-          }
-        }
-
-        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
-          $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
-        }
-
-        require LWP::Protocol::https;
-      }
-      require LWP::Simple;
-      $tf = File::Temp->new(TEMPLATE => 'biber_remote_data_source_XXXXX',
-                            DIR => $Biber::MASTER->biber_tempdir,
-                            SUFFIX => '.bib');
-
-      # Pretend to be a browser otherwise some sites refuse the default LWP UA string
-      $LWP::Simple::ua->agent('Mozilla/5.0');
-
-      my $retcode = LWP::Simple::getstore($source, $tf->filename);
-      unless (LWP::Simple::is_success($retcode)) {
-        biber_error("Could not fetch '$source' (HTTP code: $retcode)");
-      }
-      $filename = $tf->filename;
-      # cache any remote so it persists and so we don't fetch it again
-      $REMOTE_MAP{$source} = $filename;
-    }
-  }
-  else {
-    # Need to get the filename even if using cache so we increment
-    # the filename count for preambles at the bottom of this sub
-    unless ($filename = locate_biber_file($source)) {
-      biber_error("Cannot find '$source'!")
     }
   }
 
@@ -257,7 +194,7 @@ sub extract_entries {
       # Record a key->datasource name mapping for error reporting
       $section->set_keytods($key, $filename);
 
-      unless (create_entry($key, $entry, $source, $smaps, \@rkeys)) {
+      unless (create_entry($key, $entry, $filename, $smaps, \@rkeys)) {
         # if create entry returns false, remove the key from the cache
         $cache->{orig_key_order}{$filename}->@* = grep {$key ne $_} $cache->{orig_key_order}{$filename}->@*;
       }
@@ -310,7 +247,7 @@ sub extract_entries {
 
         # Skip creation if it's already been done, for example, via a citekey alias
         unless ($section->bibentries->entry_exists($wanted_key)) {
-          create_entry($wanted_key, $entry, $source, $smaps, \@rkeys);
+          create_entry($wanted_key, $entry, $filename, $smaps, \@rkeys);
         }
         # found a key, remove it from the list of keys we want
         @rkeys = grep {$wanted_key ne $_} @rkeys;
@@ -326,7 +263,7 @@ sub extract_entries {
         # the bibliography (minXrefs will take care of adding it there if necessary).
         unless ($section->bibentries->entry_exists($rk)) {
           if (my $entry = $cache->{data}{GLOBALDS}{$rk}) {# Look in cache of all datasource keys
-            create_entry($rk, $entry, $source, $smaps, \@rkeys);
+            create_entry($rk, $entry, $filename, $smaps, \@rkeys);
             if ($section->has_cited_citekey($wanted_key)) {
               $section->add_citekeys($rk);
             }
@@ -359,7 +296,12 @@ sub extract_entries {
       next if /overriding\sexisting\sdefinition\sof\smacro/; # ignore macro redefs
       if (/error:/) {
         chomp;
-        biber_error("BibTeX subsystem: $_");
+        if (/skipping\sto\snext\s"\@"/) {
+          biber_error("BibTeX subsystem: $_");
+        }
+        else {
+          biber_error("BibTeX subsystem: $_");
+        }
       }
       elsif (/warning:/) {
         chomp;
@@ -415,7 +357,7 @@ sub create_entry {
       $smap->{map_overwrite} = $smap->{map_overwrite} // 0; # default
       my $level = $smap->{level};
 
-    MAP: foreach my $map ($smap->{map}->@*) {
+      foreach my $map ($smap->{map}->@*) {
 
         # Skip if this map element specifies a particular refsection and it is not this one
         if (exists($map->{refsection})) {
@@ -441,7 +383,7 @@ sub create_entry {
         # Logic is "-(-P v Q)" which is equivalent to "P & -Q" but -Q is an array check so
         # messier to write than Q
         unless (not exists($map->{per_datasource}) or
-                first {$_->{content} eq $datasource} $map->{per_datasource}->@*) {
+                first {$_->{content} eq (File::Spec->splitpath($datasource))[2]} $map->{per_datasource}->@*) {
           next;
         }
 
@@ -465,7 +407,7 @@ sub create_entry {
           }
         }
 
-        foreach my $maploop (@maploop) {
+      MAP: foreach my $maploop (@maploop) {
           my $MAPUNIQVAL;
           # loop over mapping steps
           foreach my $step ($map->{map_step}->@*) {
@@ -772,29 +714,33 @@ sub create_entry {
                   }
                 }
 
-                  # If append is set, keep the original value and append the new
-                  my $orig = $step->{map_append} ? $etarget->get($field) : '';
+                my $orig = '';
+                # If append or appendstrict is set, keep the original value
+                # and append the new.
+                if ($step->{map_append} or $step->{map_appendstrict}) {
+                  $orig = $etarget->get($field) || '';
+                }
 
                 if ($step->{map_origentrytype}) {
                   next unless $last_type;
                   if ($logger->is_debug()) { # performance tune
                     $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field '$field' to '${orig}${last_type}'");
                   }
-                  $etarget->set($field, encode('UTF-8', NFC($orig . $last_type)));
+                  $etarget->set($field, encode('UTF-8', NFC(appendstrict_check($step, $orig,$last_type))));
                 }
                 elsif ($step->{map_origfieldval}) {
                   next unless $last_fieldval;
                   if ($logger->is_debug()) { # performance tune
                     $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field '$field' to '${orig}${last_fieldval}'");
                   }
-                  $etarget->set($field, encode('UTF-8', NFC($orig . $last_fieldval)));
+                  $etarget->set($field, encode('UTF-8', NFC(appendstrict_check($step, $orig, $last_fieldval))));
                 }
                 elsif ($step->{map_origfield}) {
                   next unless $last_field;
                   if ($logger->is_debug()) { # performance tune
                     $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field '$field' to '${orig}${last_field}'");
                   }
-                  $etarget->set($field, encode('UTF-8', NFC($orig . $last_field)));
+                  $etarget->set($field, encode('UTF-8', NFC(appendstrict_check($step, $orig, $last_field))));
                 }
                 else {
                   my $fv = maploopreplace($step->{map_field_value}, $maploop);
@@ -805,7 +751,7 @@ sub create_entry {
                   if ($logger->is_debug()) { # performance tune
                     $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field '$field' to '${orig}${fv}'");
                   }
-                  $etarget->set($field, encode('UTF-8', NFC($orig . $fv)));
+                  $etarget->set($field, encode('UTF-8', NFC(appendstrict_check($step, $orig, $fv))));
                 }
               }
             }
@@ -857,17 +803,22 @@ sub _create_entry {
       my $value = $e->get($f);
       my $Srx = Biber::Config->getoption('xsvsep');
       my $S = qr/$Srx/;
-      process_entry_options($k, [ split(/$S/, $value) ]);
+      process_entry_options($k, [ split(/$S/, $value) ], $secnum);
     }
 
     # Now run any defined handler
     if ($dm->is_field($f)) {
-      my $handler = _get_handler($f);
-      my $v = $handler->($bibentry, $e, $f, $k);
-
-      # Don't set datafields with empty contents like 'language = {}'
-      if (defined($v) and $e->get($f) ne '') {
-        $bibentry->set_datafield($f, $v);
+      if ($e->get($f) ne '') { # Check the raw field in case we have e.g. date = {}
+        my $handler = _get_handler($f);
+        my $v = $handler->($bibentry, $e, $f, $k);
+        if (defined($v)) {
+          if ($v eq 'BIBER_SKIP_ENTRY') {# field data is bad enough to cause entry to be skipped
+            return;
+          }
+          else {
+            $bibentry->set_datafield($f, $v);
+          }
+        }
       }
     }
     elsif (Biber::Config->getoption('validate_datamodel')) {
@@ -1058,11 +1009,12 @@ sub _range {
 
 # Names
 sub _name {
-  my ($bibentry, $entry, $field, $key) = @_;
+  my ($be, $entry, $field, $key) = @_;
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
   my $value = $entry->get($field);
   my $xnamesep = Biber::Config->getoption('xnamesep');
+  my $bee = $be->get_field('entrytype');
 
   my @tmp = Text::BibTeX::split_list(NFC($value),# Unicode NFC boundary
                                      Biber::Config->getoption('namesep'),
@@ -1070,9 +1022,6 @@ sub _name {
                                      undef,
                                      undef,
                                      {binmode => 'utf-8', normalization => 'NFD'});
-
-  my $useprefix = Biber::Config->getblxoption('useprefix', $bibentry->get_field('entrytype'), $key);
-  my $un = Biber::Config->getblxoption('uniquename', $bibentry->get_field('entrytype'), $key);
 
   my $names = Biber::Entry::Names->new();
 
@@ -1082,12 +1031,8 @@ sub _name {
     if ($name =~ m/^(\S+)\s*$xnamesep\s*(\S+)?$/) {
       my $nlo = lc($1);
       my $nlov = $2 // 1; # bare options are just boolean numerals
-      if ($CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->{$nlo}) {
-        if ($CONFIG_OPTTYPE_BIBLATEX{$nlo} and
-            $CONFIG_OPTTYPE_BIBLATEX{$nlo} eq 'boolean') {
-          $nlov = map_boolean($nlov, 'tonum');
-      }
-        my $oo = expand_option($nlo, $nlov, $CONFIG_BIBLATEX_NAMELIST_OPTIONS{$nlo}->{INPUT});
+      if (exists($CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}{$nlo})) {
+        my $oo = expand_option_input($nlo, $nlov, $CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{INPUT});
 
         foreach my $o ($oo->@*) {
           my $method = 'set_' . $o->[0];
@@ -1099,9 +1044,9 @@ sub _name {
 
     # Consecutive "and" causes Text::BibTeX::Name to segfault
     unless ($name) {
-      biber_warn("Name in key '$key' is empty (probably consecutive 'and'): skipping name", $bibentry);
+      biber_warn("Name in key '$key' is empty (probably consecutive 'and'): skipping entry '$key'", $be);
       $section->del_citekey($key);
-      next;
+      return 'BIBER_SKIP_ENTRY';
     }
 
     my $nps = join('|', $dm->get_constant_value('nameparts'));
@@ -1111,14 +1056,10 @@ sub _name {
     my $xnamesep = Biber::Config->getoption('xnamesep');
     if ($name =~ m/(?:$nps)\s*$xnamesep/ and not Biber::Config->getoption('noxname')) {
       # Skip names that don't parse for some reason
-      # uniquename defaults to 0 just in case we are in tool mode otherwise there are spurious
-      # uninitialised warnings
+      # uniquename defaults to 'false' just in case we are in tool mode otherwise
+      # there are spurious uninitialised warnings
 
-      next unless $no = parsename_x($name,
-                                    $field,
-                                    {useprefix => $useprefix,
-                                     uniquename => ($un // 0)},
-                                    $key);
+      next unless $no = parsename_x($name, $field, $key);
     }
     else { # Normal bibtex name format
       # Check for malformed names in names which aren't completely escaped
@@ -1126,16 +1067,16 @@ sub _name {
       unless ($name =~ m/\A\{\X+\}\z/xms) { # Ignore these tests for escaped names
         my @commas = $name =~ m/,/g;
         if ($#commas > 1) {
-          biber_warn("Name \"$name\" has too many commas: skipping name", $bibentry);
+          biber_error("Name \"$name\" has too many commas, skipping entry '$key'", 1);
           $section->del_citekey($key);
-          next;
+          return 'BIBER_SKIP_ENTRY';
         }
 
         # Consecutive commas cause Text::BibTeX::Name to segfault
         if ($name =~ /,,/) {
-          biber_warn("Name \"$name\" is malformed (consecutive commas): skipping name", $bibentry);
+          biber_error("Name \"$name\" is malformed (consecutive commas): skipping entry '$key'", 1);
           $section->del_citekey($key);
-          next;
+          return 'BIBER_SKIP_ENTRY';
         }
       }
 
@@ -1485,10 +1426,9 @@ sub preprocess_file {
   # strip UTF-8 BOM if it exists - this just makes T::B complain about junk characters
   $buf =~ s/\A\x{feff}//;
 
-  # A MAC (CR only) format file with a comment in the first line will confuse
-  # Text::BibTeX as it will just see one comment line and find no entries
-  # So, if we find an initial comment line with a carriage return at the end, remove it.
-  $buf =~ s/\A\s*\%[^\r]+\r//ms;
+  # Normalise line breaks because libbtparse can't handle things like CR only
+  # in some circumstances
+  $buf =~ s/\R/\n/g;
 
   File::Slurper::write_text($ufilename, NFC($buf));# Unicode NFC boundary
 
@@ -1499,7 +1439,6 @@ sub preprocess_file {
   }
 
   File::Slurper::write_text($ufilename, NFC($lbuf));# Unicode NFC boundary
-
   return $ufilename;
 }
 
@@ -1623,6 +1562,13 @@ sub parsename {
   # hack robust initials code into btparse ...
   my $nd_namestr = strip_noinit($namestr);
 
+  # Now re-santise after the arbitrary regexps of the noinit removals
+  # leading and trailing whitespace
+  $nd_namestr =~ s/\A\s*|\s*\z//xms;
+
+  # Collapse internal whitespace
+  $nd_namestr =~ s/\s+|\\\s/ /g;
+
   # Make initials with ties in between work. btparse doesn't understand this so replace with
   # spaces - this is fine as we are just generating initials
   $nd_namestr =~ s/\.~\s*/. /g;
@@ -1693,7 +1639,7 @@ sub parsename {
 =cut
 
 sub parsename_x {
-  my ($namestr, $fieldname, $opts, $key) = @_;
+  my ($namestr, $fieldname, $key) = @_;
   my $xnamesep = Biber::Config->getoption('xnamesep');
   my %nps = map {$_ => 1} $dm->get_constant_value('nameparts');
 
@@ -1704,12 +1650,8 @@ sub parsename_x {
     $npn = lc($npn);
 
     # per-name options
-    if ($CONFIG_SCOPEOPT_BIBLATEX{NAME}->{$npn}) {
-      if ($CONFIG_OPTTYPE_BIBLATEX{$npn} and
-          $CONFIG_OPTTYPE_BIBLATEX{$npn} eq 'boolean') {
-        $npv = map_boolean($npv, 'tonum');
-      }
-      my $oo = expand_option($npn, $npv, $CONFIG_BIBLATEX_NAME_OPTIONS{$npn}->{INPUT});
+    if (exists($CONFIG_SCOPEOPT_BIBLATEX{NAME}{$npn})) {
+      my $oo = expand_option_input($npn, $npv, $CONFIG_BIBLATEX_OPTIONS{NAME}{$npn}{INPUT});
 
       foreach my $o ($oo->@*) {
         $pernameopts{$o->[0]} = $o->[1];
@@ -1871,7 +1813,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

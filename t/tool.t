@@ -1,7 +1,7 @@
 # -*- cperl -*-
 use strict;
 use warnings;
-use Test::More tests => 10;
+use Test::More tests => 12;
 use Test::Differences;
 unified_diff;
 
@@ -12,6 +12,7 @@ use Biber::Output::bibtex;
 use Log::Log4perl;
 use Unicode::Normalize;
 use XML::LibXML;
+use Cwd 'abs_path';
 
 no warnings 'utf8';
 use utf8;
@@ -23,7 +24,9 @@ my $conf = 'tool-testsort.conf';
 my $CFxmlschema = XML::LibXML::RelaxNG->new(location => '../../data/schemata/config.rng');
 
 # Set up Biber object
-my $biber = Biber->new(configfile => $conf);
+my $biber = Biber->new(tool => 1,
+                       configtool => abs_path('../../data/biber-tool.conf'),
+                       configfile => $conf);
 my $LEVEL = 'ERROR';
 my $l4pconf = qq|
     log4perl.category.main                             = $LEVEL, Screen
@@ -42,7 +45,6 @@ $biber->set_output_obj(Biber::Output::bibtex->new());
 # relying on here for tests
 
 # Biber options
-Biber::Config->setoption('tool', 1);
 Biber::Config->setoption('output_align', '1');
 Biber::Config->setoption('output_resolve_xdata', 1);
 Biber::Config->setoption('output_resolve_crossrefs', 1);
@@ -147,14 +149,32 @@ my $m1 = q|@ARTICLE{m1,
 
 |;
 
+my $badcr1 = q|@BOOK{badcr1,
+  AUTHOR = {Foo},
+  DATE   = {2019},
+  TITLE  = {Foo},
+}
+
+|;
+
+my $badcr2 = q|@BOOK{badcr2,
+  AUTHOR = {Bar},
+  DATE   = {2019},
+  TITLE  = {Bar},
+}
+
+|;
+
 # NFD here because we are testing internals here and all internals expect NFD
 eq_or_diff(encode_utf8($out->get_output_entry(NFD('i3Š'))), encode_utf8($t1), 'tool mode - 1');
 ok(is_undef($out->get_output_entry('loh')), 'tool mode - 2');
 eq_or_diff($out->get_output_entry('xd1',), $t2, 'tool mode - 3');
 eq_or_diff($out->get_output_entry('b1',), $t3, 'tool mode - 4');
 eq_or_diff($out->get_output_entry('dt1',), $t4, 'tool mode - 5');
-is_deeply($main->get_keys, ['b1', 'macmillan', 'dt1', 'm1', 'macmillan:pub', 'macmillan:loc', 'mv1', NFD('i3Š'), 'xd1'], 'tool mode sorting');
+is_deeply($main->get_keys, ['b1', 'macmillan', 'dt1', 'm1', 'macmillan:pub', 'macmillan:loc', 'mv1', NFD('i3Š'), 'badcr2', 'xd1', 'badcr1'], 'tool mode sorting');
 eq_or_diff($out->get_output_comments, $tc1, 'tool mode - 6');
+eq_or_diff($out->get_output_entry('badcr1',), $badcr1, 'tool mode - 7');
+eq_or_diff($out->get_output_entry('badcr2',), $badcr2, 'tool mode - 8');
 
 Biber::Config->setoption('output_xname', 1);
 Biber::Config->setoption('output_xnamesep', ':');

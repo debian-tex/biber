@@ -39,9 +39,9 @@ Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 Biber::Config->setoption('validate_datamodel', 1);
 
 # Biblatex options
-Biber::Config->setblxoption('labeldatespec', [ {content => 'date', type => 'field'} ]);
-Biber::Config->setblxoption('julian', 1);
-Biber::Config->setblxoption('julianstart', '0001-01-01');
+Biber::Config->setblxoption(undef, 'labeldatespec', [ {content => 'date', type => 'field'} ]);
+Biber::Config->setblxoption(undef, 'julian', 1);
+Biber::Config->setblxoption(undef, 'julianstart', '0001-01-01');
 
 # Now generate the information
 $biber->prepare;
@@ -88,7 +88,7 @@ my $l13c = q|    \entry{L13}{book}{}
       \strng{authorfullhash}{8c77336299b25bdada7bf8038f46722f}
       \field{extraname}{3}
       \field{sortinit}{D}
-      \field{sortinithash}{2ef1bd9a78cc71eb74d7231c635177b8}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -126,7 +126,7 @@ my $l14 = q|    \entry{L14}{book}{}
       \strng{authorfullhash}{8c77336299b25bdada7bf8038f46722f}
       \field{extraname}{4}
       \field{sortinit}{D}
-      \field{sortinithash}{2ef1bd9a78cc71eb74d7231c635177b8}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
       \field{extradate}{3}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
@@ -168,7 +168,7 @@ my $l15 = q|    \entry{L15}{book}{}
       \strng{authorfullhash}{8c77336299b25bdada7bf8038f46722f}
       \field{extraname}{12}
       \field{sortinit}{D}
-      \field{sortinithash}{2ef1bd9a78cc71eb74d7231c635177b8}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
       \field{extradate}{4}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
@@ -201,7 +201,7 @@ my $l16 = q|    \entry{L16}{proceedings}{}
       \strng{editorfullhash}{8c77336299b25bdada7bf8038f46722f}
       \field{extraname}{13}
       \field{sortinit}{D}
-      \field{sortinithash}{2ef1bd9a78cc71eb74d7231c635177b8}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
       \field{extradate}{7}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{event}
@@ -240,7 +240,7 @@ my $l17 = q|    \entry{L17}{proceedings}{}
       \strng{editorfullhash}{8c77336299b25bdada7bf8038f46722f}
       \field{extraname}{5}
       \field{sortinit}{D}
-      \field{sortinithash}{2ef1bd9a78cc71eb74d7231c635177b8}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
       \field{extradate}{4}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
@@ -299,7 +299,7 @@ my $l17c = q|    \entry{L17}{proceedings}{}
       \strng{editorfullhash}{8c77336299b25bdada7bf8038f46722f}
       \field{extraname}{5}
       \field{sortinit}{D}
-      \field{sortinithash}{2ef1bd9a78cc71eb74d7231c635177b8}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{orig}
       \field{labelnamesource}{editor}
@@ -357,7 +357,7 @@ my $l17e = q|    \entry{L17}{proceedings}{}
       \strng{editorfullhash}{8c77336299b25bdada7bf8038f46722f}
       \field{extraname}{5}
       \field{sortinit}{D}
-      \field{sortinithash}{2ef1bd9a78cc71eb74d7231c635177b8}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{event}
       \field{labelnamesource}{editor}
@@ -416,7 +416,7 @@ eq_or_diff( $out->get_output_entry('L14', $main), $l14, 'Date values test 14 - l
 eq_or_diff( $out->get_output_entry('L15', $main), $l15, 'Date values test 15 - labelyear should be undef, no DATE or YEAR') ;
 
 # reset options and regenerate information
-Biber::Config->setblxoption('labeldatespec', [ {content => 'date', type => 'field'},
+Biber::Config->setblxoption(undef,'labeldatespec', [ {content => 'date', type => 'field'},
                                                {content => 'eventdate', type => 'field'},
                                                {content => 'origdate', type => 'field'} ]);
 $bibentries->del_entry('L17');
@@ -430,7 +430,7 @@ eq_or_diff($bibentries->entry('L17')->get_labeldate_info->{field}{year}, 'year',
 eq_or_diff($out->get_output_entry('L17', $main), $l17, 'Date values test 17a - labelyear = YEAR value when ENDYEAR is the same and ORIGYEAR is also present' ) ;
 
 # reset options and regenerate information
-Biber::Config->setblxoption('labeldatespec', [ {content => 'origdate', type => 'field'},
+Biber::Config->setblxoption(undef,'labeldatespec', [ {content => 'origdate', type => 'field'},
                                                {content => 'date', type => 'field'},
                                                {content => 'eventdate', type => 'field'} ]);
 $bibentries->del_entry('L17');
@@ -441,7 +441,7 @@ eq_or_diff($bibentries->entry('L17')->get_labeldate_info->{field}{year}, 'origye
 eq_or_diff($out->get_output_entry('L17', $main), $l17c, 'Date values test 17c - labelyear = ORIGYEAR value when ENDORIGYEAR is the same and YEAR is also present' ) ;
 
 # reset options and regenerate information
-Biber::Config->setblxoption('labeldatespec', [ {content => 'eventdate', type => 'field'},
+Biber::Config->setblxoption(undef,'labeldatespec', [ {content => 'eventdate', type => 'field'},
                                                {content => 'date', type => 'field'},
                                                {content => 'origdate', type => 'field'} ], 'ENTRYTYPE', 'proceedings');
 $bibentries->del_entry('L17');
@@ -453,7 +453,7 @@ eq_or_diff($bibentries->entry('L17')->get_labeldate_info->{field}{source}, 'even
 eq_or_diff($out->get_output_entry('L17', $main), $l17e, 'Date values test 17e - labelyear = ORIGYEAR-ORIGENDYEAR' ) ;
 
 # reset options and regenerate information
-Biber::Config->setblxoption('labeldatespec', [ {content => 'pubstate', type => 'field'} ], 'ENTRYTYPE', 'proceedings');
+Biber::Config->setblxoption(undef,'labeldatespec', [ {content => 'pubstate', type => 'field'} ], 'ENTRYTYPE', 'proceedings');
 
 $bibentries->del_entry('L17');
 $biber->prepare;
@@ -479,7 +479,7 @@ my $era1 = q|    \entry{era1}{article}{}
       \strng{authorfullhash}{556c8dba145b472e6a8598d506f7cbe2}
       \field{extraname}{9}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -512,7 +512,7 @@ my $era2 = q|    \entry{era2}{inproceedings}{}
       \strng{authorfullhash}{556c8dba145b472e6a8598d506f7cbe2}
       \field{extraname}{10}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -546,7 +546,7 @@ my $era3 = q|    \entry{era3}{inproceedings}{}
       \strng{authorfullhash}{556c8dba145b472e6a8598d506f7cbe2}
       \field{extraname}{11}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -580,7 +580,7 @@ my $era4 = q|    \entry{era4}{inproceedings}{}
       \strng{authorfullhash}{556c8dba145b472e6a8598d506f7cbe2}
       \field{extraname}{6}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -622,7 +622,7 @@ my $time1 = q|    \entry{time1}{article}{}
       \strng{authorfullhash}{556c8dba145b472e6a8598d506f7cbe2}
       \field{extraname}{2}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -671,7 +671,7 @@ my $range1 = q|    \entry{range1}{inproceedings}{}
       \strng{authorfullhash}{556c8dba145b472e6a8598d506f7cbe2}
       \field{extraname}{7}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradate}{1}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
@@ -712,7 +712,7 @@ my $range2 = q|    \entry{range2}{inproceedings}{}
       \strng{authorfullhash}{556c8dba145b472e6a8598d506f7cbe2}
       \field{extraname}{8}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradate}{2}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
@@ -753,7 +753,7 @@ my $season1 = q|    \entry{season1}{inproceedings}{}
       \strng{authorfullhash}{556c8dba145b472e6a8598d506f7cbe2}
       \field{extraname}{1}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -785,7 +785,7 @@ my $unspec1 = q|    \entry{unspec1}{inproceedings}{}
       \strng{authorfullhash}{556c8dba145b472e6a8598d506f7cbe2}
       \field{extraname}{4}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -838,7 +838,7 @@ my $unspec2 = q|    \entry{unspec2}{article}{}
       \strng{authorfullhash}{556c8dba145b472e6a8598d506f7cbe2}
       \field{extraname}{3}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -858,7 +858,7 @@ my $unspec2 = q|    \entry{unspec2}{article}{}
 |;
 
 
-Biber::Config->setblxoption('labeldatespec', [ {content => 'date', type => 'field'},
+Biber::Config->setblxoption(undef,'labeldatespec', [ {content => 'date', type => 'field'},
                                                {content => 'eventdate', type => 'field'},
                                                {content => 'origdate', type => 'field'},
                                                {content => 'urldate', type => 'field'}

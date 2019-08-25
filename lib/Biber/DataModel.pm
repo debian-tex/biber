@@ -27,155 +27,163 @@ my $logger = Log::Log4perl::get_logger('main');
 =head2 new
 
     Initialize a Biber::DataModel object
+    We are passing in an array of datamodels as there may be more than one in tool
+    mode - the one from biber-tool.conf and modifications in a user .conf
+    Later takes precedence.
 
 =cut
 
 sub new {
   my $class = shift;
-  my $dm = shift;
+  my $dms = shift;
   my $self;
   $self = bless {}, $class;
 #  use Data::Dump;dd($dm);exit 0;
 
   # Early check for fatal datamodel errors
 
-  # Make sure dates are named *date. A lot of code relies on this.
-  foreach my $date (grep {$_->{datatype} eq 'date'} $dm->{fields}{field}->@*) {
-    unless ($date->{content} =~ m/date$/) {
-      biber_error("Fatal datamodel error: date field '" . $date->{content} . "' must end with string 'date'");
+  foreach my $dm ($dms->@*) {
+    # Make sure dates are named *date. A lot of code relies on this.
+    foreach my $date (grep {$_->{datatype} eq 'date'} $dm->{fields}{field}->@*) {
+      unless ($date->{content} =~ m/date$/) {
+        biber_error("Fatal datamodel error: date field '" . $date->{content} . "' must end with string 'date'");
+      }
     }
-  }
 
-  # Pull out legal entrytypes, fields and constraints and make lookup hash
-  # for quick tests later
-  foreach my $f ($dm->{fields}{field}->@*) {
+    # Pull out legal entrytypes, fields and constraints and make lookup hash
+    # for quick tests later
+    foreach my $f ($dm->{fields}{field}->@*) {
 
-    # In case of conflicts, we need to remove the previous definitions since
-    # later overrides earlier
-    if (my $previous = $self->{fieldsbyname}{$f->{content}}) {
+      # In case of conflicts, we need to remove the previous definitions since
+      # later overrides earlier
+      if (my $previous = $self->{fieldsbyname}{$f->{content}}) {
 
+        if ($f->{format}) {
+          $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{$previous->{format}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{$previous->{format}}->@*;
+        }
+        $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{'*'}->@* = grep {$_ ne $f->{content}} $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{'*'}->@*;
+        $self->{fieldsbyfieldtype}{$previous->{fieldtype}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbyfieldtype}{$previous->{fieldtype}}->@*;
+        $self->{fieldsbydatatype}{$previous->{datatype}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbydatatype}{$previous->{datatype}}->@*;
+        $self->{fieldsbyformat}{$previous->{'format'}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbyformat}{$previous->{format}}->@*;
+        delete $self->{fieldsbyname}{$f->{content}};
+      }
+
+      $self->{fieldsbyname}{$f->{content}} = {'fieldtype'   => $f->{fieldtype},
+                                              'datatype'    => $f->{datatype},
+                                              'format'      => $f->{format} || 'default'};
       if ($f->{format}) {
-        $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{$previous->{format}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{$previous->{format}}->@*;
+        push $self->{fieldsbytype}{$f->{fieldtype}}{$f->{datatype}}{$f->{format}}->@*, $f->{content};
       }
-      $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{'*'}->@* = grep {$_ ne $f->{content}} $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{'*'}->@*;
-      $self->{fieldsbyfieldtype}{$previous->{fieldtype}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbyfieldtype}{$previous->{fieldtype}}->@*;
-      $self->{fieldsbydatatype}{$previous->{datatype}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbydatatype}{$previous->{datatype}}->@*;
-      $self->{fieldsbyformat}{$previous->{'format'}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbyformat}{$previous->{format}}->@*;
-      delete $self->{fieldsbyname}{$f->{content}};
+      push $self->{fieldsbytype}{$f->{fieldtype}}{$f->{datatype}}{'*'}->@*, $f->{content};
+      push $self->{fieldsbyfieldtype}{$f->{fieldtype}}->@*, $f->{content};
+      push $self->{fieldsbydatatype}{$f->{datatype}}->@*, $f->{content};
+      push $self->{fieldsbyformat}{$f->{format} || 'default'}->@*, $f->{content};
+
+      # check null_ok
+      if ($f->{nullok}) {
+        $self->{fieldsbyname}{$f->{content}}{nullok} = 1;
+      }
+      # check skips - fields we don't want to output to .bbl
+      if ($f->{skip_output}) {
+        $self->{fieldsbyname}{$f->{content}}{skipout} = 1;
+      }
     }
 
-    $self->{fieldsbyname}{$f->{content}} = {'fieldtype'   => $f->{fieldtype},
-                                            'datatype'    => $f->{datatype},
-                                            'format'      => $f->{format} || 'default'};
-    if ($f->{format}) {
-      push $self->{fieldsbytype}{$f->{fieldtype}}{$f->{datatype}}{$f->{format}}->@*, $f->{content};
+    my $constants;
+    foreach my $constant ($dm->{constants}{constant}->@*) {
+      $self->{constants}{$constant->{name}}{type} = $constant->{type};
+      $self->{constants}{$constant->{name}}{value} = $constant->{content};
     }
-    push $self->{fieldsbytype}{$f->{fieldtype}}{$f->{datatype}}{'*'}->@*, $f->{content};
-    push $self->{fieldsbyfieldtype}{$f->{fieldtype}}->@*, $f->{content};
-    push $self->{fieldsbydatatype}{$f->{datatype}}->@*, $f->{content};
-    push $self->{fieldsbyformat}{$f->{format} || 'default'}->@*, $f->{content};
 
-    # check null_ok
-    if ($f->{nullok}) {
-      $self->{fieldsbyname}{$f->{content}}{nullok} = 1;
-    }
-    # check skips - fields we don't want to output to .bbl
-    if ($f->{skip_output}) {
-      $self->{fieldsbyname}{$f->{content}}{skipout} = 1;
-    }
-  }
+    # Get entrytpes from existing model (meaning, already processed XML model)
+    # or XML model. We need to do this in case we have two datamodel sources like
+    # a default tool mode config and a user config
+    foreach my $et (($dm->{entrytypes}{entrytype}->@*, keys $self->{entrytypesbyname}->%*)) {
+      my $es;
+      if (ref($et) eq 'HASH') { # from new config
+        $es = $et->{content};
 
-  my $constants;
-  foreach my $constant ($dm->{constants}{constant}->@*) {
-    $self->{constants}{$constant->{name}}{type} = $constant->{type};
-    $self->{constants}{$constant->{name}}{value} = $constant->{content};
-  }
-
-  my $leg_ents;
-  foreach my $et ($dm->{entrytypes}{entrytype}->@*) {
-    my $es = $et->{content};
-
-    # Skip output flag for certain entrytypes
-    if ($et->{skip_output}) {
-      $leg_ents->{$es}{skipout} = 1;
-    }
-    # fields for entrytypes
-    my $lfs;
-    foreach my $ef ($dm->{entryfields}->@*) {
-      # Found a section describing legal fields for entrytype
-      if (not exists($ef->{entrytype}) or
-          grep {$_->{content} eq $es} $ef->{entrytype}->@*) {
-        foreach my $f ($ef->{field}->@*) {
-          $lfs->{$f->{content}} = 1;
+        # Skip output flag for certain entrytypes
+        if ($et->{skip_output}) {
+          $self->{entrytypesbyname}{$es}{skipout} = 1;
         }
       }
-    }
+      else {
+        $es = $et; # from existing config
+      }
 
-    # constraints
-    my $constraints;
-    foreach my $cd ($dm->{constraints}->@*) {
-      # Found a section describing constraints for entrytype
-      if (not exists($cd->{entrytype}) or
-          grep {$_->{content} eq $es} $cd->{entrytype}->@*) {
-        foreach my $c ($cd->{constraint}->@*) {
-          if ($c->{type} eq 'mandatory') {
-            # field
-            foreach my $f ($c->{field}->@*) {
-              push $constraints->{mandatory}->@*, $f->{content};
-            }
-            # xor set of fields
-            # [ XOR, field1, field2, ... , fieldn ]
-            foreach my $fxor ($c->{fieldxor}->@*) {
-              my $xorset;
-              foreach my $f ($fxor->{field}->@*) {
-                push $xorset->@*, $f->{content};
-              }
-              unshift $xorset->@*, 'XOR';
-              push $constraints->{mandatory}->@*, $xorset;
-            }
-            # or set of fields
-            # [ OR, field1, field2, ... , fieldn ]
-            foreach my $for ($c->{fieldor}->@*) {
-              my $orset;
-              foreach my $f ($for->{field}->@*) {
-                push $orset->@*, $f->{content};
-              }
-              unshift $orset->@*, 'OR';
-              push $constraints->{mandatory}->@*, $orset;
-            }
+      # fields for entrytypes
+      foreach my $ef ($dm->{entryfields}->@*) {
+        # Found a section describing legal fields for entrytype
+        if (not exists($ef->{entrytype}) or
+            grep {$_->{content} eq $es} $ef->{entrytype}->@*) {
+          foreach my $f ($ef->{field}->@*) {
+            $self->{entrytypesbyname}{$es}{legal_fields}{$f->{content}} = 1;
           }
-          # Conditional constraints
-          # [ ANTECEDENT_QUANTIFIER
-          #   [ ANTECEDENT LIST ]
-          #   CONSEQUENT_QUANTIFIER
-          #   [ CONSEQUENT LIST ]
-          # ]
-          elsif ($c->{type} eq 'conditional') {
-            my $cond;
-            $cond->[0] = $c->{antecedent}{quant};
-            $cond->[1] = [ map { $_->{content} } $c->{antecedent}{field}->@* ];
-            $cond->[2] = $c->{consequent}{quant};
-            $cond->[3] = [ map { $_->{content} } $c->{consequent}{field}->@* ];
-            push $constraints->{conditional}->@*, $cond;
-          }
-          # data constraints
-          elsif ($c->{type} eq 'data') {
-            my $data;
-            $data->{fields} = [ map { $_->{content} } $c->{field}->@* ];
-            $data->{datatype} = $c->{datatype};
-            $data->{rangemin} = $c->{rangemin};
-            $data->{rangemax} = $c->{rangemax};
-            $data->{pattern} = $c->{pattern};
-            push $constraints->{data}->@*, $data;
+        }
+      }
+
+      # constraints
+      foreach my $cd ($dm->{constraints}->@*) {
+        # Found a section describing constraints for entrytype
+        if (not exists($cd->{entrytype}) or
+            grep {$_->{content} eq $es} $cd->{entrytype}->@*) {
+          foreach my $c ($cd->{constraint}->@*) {
+            if ($c->{type} eq 'mandatory') {
+              # field
+              foreach my $f ($c->{field}->@*) {
+                push $self->{entrytypesbyname}{$es}{constraints}{mandatory}->@*, $f->{content};
+              }
+              # xor set of fields
+              # [ XOR, field1, field2, ... , fieldn ]
+              foreach my $fxor ($c->{fieldxor}->@*) {
+                my $xorset;
+                foreach my $f ($fxor->{field}->@*) {
+                  push $xorset->@*, $f->{content};
+                }
+                unshift $xorset->@*, 'XOR';
+                push $self->{entrytypesbyname}{$es}{constraints}{mandatory}->@*, $xorset;
+              }
+              # or set of fields
+              # [ OR, field1, field2, ... , fieldn ]
+              foreach my $for ($c->{fieldor}->@*) {
+                my $orset;
+                foreach my $f ($for->{field}->@*) {
+                  push $orset->@*, $f->{content};
+                }
+                unshift $orset->@*, 'OR';
+                push $self->{entrytypesbyname}{$es}{constraints}{mandatory}->@*, $orset;
+              }
+            }
+            # Conditional constraints
+            # [ ANTECEDENT_QUANTIFIER
+            #   [ ANTECEDENT LIST ]
+            #   CONSEQUENT_QUANTIFIER
+            #   [ CONSEQUENT LIST ]
+            # ]
+            elsif ($c->{type} eq 'conditional') {
+              my $cond;
+              $cond->[0] = $c->{antecedent}{quant};
+              $cond->[1] = [ map { $_->{content} } $c->{antecedent}{field}->@* ];
+              $cond->[2] = $c->{consequent}{quant};
+              $cond->[3] = [ map { $_->{content} } $c->{consequent}{field}->@* ];
+              push $self->{entrytypesbyname}{$es}{constraints}{conditional}->@*, $cond;
+            }
+            # data constraints
+            elsif ($c->{type} eq 'data') {
+              my $data;
+              $data->{fields} = [ map { $_->{content} } $c->{field}->@* ];
+              $data->{datatype} = $c->{datatype};
+              $data->{rangemin} = $c->{rangemin};
+              $data->{rangemax} = $c->{rangemax};
+              $data->{pattern} = $c->{pattern};
+              push $self->{entrytypesbyname}{$es}{constraints}{data}->@*, $data;
+            }
           }
         }
       }
     }
-    $leg_ents->{$es}{legal_fields} = $lfs;
-    $leg_ents->{$es}{constraints} = $constraints;
   }
-  $self->{entrytypesbyname} = $leg_ents;
-
   # Calculate and store some convenient lists of DM fields. This is to save the expense
   # of constructing these in dense loops like entry processing/output.
   # Mostly only used for .bbl output since that's the most commonly used one and so
@@ -209,8 +217,7 @@ sub new {
                       dateparts    => [sort $self->get_fields_of_type('field', 'datepart')->@*],
                       xsv       => [sort grep
                                     {
-                                      not $self->field_is_skipout($_) and
-                                        not $self->get_datatype($_) eq 'keyword'
+                                      not $self->field_is_skipout($_)
                                     }
                                     $self->get_fields_of_fieldformat('xsv')->@*],
                       ranges    => [sort grep
@@ -629,12 +636,12 @@ sub check_mandatory_constraints {
   my $et = $be->get_field('entrytype');
   my $key = $be->get_field('citekey');
   my $ds = $section->get_keytods($key);
-
+# ["title", ["OR", "url", "doi", "eprint"]]
   foreach my $c ($self->{entrytypesbyname}{$et}{constraints}{mandatory}->@*) {
     if (ref($c) eq 'ARRAY') {
       # Exactly one of a set is mandatory
       if ($c->[0] eq 'XOR') {
-        my @fs = $c->@[1,-1]; # Lose the first element which is the 'XOR'
+        my @fs = $c->@[1..$#$c]; # Lose the first element which is the 'XOR'
         my $flag = 0;
         my $xorflag = 0;
         foreach my $of (@fs) {
@@ -655,7 +662,7 @@ sub check_mandatory_constraints {
       }
       # One or more of a set is mandatory
       elsif ($c->[0] eq 'OR') {
-        my @fs = $c->@[1,-1]; # Lose the first element which is the 'OR'
+        my @fs = $c->@[1..$#$c]; # Lose the first element which is the 'OR'
         my $flag = 0;
         foreach my $of (@fs) {
           if ($be->field_exists($of)) {
@@ -1448,7 +1455,7 @@ sub generate_bblxml_schema {
   $writer->emptyTag('data', 'type' => 'integer');
   $writer->endTag();    # attribute
   $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'uniquelist');
+  $writer->startTag('attribute', 'name' => 'ul');
   $writer->emptyTag('data', 'type' => 'integer');
   $writer->endTag();    # attribute
   $writer->endTag();    # optional
@@ -1479,7 +1486,7 @@ sub generate_bblxml_schema {
   $writer->endTag();    # optional
   $writer->emptyTag('attribute', 'name' => 'hash');
   $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'uniquename');
+  $writer->startTag('attribute', 'name' => 'un');
   $writer->emptyTag('data', 'type' => 'integer');
   $writer->endTag();    # attribute
   $writer->startTag('attribute', 'name' => 'uniquepart');
@@ -1491,7 +1498,7 @@ sub generate_bblxml_schema {
   $writer->emptyTag('attribute', 'name' => 'type');
   $writer->emptyTag('attribute', 'name' => 'initials');
   $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'uniquename');
+  $writer->emptyTag('attribute', 'name' => 'un');
   $writer->endTag();    # optional
   $writer->emptyTag('text');# text
   $writer->endTag();# namepart
@@ -1837,7 +1844,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

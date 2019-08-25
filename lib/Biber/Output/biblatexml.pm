@@ -145,8 +145,8 @@ sub set_output_entry {
 
   # Per-entry options
   my @entryoptions;
-  foreach my $opt (Biber::Config->getblxentryoptions($key)) {
-    push @entryoptions, $opt . '=' . Biber::Config->getblxoption($opt, undef, $key);
+  foreach my $opt (Biber::Config->getblxentryoptions($secnum, $key)) {
+    push @entryoptions, $opt . '=' . Biber::Config->getblxoption($secnum, $opt, undef, $key);
   }
   $xml->dataElement([$xml_prefix, 'options'], NFC(join(',', @entryoptions))) if @entryoptions;
 
@@ -168,14 +168,8 @@ sub set_output_entry {
         if (defined($nf->${\"get_$nlo"})) {
           my $nlov = $nf->${\"get_$nlo"};
 
-          if ($CONFIG_OPTTYPE_BIBLATEX{lc($nlo)} and
-              $CONFIG_OPTTYPE_BIBLATEX{lc($nlo)} eq 'boolean') {
-            $nlov = map_boolean($nlov, 'tostring');
-          }
-
-          my $oo = expand_option($nlo, $nlov, $CONFIG_BIBLATEX_NAMELIST_OPTIONS{$nlo}->{OUTPUT});
-          foreach my $o ($oo->@*) {
-            push @attrs, ($o->[0] => $o->[1]);
+          if ($CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{OUTPUT}) {
+            push @attrs, ($nlo => map_boolean($nlo, $nlov, 'tostring'));
           }
         }
       }
@@ -565,7 +559,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

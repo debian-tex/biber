@@ -342,13 +342,18 @@
                 <td colspan="2"><b><xsl:value-of select="./@type"/></b></td>
               </tr>
               <tr>
-                <td>Option</td><td>Datatype</td>
+                <td>Option</td><td>Datatype</td><td>Output by backend?</td><td>Input as by backend</td>
               </tr>
             </thead>
             <tbody>
               <xsl:for-each select="./bcf:option">
                 <xsl:sort select="./text()"/>
-                <tr><td><xsl:value-of select="./text()"/></td><td><xsl:value-of select="./@datatype"/></td></tr>
+                <tr>
+                  <td><xsl:value-of select="./text()"/></td>
+                  <td><xsl:value-of select="./@datatype"/></td>
+                  <td><xsl:if test="./@backendout"><xsl:text disable-output-escaping="yes">&amp;#10003;</xsl:text></xsl:if></td>
+                  <td><xsl:value-of select="./@backendin"/></td>
+                </tr>
               </xsl:for-each>
               </tbody>
           </table>
@@ -1278,7 +1283,7 @@
   </xsl:template>
 </xsl:stylesheet>
 <!--
-    Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+    Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
     
     This code is free software.  You can redistribute it and/or
     modify it under the terms of the Artistic License 2.0.

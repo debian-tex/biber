@@ -73,6 +73,7 @@ t/set-dynamic.t
 t/set-legacy.t
 t/set-static.t
 t/skips.t
+t/skipsg.t
 t/sort-case.t
 t/sort-complex.t
 t/sorting.t
@@ -82,12 +83,14 @@ t/sort-uc.t
 t/tool.t
 t/tool-bltxml.t
 t/tool-bltxml-inout.t
+t/tool-config.t
 t/translit.t
 t/tdata/annotations.bib
 t/tdata/annotations.bcf
 t/tdata/basic-misc.bcf
 t/tdata/biber-test.conf
 t/tdata/tool-test.conf
+t/tdata/tool-testconfig.conf
 t/tdata/tool-testsort.conf
 t/tdata/biblatexml.bcf
 t/tdata/biblatexml.bltxml
@@ -156,7 +159,8 @@ t/tdata/sets.bib
 t/tdata/set-static.bcf
 t/tdata/skips.bcf
 t/tdata/skips.bib
-t/tdata/skips.bib
+t/tdata/skipsg.bcf
+t/tdata/skipsg.bib
 t/tdata/sort.bib
 t/tdata/sort-case.bcf
 t/tdata/sort-case.bib
@@ -172,6 +176,8 @@ t/tdata/sort-order.bib
 t/tdata/sort-uc.bcf
 t/tdata/sort-uc.bib
 t/tdata/tool.bib
+t/tdata/truncation.bcf
+t/tdata/truncation.bib
 t/tdata/uniqueness1.bcf
 t/tdata/uniqueness1.bib
 t/tdata/uniqueness2.bcf
@@ -189,6 +195,7 @@ t/tdata/uniqueness-nameparts.bib
 t/tdata/xdata.bcf
 t/tdata/xdata.bib
 t/tdata/xdata.bltxml
+t/truncation.t
 t/uniqueness.t
 t/uniqueness-nameparts.t
 t/utils.t

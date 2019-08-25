@@ -38,7 +38,7 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 
 # Biblatex options
-Biber::Config->setblxoption('uniquename', 2);
+Biber::Config->setblxoption(undef,'uniquename', 'full');
 
 # Now generate the information
 $biber->prepare;
@@ -63,7 +63,7 @@ my $un7nid = $bibentries->entry('un7')->get_field($bibentries->entry('un7')->get
 my $out = $biber->get_output_obj;
 my $un1 = q|    \entry{un1}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=1,uniquepart=middle,hash=329d8f9192ea3349d700160c9ddb505d}{%
+        {{un=1,uniquepart=middle,hash=329d8f9192ea3349d700160c9ddb505d}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={John},
@@ -81,14 +81,14 @@ my $un1 = q|    \entry{un1}{article}{}
       \strng{authorfullhash}{329d8f9192ea3349d700160c9ddb505d}
       \field{labelalpha}{SmiJohSim}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
 
 my $un2 = q|    \entry{un2}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=2,uniquepart=middle,hash=7551114aede4ef69e4b3683039801706}{%
+        {{un=2,uniquepart=middle,hash=7551114aede4ef69e4b3683039801706}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={John},
@@ -106,14 +106,14 @@ my $un2 = q|    \entry{un2}{article}{}
       \strng{authorfullhash}{7551114aede4ef69e4b3683039801706}
       \field{labelalpha}{SmiJohAla}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
 
 my $un3 = q|    \entry{un3}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=2,uniquepart=middle,hash=401aebda288799a7c757526242d8c9fc}{%
+        {{un=2,uniquepart=middle,hash=401aebda288799a7c757526242d8c9fc}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={John},
@@ -131,14 +131,14 @@ my $un3 = q|    \entry{un3}{article}{}
       \strng{authorfullhash}{401aebda288799a7c757526242d8c9fc}
       \field{labelalpha}{SmiJohArt}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
 
 my $un4 = q|    \entry{un4}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=1,uniquepart=given,hash=f6038a264619efefd49c7daac56424ca}{%
+        {{un=1,uniquepart=given,hash=f6038a264619efefd49c7daac56424ca}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={Alan},
@@ -156,14 +156,14 @@ my $un4 = q|    \entry{un4}{article}{}
       \strng{authorfullhash}{f6038a264619efefd49c7daac56424ca}
       \field{labelalpha}{SmiAlaSim}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
 
 my $un1a = q|    \entry{un1}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=1,uniquepart=middle,hash=329d8f9192ea3349d700160c9ddb505d}{%
+        {{un=1,uniquepart=middle,hash=329d8f9192ea3349d700160c9ddb505d}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={John},
@@ -181,14 +181,14 @@ my $un1a = q|    \entry{un1}{article}{}
       \strng{authorfullhash}{329d8f9192ea3349d700160c9ddb505d}
       \field{labelalpha}{SmiJohSim}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
 
 my $un2a = q|    \entry{un2}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=2,uniquepart=middle,hash=7551114aede4ef69e4b3683039801706}{%
+        {{un=2,uniquepart=middle,hash=7551114aede4ef69e4b3683039801706}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={John},
@@ -206,14 +206,14 @@ my $un2a = q|    \entry{un2}{article}{}
       \strng{authorfullhash}{7551114aede4ef69e4b3683039801706}
       \field{labelalpha}{SmiJohAla}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
 
 my $un3a = q|    \entry{un3}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=2,uniquepart=middle,hash=401aebda288799a7c757526242d8c9fc}{%
+        {{un=2,uniquepart=middle,hash=401aebda288799a7c757526242d8c9fc}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={John},
@@ -231,7 +231,7 @@ my $un3a = q|    \entry{un3}{article}{}
       \strng{authorfullhash}{401aebda288799a7c757526242d8c9fc}
       \field{labelalpha}{SmiJohArt}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -239,7 +239,7 @@ my $un3a = q|    \entry{un3}{article}{}
 
 my $un4a = q|    \entry{un4}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=2,uniquepart=given,hash=f6038a264619efefd49c7daac56424ca}{%
+        {{un=2,uniquepart=given,hash=f6038a264619efefd49c7daac56424ca}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={Alan},
@@ -257,7 +257,7 @@ my $un4a = q|    \entry{un4}{article}{}
       \strng{authorfullhash}{f6038a264619efefd49c7daac56424ca}
       \field{labelalpha}{SmiAlaSim}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -266,7 +266,7 @@ my $un4a = q|    \entry{un4}{article}{}
 # extradate is calculated on "Smith" only
 my $un1b = q|    \entry{un1}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,hash=329d8f9192ea3349d700160c9ddb505d}{%
+        {{un=0,uniquepart=base,hash=329d8f9192ea3349d700160c9ddb505d}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={John},
@@ -285,7 +285,7 @@ my $un1b = q|    \entry{un1}{article}{}
       \field{extraname}{5}
       \field{labelalpha}{SmiJohSim}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradate}{5}
       \field{labelnamesource}{author}
     \endentry
@@ -293,7 +293,7 @@ my $un1b = q|    \entry{un1}{article}{}
 
 my $un2b = q|    \entry{un2}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=2,uniquepart=middle,hash=7551114aede4ef69e4b3683039801706}{%
+        {{un=2,uniquepart=middle,hash=7551114aede4ef69e4b3683039801706}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={John},
@@ -311,14 +311,14 @@ my $un2b = q|    \entry{un2}{article}{}
       \strng{authorfullhash}{7551114aede4ef69e4b3683039801706}
       \field{labelalpha}{SmiJohAla}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
 
 my $un3b = q|    \entry{un3}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=2,uniquepart=middle,hash=401aebda288799a7c757526242d8c9fc}{%
+        {{un=2,uniquepart=middle,hash=401aebda288799a7c757526242d8c9fc}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={John},
@@ -336,7 +336,7 @@ my $un3b = q|    \entry{un3}{article}{}
       \strng{authorfullhash}{401aebda288799a7c757526242d8c9fc}
       \field{labelalpha}{SmiJohArt}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -345,7 +345,7 @@ my $un3b = q|    \entry{un3}{article}{}
 # extradate is calculated on "Smith" only
 my $un4b = q|    \entry{un4}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,hash=f6038a264619efefd49c7daac56424ca}{%
+        {{un=0,uniquepart=base,hash=f6038a264619efefd49c7daac56424ca}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={Alan},
@@ -364,7 +364,7 @@ my $un4b = q|    \entry{un4}{article}{}
       \field{extraname}{1}
       \field{labelalpha}{SmiAlaSim}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradate}{1}
       \field{labelnamesource}{author}
     \endentry
@@ -374,7 +374,7 @@ my $un4b = q|    \entry{un4}{article}{}
 # extradate is calculated on "Smith" only
 my $un5 = q|    \entry{un5}{article}{uniquenametemplatename=test3}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,hash=74fba0d07ca65976bbff1034f9bb22e6}{%
+        {{un=0,uniquepart=base,hash=74fba0d07ca65976bbff1034f9bb22e6}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={Arthur},
@@ -393,7 +393,7 @@ my $un5 = q|    \entry{un5}{article}{uniquenametemplatename=test3}
       \field{extraname}{2}
       \field{labelalpha}{SmiArtSim}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradate}{2}
       \field{labelnamesource}{author}
     \endentry
@@ -403,7 +403,7 @@ my $un5 = q|    \entry{un5}{article}{uniquenametemplatename=test3}
 # extradate is calculated on "Smith" only
 my $un6 = q|    \entry{un6}{article}{}
       \name{author}{1}{uniquenametemplatename=test4}{%
-        {{uniquename=0,uniquepart=base,hash=8100e7d06d05938e91bf8863f5c20e33}{%
+        {{un=0,uniquepart=base,hash=8100e7d06d05938e91bf8863f5c20e33}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={Arthur},
@@ -422,7 +422,7 @@ my $un6 = q|    \entry{un6}{article}{}
       \field{extraname}{3}
       \field{labelalpha}{SmiArtSmy}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradate}{3}
       \field{labelnamesource}{author}
     \\endentry
@@ -432,7 +432,7 @@ my $un6 = q|    \entry{un6}{article}{}
 # extradate is calculated on "Smith" only
 my $un7 = q|    \entry{un7}{article}{}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,uniquenametemplatename=test5,hash=c21736158273b6f2f368818459734e04}{%
+        {{un=0,uniquepart=base,uniquenametemplatename=test5,hash=c21736158273b6f2f368818459734e04}{%
            family={Smith},
            familyi={S\bibinitperiod},
            given={Arthur},
@@ -451,7 +451,7 @@ my $un7 = q|    \entry{un7}{article}{}
       \field{extraname}{4}
       \field{labelalpha}{SmiArtSme}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{extradate}{4}
       \field{labelnamesource}{author}
     \endentry

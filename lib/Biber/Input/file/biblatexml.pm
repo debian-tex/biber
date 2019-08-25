@@ -80,15 +80,20 @@ my $handlers = {
 
 sub extract_entries {
   # $encoding is ignored as it is always assumed to be UTF-8 for XML
-  my ($source, $encoding, $keys) = @_;
+  my ($filename, $encoding, $keys) = @_;
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
   my $bibentries = $section->bibentries;
-  my $filename;
+
   my @rkeys = $keys->@*;
-  my $tf; # Up here so that the temp file has enough scope to survive until we've
-          # used it
+
   $logger->trace("Entering extract_entries() in driver 'biblatexml'");
+
+  # Check for empty files because they confuse btparse
+  unless (-s $filename) { # File is empty
+    biber_warn("Data source '$filename' is empty, ignoring");
+    return @rkeys;
+  }
 
   # Get a reference to the correct sourcemap sections, if they exist
   my $smaps = [];
@@ -106,82 +111,6 @@ sub extract_entries {
     # Driver default maps
     if (my $m = first {$_->{datatype} eq 'biblatexml' and $_->{level} eq 'driver'} @{Biber::Config->getoption('sourcemap')} ) {
       push $smaps->@*, $m;
-    }
-  }
-
-  # If it's a remote data file, fetch it first
-  if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms) {
-    $logger->info("Data source '$source' is a remote .xml - fetching ...");
-    if (my $cf = $REMOTE_MAP{$source}) {
-      $logger->info("Found '$source' in remote source cache");
-      $filename = $cf;
-    }
-    else {
-      if ($1) {                 # HTTPS
-        # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
-        # We have to explicitly set the cert path because otherwise the https module
-        # can't find the .pem when PAR::Packer'ed
-        # Have to explicitly try to require Mozilla::CA here to get it into %INC below
-        # It may, however, have been removed by some biber unpacked dists
-        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
-            not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
-            not defined(Biber::Config->getoption('ssl-nointernalca')) and
-            eval {require Mozilla::CA}) {
-          # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
-          (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
-          $dir =~ s/\/$//;      # splitpath sometimes leaves a trailing '/'
-          $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
-        }
-
-        # fallbacks for, e.g., linux
-        unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
-          foreach my $ca_bundle (qw{
-                                     /etc/ssl/certs/ca-certificates.crt
-                                     /etc/pki/tls/certs/ca-bundle.crt
-                                     /etc/ssl/ca-bundle.pem
-                                 }) {
-            next if ! -e $ca_bundle;
-            $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
-            last;
-          }
-          foreach my $ca_path (qw{
-                                   /etc/ssl/certs/
-                                   /etc/pki/tls/
-                               }) {
-            next if ! -d $ca_path;
-            $ENV{PERL_LWP_SSL_CA_PATH} = $ca_path;
-            last;
-          }
-        }
-
-        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
-          $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
-        }
-        require LWP::Protocol::https;
-      }
-      require LWP::Simple;
-      $tf = File::Temp->new(TEMPLATE => 'biber_remote_data_source_XXXXX',
-                            DIR => $Biber::MASTER->biber_tempdir,
-                            SUFFIX => '.xml');
-
-      # Pretend to be a browser otherwise some sites refuse the default LWP UA string
-      $LWP::Simple::ua->agent('Mozilla/5.0');
-
-      my $retcode = LWP::Simple::getstore($source, $tf->filename);
-      unless (LWP::Simple::is_success($retcode)) {
-        biber_error("Could not fetch '$source' (HTTP code: $retcode)");
-      }
-      $filename = $tf->filename;
-      # cache any remote so it persists and so we don't fetch it again
-      $REMOTE_MAP{$source} = $filename;
-    }
-  }
-  else {
-    # Need to get the filename so we increment
-    # the filename count for preambles at the bottom of this sub
-    my $trying_filename = $source;
-    unless ($filename = locate_biber_file($source)) {
-      biber_error("Cannot find file '$source'!")
     }
   }
 
@@ -266,7 +195,7 @@ sub extract_entries {
       # Record a key->datasource name mapping for error reporting
       $section->set_keytods($key, $filename);
 
-      create_entry($key, $entry, $source, $smaps, \@rkeys);
+      create_entry($key, $entry, $filename, $smaps, \@rkeys);
 
       # We do this as otherwise we have no way of determining the origing .bib entry order
       # We need this in order to do sorting=none + allkeys because in this case, there is no
@@ -315,7 +244,7 @@ sub extract_entries {
           # Record a key->datasource name mapping for error reporting
           $section->set_keytods($wanted_key, $filename);
 
-          create_entry($wanted_key, $entry, $source, $smaps, \@rkeys);
+          create_entry($wanted_key, $entry, $filename, $smaps, \@rkeys);
         }
         # found a key, remove it from the list of keys we want
         @rkeys = grep {$wanted_key ne $_} @rkeys;
@@ -335,7 +264,7 @@ sub extract_entries {
           # Record a key->datasource name mapping for error reporting
           $section->set_keytods($key, $filename);
 
-          create_entry($key, $entry, $source, $smaps, \@rkeys);
+          create_entry($key, $entry, $filename, $smaps, \@rkeys);
           $section->add_citekeys($key);
         }
 
@@ -698,8 +627,12 @@ sub create_entry {
                 }
               }
 
-              # If append is set, keep the original value and append the new
-              my $orig = $step->{map_append} ? $etarget->findvalue($xp_node) : '';
+              my $orig = '';
+              # If append or appendstrict is set, keep the original value
+              # and append the new.
+              if ($step->{map_append} or $step->{map_appendstrict}) {
+                $orig = $etarget->findvalue($xp_node) || '';
+              }
 
               if ($step->{map_origentrytype}) {
                 next unless $last_type;
@@ -707,7 +640,7 @@ sub create_entry {
                   $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting xpath '$xp_node_s' to '${orig}${last_type}'");
                 }
 
-                unless (_changenode($etarget, $xp_node_s, $orig . $last_type, \$cnerror)) {
+                unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_type), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$key): $cnerror");
                 }
               }
@@ -716,7 +649,7 @@ sub create_entry {
                 if ($logger->is_debug()) {# performance tune
                   $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field xpath '$xp_node_s' to '${orig}${last_fieldval}'");
                 }
-                unless (_changenode($etarget, $xp_node_s, $orig . $last_fieldval, \$cnerror)) {
+                unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_fieldval), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$etargetkey): $cnerror");
                 }
               }
@@ -725,7 +658,7 @@ sub create_entry {
                 if ($logger->is_debug()) {# performance tune
                   $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field xpath '$xp_node_s' to '${orig}${last_field}'");
                 }
-                unless (_changenode($etarget, $xp_node_s, $orig . $last_field, \$cnerror)) {
+                unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_field), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$etargetkey): $cnerror");
                 }
               }
@@ -738,7 +671,7 @@ sub create_entry {
                 if ($logger->is_debug()) {# performance tune
                   $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field xpath '$xp_node_s' to '${orig}${fv}'");
                 }
-                unless (_changenode($etarget, $xp_node_s, $orig . $fv, \$cnerror)) {
+                unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $fv), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$key): $cnerror");
                 }
               }
@@ -769,7 +702,7 @@ sub create_entry {
       # to make them available for things that need them like name parsing
       if (_norm($f) eq 'options') {
         if (my $node = $entry->findnodes("./$NS:options")->get_node(1)) {
-          process_entry_options($k, [ split(/\s*,\s*/, $node->textContent()) ]);
+          process_entry_options($k, [ split(/\s*,\s*/, $node->textContent()) ], $secnum);
         }
       }
 
@@ -1083,9 +1016,9 @@ sub _datetime {
 
 # Name fields
 sub _name {
-  my ($bibentry, $entry, $f, $key) = @_;
-
-  my $un = Biber::Config->getblxoption('uniquename', $bibentry->get_field('entrytype'), $key);
+  my ($be, $entry, $f, $key) = @_;
+  my $secnum = $Biber::MASTER->get_current_section;
+  my $bee = $be->get_field('entrytype');
 
   foreach my $node ($entry->findnodes("./$NS:names[\@type='$f']")) {
     my $names = new Biber::Entry::Names;
@@ -1094,11 +1027,7 @@ sub _name {
     foreach my $nlo (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
       if ($node->hasAttribute($nlo)) {
         my $nlov = $node->getAttribute($nlo);
-        if ($CONFIG_OPTTYPE_BIBLATEX{$nlo} and
-            $CONFIG_OPTTYPE_BIBLATEX{$nlo} eq 'boolean') {
-          $nlov = map_boolean($nlov, 'tonum');
-        }
-        my $oo = expand_option($nlo, $nlov, $CONFIG_BIBLATEX_NAMELIST_OPTIONS{$nlo}->{INPUT});
+        my $oo = expand_option_input($nlo, $nlov, $CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{INPUT});
 
         foreach my $o ($oo->@*) {
           my $method = 'set_' . $o->[0];
@@ -1109,19 +1038,7 @@ sub _name {
 
     my $numname = 1;
     foreach my $namenode ($node->findnodes("./$NS:name")) {
-
-      my $useprefix;
-      # Name list and higher scope useprefix option. We have to pass this into parsename
-      # as the actual current scope value is needed to generate name objects
-      if (defined($names->get_useprefix)) {
-        $useprefix = $names->get_useprefix;
-      }
-      else {
-        $useprefix = Biber::Config->getblxoption('useprefix', $bibentry->get_field('entrytype'), $key);
-      }
-
-      $names->add_name(parsename($namenode, $f, $key, $numname++, {useprefix => $useprefix,
-                                                                   uniquename => ($un // 0)}));
+      $names->add_name(parsename($namenode, $f, $key, $numname++));
     }
 
     # Deal with explicit "moreenames" in data source
@@ -1129,7 +1046,7 @@ sub _name {
       $names->set_morenames;
     }
 
-    $bibentry->set_datafield(_norm($f), $names);
+    $be->set_datafield(_norm($f), $names);
 
   }
   return;
@@ -1157,7 +1074,7 @@ sub _name {
 =cut
 
 sub parsename {
-  my ($node, $fieldname, $key, $count, $opts) = @_;
+  my ($node, $fieldname, $key, $count) = @_;
   if ($logger->is_debug()) {# performance tune
     $logger->debug('Parsing BibLaTeXML name object ' . $node->nodePath);
   }
@@ -1217,11 +1134,7 @@ sub parsename {
   foreach my $no (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
     if ($node->hasAttribute($no)) {
       my $nov = $node->getAttribute($no);
-      if ($CONFIG_OPTTYPE_BIBLATEX{$no} and
-          $CONFIG_OPTTYPE_BIBLATEX{$no} eq 'boolean') {
-        $nov = map_boolean($nov, 'tonum');
-      }
-      my $oo = expand_option($no, $nov, $CONFIG_BIBLATEX_NAME_OPTIONS{$no}->{INPUT});
+      my $oo = expand_option_input($no, $nov, $CONFIG_BIBLATEX_OPTIONS{NAME}{$no}{INPUT});
 
       foreach my $o ($oo->@*) {
         my $method = 'set_' . $o->[0];
@@ -1447,7 +1360,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
