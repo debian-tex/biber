@@ -24,6 +24,7 @@ sub new {
   my $self = bless {%params}, $class;
   $self->{bibentries} = new Biber::Entries;
   $self->{keytorelclone} = {};
+  $self->{explicitcitekeys} = {};
   $self->{relclonetokey} = {};
   $self->{relkeys} = {};
   $self->{allkeys} = 0;
@@ -42,6 +43,7 @@ sub new {
   $self->{nocite_citekeys} = {};
   $self->{citekey_alias} = {};
   $self->{static_keys} = {};
+  $self->{state} = {};
   return $self;
 }
 
@@ -58,6 +60,92 @@ sub reset_caches {
   $self->{bcfkeycache} = {};
   return;
 }
+
+
+=head2 set_set_pc
+
+  Record a parent->child set relationship
+
+=cut
+
+sub set_set_pc {
+  my $self = shift;
+  my ($parent, $child) = @_;
+  $self->{state}{set}{pc}{$parent}{$child} = 1;
+  return;
+}
+
+=head2 set_set_cp
+
+  Record a child->parent set relationship
+
+=cut
+
+sub set_set_cp {
+  my $self = shift;
+  my ($child, $parent) = @_;
+  $self->{state}{set}{cp}{$child}{$parent} = 1;
+  return;
+}
+
+=head2 get_set_pc
+
+  Return a boolean saying if there is a parent->child set relationship
+
+=cut
+
+sub get_set_pc {
+  my $self = shift;
+  my ($parent, $child) = @_;
+  return exists($self->{state}{set}{pc}{$parent}{$child}) ? 1 : 0;
+}
+
+=head2 get_set_cp
+
+  Return a boolean saying if there is a child->parent set relationship
+
+=cut
+
+sub get_set_cp {
+  my $self = shift;
+  my ($child, $parent) = @_;
+  return exists($self->{state}{set}{cp}{$child}{$parent}) ? 1 : 0;
+}
+
+=head2 get_set_children
+
+  Return a list of children for a parent set
+
+=cut
+
+sub get_set_children {
+  my $self = shift;
+  my $parent = shift;
+  if (exists($self->{state}{set}{pc}{$parent})) {
+    return (keys $self->{state}{set}{pc}{$parent}->%*);
+  }
+  else {
+    return ();
+  }
+}
+
+=head2 get_set_parents
+
+  Return a list of parents for a child of a set
+
+=cut
+
+sub get_set_parents {
+  my $self = shift;
+  my $child = shift;
+  if (exists($self->{state}{set}{cp}{$child})) {
+    return (keys $self->{state}{set}{cp}{$child}->%*);
+  }
+  else {
+    return ();
+  }
+}
+
 
 =head2 set_keytods
 
@@ -97,6 +185,31 @@ sub has_badcasekey {
   return $ckey ne $key ? $ckey : undef;
 }
 
+
+=head2 add_explicitcitekey
+
+    Record that a key is explicitly cited (as opposed to being
+    included by e.g \nocite{*})
+
+=cut
+
+sub add_explicitcitekey {
+  my ($self, $key) = @_;
+  $self->{explicitcitekeys}{$key} = 1;
+  return;
+}
+
+=head2 is_explicitcitekey
+
+    Check if a key is explicitly cited (as opposed to being
+    included by e.g \nocite{*})
+
+=cut
+
+sub is_explicitcitekey {
+  my ($self, $key) = @_;
+  return $self->{explicitcitekeys}{$key};
+}
 
 =head2 add_related
 
@@ -736,7 +849,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

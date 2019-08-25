@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 no warnings 'utf8';
 
-use Test::More tests => 74;
+use Test::More tests => 73;
 use Test::Differences;
 unified_diff;
 
@@ -40,7 +40,7 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 Biber::Config->setoption('namesep', 'und'); # Testing custom name splitting string
 Biber::Config->setoption('others_string', 'andere'); # Testing custom implied "et al"
 Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
-Biber::Config->setblxoption('mincitenames', 3);
+Biber::Config->setblxoption(undef,'mincitenames', 3);
 
 # Now generate the information
 $biber->prepare;
@@ -133,6 +133,12 @@ my $name14 =
       prefix              => {string => 'de~la', initial => ['d', 'l']},
       suffix              => {string => undef, initial => undef}};
 
+my $namepre1 =
+   {  given               => {string => 'Tawfik', initial => ['T']},
+      family              => {string => 'Hakim', initial => ['H']},
+      prefix              => {string => 'al-', initial => ['a']},
+      suffix              => {string => undef, initial => undef}};
+
 # Note that the family initials are wrong because the prefix "El-" was not stripped
 # This is because the default noinit regexp only strips lower-case prefices to protect
 # hyphenated names
@@ -188,7 +194,7 @@ my $l1 = q|    \entry{L1}{book}{}
       \strng{authornamehash}{72287a68c1714cb1b9f4ab9e03a88b96}
       \strng{authorfullhash}{72287a68c1714cb1b9f4ab9e03a88b96}
       \field{sortinit}{A}
-      \field{sortinithash}{d77c7cdd82ff690d4c3ef13216f92f0b}
+      \field{sortinithash}{a3dcedd53b04d1adfd5ac303ecd5e6fa}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -208,7 +214,7 @@ my $l2 = q|    \entry{L2}{book}{}
       \strng{authornamehash}{2098d59d0f19a2e003ee06c1aa750d57}
       \strng{authorfullhash}{2098d59d0f19a2e003ee06c1aa750d57}
       \field{sortinit}{B}
-      \field{sortinithash}{276475738cc058478c1677046f857703}
+      \field{sortinithash}{8de16967003c7207dae369d874f1456e}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -228,7 +234,7 @@ my $l3 = q|    \entry{L3}{book}{}
       \strng{authornamehash}{c8b06fe88bde128b25eb0b3b1cc5837c}
       \strng{authorfullhash}{c8b06fe88bde128b25eb0b3b1cc5837c}
       \field{sortinit}{C}
-      \field{sortinithash}{963e9d84a3da2344e8833203de5aed05}
+      \field{sortinithash}{4c244ceae61406cdc0cc2ce1cb1ff703}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -248,7 +254,7 @@ my $l4 = q|    \entry{L4}{book}{}
       \strng{authornamehash}{5ec958b850c0c2de7de7c42c84b9c419}
       \strng{authorfullhash}{5ec958b850c0c2de7de7c42c84b9c419}
       \field{sortinit}{D}
-      \field{sortinithash}{2ef1bd9a78cc71eb74d7231c635177b8}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -270,7 +276,7 @@ my $l5 = q|    \entry{L5}{book}{}
       \strng{authornamehash}{c6b9d281cc1ff3f35570f76f463d4244}
       \strng{authorfullhash}{c6b9d281cc1ff3f35570f76f463d4244}
       \field{sortinit}{v}
-      \field{sortinithash}{75dd7385c90b2252c3ae853a80ca853b}
+      \field{sortinithash}{02432525618c08e2b03cac47c19764af}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -292,7 +298,7 @@ my $l6 = q|    \entry{L6}{book}{}
       \strng{authornamehash}{5fd24d3d1608a310ec205a6b201a5495}
       \strng{authorfullhash}{5fd24d3d1608a310ec205a6b201a5495}
       \field{sortinit}{v}
-      \field{sortinithash}{75dd7385c90b2252c3ae853a80ca853b}
+      \field{sortinithash}{02432525618c08e2b03cac47c19764af}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -314,7 +320,7 @@ my $l7 = q|    \entry{L7}{book}{}
       \strng{authornamehash}{98edb0b90251df22b74328d9227eceb7}
       \strng{authorfullhash}{98edb0b90251df22b74328d9227eceb7}
       \field{sortinit}{v}
-      \field{sortinithash}{75dd7385c90b2252c3ae853a80ca853b}
+      \field{sortinithash}{02432525618c08e2b03cac47c19764af}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -336,7 +342,7 @@ my $l8 = q|    \entry{L8}{book}{}
       \strng{authornamehash}{1211dc8dbbc191cbcab4da3c3c1fc48a}
       \strng{authorfullhash}{1211dc8dbbc191cbcab4da3c3c1fc48a}
       \field{sortinit}{v}
-      \field{sortinithash}{75dd7385c90b2252c3ae853a80ca853b}
+      \field{sortinithash}{02432525618c08e2b03cac47c19764af}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -356,7 +362,7 @@ my $l9 = q|    \entry{L9}{book}{}
       \strng{authornamehash}{bae61a889ab149a6deafe45333204cf0}
       \strng{authorfullhash}{bae61a889ab149a6deafe45333204cf0}
       \field{sortinit}{I}
-      \field{sortinithash}{320bc8fe8101b9376f9f21cd507de0e8}
+      \field{sortinithash}{9417e9a1288a9371e2691d999083ed39}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -379,7 +385,7 @@ my $l10 = q|    \entry{L10}{book}{}
       \strng{authornamehash}{37b4325752e394ddfb2fc810f6c88e27}
       \strng{authorfullhash}{37b4325752e394ddfb2fc810f6c88e27}
       \field{sortinit}{J}
-      \field{sortinithash}{fce5f8d0bd05e8d93f3dbe21c78897ca}
+      \field{sortinithash}{c45040a764d616897e7f5b30174d7b92}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -402,7 +408,7 @@ my $l10a = q|    \entry{L10a}{book}{}
       \strng{authornamehash}{7bf2c9d8b89a1930ee91bfddcaf20c9c}
       \strng{authorfullhash}{7bf2c9d8b89a1930ee91bfddcaf20c9c}
       \field{sortinit}{P}
-      \field{sortinithash}{8d51b3d5b78d75b54308d706b9bbe285}
+      \field{sortinithash}{bb5b15f2db90f7aef79bb9e83defefcb}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -427,7 +433,7 @@ my $l11 = q|    \entry{L11}{book}{}
       \strng{authornamehash}{9f48d231be68c9435fab4faca55a5caf}
       \strng{authorfullhash}{9f48d231be68c9435fab4faca55a5caf}
       \field{sortinit}{v}
-      \field{sortinithash}{75dd7385c90b2252c3ae853a80ca853b}
+      \field{sortinithash}{02432525618c08e2b03cac47c19764af}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -449,7 +455,7 @@ my $l12 = q|    \entry{L12}{book}{}
       \strng{authornamehash}{d7ca88c13a8f7ce1c23e920010a31f83}
       \strng{authorfullhash}{d7ca88c13a8f7ce1c23e920010a31f83}
       \field{sortinit}{d}
-      \field{sortinithash}{2ef1bd9a78cc71eb74d7231c635177b8}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
       \true{uniqueprimaryauthor}
       \field{labelnamesource}{author}
     \endentry
@@ -470,7 +476,7 @@ my $l13 = q|    \entry{L13}{book}{}
       \strng{authornamehash}{227ac48bb788a658cfaa4eefc71ff0cc}
       \strng{authorfullhash}{227ac48bb788a658cfaa4eefc71ff0cc}
       \field{sortinit}{V}
-      \field{sortinithash}{75dd7385c90b2252c3ae853a80ca853b}
+      \field{sortinithash}{02432525618c08e2b03cac47c19764af}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -490,7 +496,7 @@ my $l14 = q|    \entry{L14}{book}{}
       \strng{authornamehash}{779475052c17ed56dc3be900d0dfdf87}
       \strng{authorfullhash}{779475052c17ed56dc3be900d0dfdf87}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -513,7 +519,7 @@ my $l15 = q|    \entry{L15}{book}{}
       \strng{authorfullhash}{783c636e853e47a854ae034ebe9dde62}
       \field{extraname}{1}
       \field{sortinit}{v}
-      \field{sortinithash}{75dd7385c90b2252c3ae853a80ca853b}
+      \field{sortinithash}{02432525618c08e2b03cac47c19764af}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -536,7 +542,7 @@ my $l16 = q|    \entry{L16}{book}{}
       \strng{authorfullhash}{783c636e853e47a854ae034ebe9dde62}
       \field{extraname}{2}
       \field{sortinit}{v}
-      \field{sortinithash}{75dd7385c90b2252c3ae853a80ca853b}
+      \field{sortinithash}{02432525618c08e2b03cac47c19764af}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -557,7 +563,7 @@ my $l17 = q|    \entry{L17}{book}{}
       \strng{authorfullhash}{b51f667a3384d92ea5458ba80716bff7}
       \field{extraname}{1}
       \field{sortinit}{L}
-      \field{sortinithash}{2c7981aaabc885868aba60f0c09ee20f}
+      \field{sortinithash}{dad3efd0836470093a7b4a7bb756eb8c}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -578,7 +584,7 @@ my $l18 = q|    \entry{L18}{book}{}
       \strng{authorfullhash}{b51f667a3384d92ea5458ba80716bff7}
       \field{extraname}{2}
       \field{sortinit}{L}
-      \field{sortinithash}{2c7981aaabc885868aba60f0c09ee20f}
+      \field{sortinithash}{dad3efd0836470093a7b4a7bb756eb8c}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -598,7 +604,7 @@ my $l19 = q|    \entry{L19}{book}{}
       \strng{authornamehash}{83caa52f21f97e572dd3267bdf62978a}
       \strng{authorfullhash}{83caa52f21f97e572dd3267bdf62978a}
       \field{sortinit}{M}
-      \field{sortinithash}{cfd219b90152c06204fab207bc6c7cab}
+      \field{sortinithash}{2e5c2f51f7fa2d957f3206819bf86dc3}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -618,7 +624,7 @@ my $l19a = q|    \entry{L19a}{book}{}
       \strng{authornamehash}{0963f6904ccfeaac2770c5882a587001}
       \strng{authorfullhash}{0963f6904ccfeaac2770c5882a587001}
       \field{sortinit}{L}
-      \field{sortinithash}{2c7981aaabc885868aba60f0c09ee20f}
+      \field{sortinithash}{dad3efd0836470093a7b4a7bb756eb8c}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -639,7 +645,7 @@ my $l20 = q|    \entry{L20}{book}{}
       \strng{authornamehash}{5f26c2f3b33095d5b005714893f4d698}
       \strng{authorfullhash}{5f26c2f3b33095d5b005714893f4d698}
       \field{sortinit}{F}
-      \field{sortinithash}{669c706c6f1fbf3b5a83d26f1d9e9e72}
+      \field{sortinithash}{fb0c0faa89eb6abae8213bf60e6799ea}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -660,7 +666,7 @@ my $l21 = q|    \entry{L21}{book}{}
       \strng{authorfullhash}{4389a3c0dc7da74487b50808ba9436ad}
       \field{extraname}{1}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -681,7 +687,7 @@ my $l22u = q|    \entry{L22}{book}{}
       \strng{authorfullhash}{e58b861545799d0eaf883402a882126e}
       \field{extraname}{1}
       \field{sortinit}{Š}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -703,7 +709,7 @@ my $l22 = q|    \entry{L22}{book}{}
       \strng{authorfullhash}{e58b861545799d0eaf883402a882126e}
       \field{extraname}{1}
       \field{sortinit}{\v{S}}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \true{uniqueprimaryauthor}
       \field{labelnamesource}{author}
     \endentry
@@ -724,9 +730,9 @@ my $l23 = q|    \entry{L23}{book}{}
       \strng{authorbibnamehash}{4389a3c0dc7da74487b50808ba9436ad}
       \strng{authornamehash}{4389a3c0dc7da74487b50808ba9436ad}
       \strng{authorfullhash}{4389a3c0dc7da74487b50808ba9436ad}
-      \field{extraname}{3}
+      \field{extraname}{2}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -747,7 +753,7 @@ my $l24 = q|    \entry{L24}{book}{}
       \strng{authorfullhash}{e58b861545799d0eaf883402a882126e}
       \field{extraname}{2}
       \field{sortinit}{Š}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -765,7 +771,7 @@ my $l25 = q|    \entry{L25}{book}{}
       \strng{authornamehash}{d7cd2c5ea0848abc3e90609558b84a45}
       \strng{authorfullhash}{d7cd2c5ea0848abc3e90609558b84a45}
       \field{sortinit}{A}
-      \field{sortinithash}{d77c7cdd82ff690d4c3ef13216f92f0b}
+      \field{sortinithash}{a3dcedd53b04d1adfd5ac303ecd5e6fa}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -783,19 +789,10 @@ my $l26 = q|    \entry{L26}{book}{}
       \strng{authornamehash}{8eee1dbafdbd0a4b73157e60f18b4784}
       \strng{authorfullhash}{8eee1dbafdbd0a4b73157e60f18b4784}
       \field{sortinit}{S}
-      \field{sortinithash}{322b1d5276f2f6c1bccdcd15920dbee6}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
       \field{labelnamesource}{author}
     \endentry
 |;
-
-# Malformed anyway but a decent test
-my $l28 = q|    \entry{L28}{book}{}
-      \field{sortinit}{0}
-      \field{sortinithash}{168ad0c7c5ed09f1d28c6675717b5b03}
-      \warn{\item Name "Deux et al.,, O." is malformed (consecutive commas): skipping name}
-    \endentry
-|;
-
 
 my $l29 = q|    \entry{L29}{book}{}
       \name{author}{1}{}{%
@@ -810,7 +807,7 @@ my $l29 = q|    \entry{L29}{book}{}
       \strng{authornamehash}{27ad192a3a715aa89152b2a4ee392e8c}
       \strng{authorfullhash}{27ad192a3a715aa89152b2a4ee392e8c}
       \field{sortinit}{U}
-      \field{sortinithash}{36a2444f5238e0dcf4bb59704df6624d}
+      \field{sortinithash}{77a6935510e008adcf5b555e7b4f0711}
       \field{labelnamesource}{author}
     \endentry
 |;
@@ -850,7 +847,7 @@ my $l31 = q|    \entry{L31}{book}{}
       \strng{translatornamehash}{29c3ff92fff79d09a8b44d2f775de0b1}
       \strng{translatorfullhash}{29c3ff92fff79d09a8b44d2f775de0b1}
       \field{sortinit}{\~{Z}}
-      \field{sortinithash}{156173bd08b075d7295bc3e0f4735a04}
+      \field{sortinithash}{8f7b480688e809b50b6f6577b16f3db5}
       \true{uniqueprimaryauthor}
       \field{labelnamesource}{author}
     \endentry
@@ -892,6 +889,7 @@ is_deeply(tparsename('von Berlichingen zu Hornberg, Johann Gottfried', 'author')
 is_deeply(tparsename('von Berlichingen zu Hornberg, Johann Gottfried', 'author'), $name4, 'parsename 4') ;
 is_deeply(tparsename('{Robert and Sons, Inc.}', 'author'), $name5, 'parsename 5') ;
 is_deeply(tparsename('al-Ṣāliḥ, ʿAbdallāh', 'author'), $name6, 'parsename 6') ;
+is_deeply(tparsename('al- Hakim, Tawfik', 'author'), $namepre1, 'parsename 6a') ;
 is_deeply(tparsename('Jean Charles Gabriel de la Vallée Poussin', 'author'), $name7, 'parsename 7');
 is_deeply(tparsename('{Jean Charles Gabriel} de la Vallée Poussin', 'author'), $name8, 'parsename 8');
 is_deeply(tparsename('Jean Charles Gabriel {de la} Vallée Poussin', 'author'), $name9, 'parsename 9');
@@ -951,8 +949,6 @@ eq_or_diff( NFC($out->get_output_entry('L23', $main)), $l23, 'Unicode given name
 eq_or_diff( NFC($out->get_output_entry('L24', $main)), $l24, 'Unicode family name');
 eq_or_diff( $out->get_output_entry('L25', $main), $l25, 'Single string name');
 eq_or_diff( $out->get_output_entry('L26', $main), $l26, 'Hyphen at brace level <> 0');
-eq_or_diff($section->bibentry('L27')->get_field('author')->count_names, 1, 'Bad name with 3 commas');
-eq_or_diff( $out->get_output_entry('L28', $main), $l28, 'Bad name with consecutive commas');
 eq_or_diff( $out->get_output_entry('L29', $main), $l29, 'Escaped name with 3 commas');
 
 # Checking visibility
@@ -970,7 +966,7 @@ $biber->set_output_obj(Biber::Output::bbl->new());
 Biber::Config->setoption('output_encoding', 'latin1');
 # If you change the encoding options, you have to re-read the T::B data from the datasource
 # This won't happen unless you invalidate the T::B cache.
-Biber::Config->setblxoption('uniqueprimaryauthor', 1);
+Biber::Config->setblxoption(undef,'uniqueprimaryauthor', 1);
 Biber::Config->setoption('namesep', 'and'); # revert custom name sep
 Biber::Input::file::bibtex->init_cache;
 

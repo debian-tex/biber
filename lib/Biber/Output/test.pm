@@ -79,20 +79,32 @@ sub set_output_entry {
   my $secnum = $section->number;
   my $dmh = $dm->{helpers};
   my $key = $be->get_field('citekey');
-  my $un = Biber::Config->getblxoption('uniquename', $bee, $key);
-  my $ul = Biber::Config->getblxoption('uniquelist', $bee, $key);
+  my $un = Biber::Config->getblxoption($secnum,'uniquename', $bee, $key);
+  my $ul = Biber::Config->getblxoption($secnum,'uniquelist', $bee, $key);
+  my $lni = $be->get_labelname_info;
+  my $nl = $be->get_field($lni);
+
+  # Per-namelist uniquelist
+  if (defined($lni) and $nl->get_uniquelist) {
+    $ul = $nl->get_uniquelist;
+  }
+
+  # Per-namelist uniquename
+  if (defined($lni) and $nl->get_uniquename) {
+    $un = $nl->get_uniquename;
+  }
 
   $acc .= "% sortstring = " . $be->get_field('sortstring') . "\n"
-    if (Biber::Config->getoption('debug') || Biber::Config->getblxoption('debug'));
+    if (Biber::Config->getoption('debug') || Biber::Config->getblxoption(undef,'debug'));
 
-  $acc .= "    \\entry{$key}{$bee}{" . join(',', filter_entry_options($be->get_field('options'))->@*) . "}\n";
+  $acc .= "    \\entry{$key}{$bee}{" . join(',', filter_entry_options($secnum, $be)->@*) . "}\n";
 
   # Generate set information
   if ($bee eq 'set') {   # Set parents get \set entry ...
     $acc .= "      \\set{" . join(',', $be->get_field('entryset')->@*) . "}\n";
 
     # Set parents need this - it is the labelalpha from the first entry
-    if ( Biber::Config->getblxoption('labelalpha', $bee) ) {
+    if ( Biber::Config->getblxoption(undef,'labelalpha', $bee, $key) ) {
       $acc .= "      <BDS>LABELALPHA</BDS>\n";
       $acc .= "      <BDS>EXTRAALPHA</BDS>\n";
     }
@@ -138,27 +150,30 @@ sub set_output_entry {
       if ( $nf->get_morenames ) {
         $acc .= "      \\true{more$namefield}\n";
         # Is this name labelname? If so, provide \morelabelname
-        if (my $lni = $be->get_labelname_info) {
-          if ( $lni eq $namefield ) {
-            $acc .= "      \\true{morelabelname}\n";
-          }
+        if (defined($lni) and $lni eq $namefield) {
+          $acc .= "      \\true{morelabelname}\n";
+        }
+      }
+
+      # Per-name uniquename if this is labelname
+      if (defined($lni) and $lni eq $namefield) {
+        if (defined($nf->get_uniquename)) {
+            $un = $nf->get_uniquename;
         }
       }
 
       my $total = $nf->count_names;
 
       # Add per-list options, if any
-      my $lni = $be->get_labelname_info;
 
       my $nfv = '';
 
-      if (defined($lni) and
-          $lni eq $namefield) {
+      if (defined($lni) and $lni eq $namefield) {
         # Add uniquelist, if defined
         my @plo;
 
         # Add uniquelist if requested
-        if ($ul) {
+        if ($ul ne 'false') {
           push @plo, "<BDS>UL-${nlid}</BDS>";
         }
 
@@ -167,14 +182,8 @@ sub set_output_entry {
           if (defined($nf->${\"get_$nlo"})) {
             my $nlov = $nf->${\"get_$nlo"};
 
-            if ($CONFIG_OPTTYPE_BIBLATEX{lc($nlo)} and
-                $CONFIG_OPTTYPE_BIBLATEX{lc($nlo)} eq 'boolean') {
-              $nlov = map_boolean($nlov, 'tostring');
-            }
-
-            my $oo = expand_option($nlo, $nlov, $CONFIG_BIBLATEX_NAMELIST_OPTIONS{$nlo}->{INPUT});
-            foreach my $o ($oo->@*) {
-              push @plo, $o->[0] . '=' . $o->[1];
+            if ($CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{OUTPUT}) {
+              push @plo, $nlo . '=' . map_boolean($nlo, $nlov, 'tostring');
             }
           }
         }
@@ -220,7 +229,7 @@ sub set_output_entry {
     }
   }
 
-  if ( Biber::Config->getblxoption('labelalpha', $be->get_field('entrytype')) ) {
+  if ( Biber::Config->getblxoption(undef,'labelalpha', $bee, $key) ) {
     $acc .= "      <BDS>LABELALPHA</BDS>\n";
   }
 
@@ -231,8 +240,8 @@ sub set_output_entry {
 
   # The labeldateparts option determines whether "extradate" is output
   # Skip generating extradate for entries with "skiplab" set
-  if ( Biber::Config->getblxoption('labeldateparts', $be->get_field('entrytype'))) {
-    # Might not have been set due to skiplab/dataonly
+  if ( Biber::Config->getblxoption(undef,'labeldateparts', $bee, $key)) {
+    # Might not have been set due to skiplab
     if (my $ey = $be->get_field('extradate')) {
       $acc .= "      <BDS>EXTRADATE</BDS>\n";
     }
@@ -248,17 +257,17 @@ sub set_output_entry {
   }
 
   # The labeltitle option determines whether "extratitle" is output
-  if ( Biber::Config->getblxoption('labeltitle', $bee)) {
+  if ( Biber::Config->getblxoption(undef,'labeltitle', $bee, $key)) {
     $acc .= "      <BDS>EXTRATITLE</BDS>\n";
   }
 
   # The labeltitleyear option determines whether "extratitleyear" is output
-  if ( Biber::Config->getblxoption('labeltitleyear', $bee)) {
+  if ( Biber::Config->getblxoption(undef,'labeltitleyear', $bee, $key)) {
     $acc .= "      <BDS>EXTRATITLEYEAR</BDS>\n";
   }
 
   # The labelalpha option determines whether "extraalpha" is output
-  if ( Biber::Config->getblxoption('labelalpha', $bee)) {
+  if ( Biber::Config->getblxoption(undef,'labelalpha', $bee, $key)) {
     $acc .= "      <BDS>EXTRAALPHA</BDS>\n";
   }
 
@@ -269,7 +278,7 @@ sub set_output_entry {
   $acc .= "      <BDS>UNIQUEPRIMARYAUTHOR</BDS>\n";
 
   # The source field for labelname
-  if (my $lni = $be->get_labelname_info) {
+  if ($lni) {
     $acc .= "      \\field{labelnamesource}{$lni}\n";
   }
 
@@ -304,9 +313,12 @@ sub set_output_entry {
     }
   }
 
+  # XSV fields
   foreach my $field (sort $dm->get_fields_of_fieldformat('xsv')->@*) {
     next if $dm->field_is_skipout($field);
-    next if $dm->get_datatype($field) eq 'keyword';# This is special in .bbl
+    # keywords is by default field/xsv/keyword but it is in fact
+    # output with its own special macro below
+    next if $field eq 'keywords';
     if (my $f = $be->get_field($field)) {
       $acc .= _printfield($be, $field, join(',', $f->@*) );
     }
@@ -424,7 +436,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

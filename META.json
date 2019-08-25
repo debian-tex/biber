@@ -40,6 +40,7 @@
             "Encode::HanExtra" : "0",
             "Encode::JIS2K" : "0",
             "File::Slurper" : "0",
+            "IO::String" : "0",
             "IPC::Cmd" : "0",
             "IPC::Run3" : "0",
             "LWP::Protocol::https" : "0",
@@ -58,10 +59,10 @@
             "Text::CSV_XS" : "0",
             "Text::Roman" : "0",
             "URI" : "0",
-            "Unicode::Collate" : "1.25",
+            "Unicode::Collate" : "1.27",
             "Unicode::GCString" : "0",
-            "Unicode::LineBreak" : "2016.003",
-            "Unicode::Normalize" : "1.25",
+            "Unicode::LineBreak" : "2019.001",
+            "Unicode::Normalize" : "1.26",
             "XML::LibXML" : "1.7",
             "XML::LibXML::Simple" : "0",
             "XML::LibXSLT" : "0",
@@ -87,7 +88,7 @@
       },
       "Biber::Config" : {
          "file" : "lib/Biber/Config.pm",
-         "version" : "2.12"
+         "version" : "2.13"
       },
       "Biber::Constants" : {
          "file" : "lib/Biber/Constants.pm"
@@ -165,5 +166,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "2.12"
+   "version" : "2.13"
 }

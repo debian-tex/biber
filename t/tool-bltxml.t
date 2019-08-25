@@ -13,12 +13,16 @@ use Biber::Utils;
 use Biber::Output::biblatexml;
 use Log::Log4perl;
 use Unicode::Normalize;
+use Cwd 'abs_path';
+
 chdir("t/tdata");
 no warnings 'utf8';
 use utf8;
 
 # Set up Biber object
-my $biber = Biber->new( configfile => 'tool-testsort.conf');
+my $biber = Biber->new(tool => 1,
+                       configtool => abs_path('../../data/biber-tool.conf'),
+                       configfile => 'tool-testsort.conf');
 my $LEVEL = 'ERROR';
 my $l4pconf = qq|
     log4perl.category.main                             = $LEVEL, Screen
@@ -41,7 +45,6 @@ my $out = $biber->get_output_obj;
 # relying on here for tests
 
 # Biber options
-Biber::Config->setoption('tool', 1);
 Biber::Config->setoption('output_resolve_xdata', 1);
 Biber::Config->setoption('output_resolve_crossrefs', 1);
 Biber::Config->setoption('output_format', 'biblatexml');
@@ -227,8 +230,26 @@ my $bltxml1 = q|<?xml version="1.0" encoding="UTF-8"?>
   <bltx:entry id="m1" entrytype="article">
     <bltx:date>2017</bltx:date>
   </bltx:entry>
+  <bltx:entry id="badcr1" entrytype="book">
+    <bltx:names type="author">
+      <bltx:name>
+        <bltx:namepart type="family" initial="F">Foo</bltx:namepart>
+      </bltx:name>
+    </bltx:names>
+    <bltx:title>Foo</bltx:title>
+    <bltx:date>2019</bltx:date>
+  </bltx:entry>
+  <bltx:entry id="badcr2" entrytype="book">
+    <bltx:names type="author">
+      <bltx:name>
+        <bltx:namepart type="family" initial="B">Bar</bltx:namepart>
+      </bltx:name>
+    </bltx:names>
+    <bltx:title>Bar</bltx:title>
+    <bltx:date>2019</bltx:date>
+  </bltx:entry>
 </bltx:entries>
 |;
 
 eq_or_diff($outvar, encode_utf8($bltxml1), 'bltxml tool mode - 1');
-is_deeply($main->get_keys, ['b1', 'macmillan', 'dt1', 'm1', 'macmillan:pub', 'macmillan:loc', 'mv1', NFD('i3Š'), 'xd1'], 'tool mode sorting');
+is_deeply($main->get_keys, ['b1', 'macmillan', 'dt1', 'm1', 'macmillan:pub', 'macmillan:loc', 'mv1', NFD('i3Š'), 'badcr2', 'xd1', 'badcr1'], 'tool mode sorting');

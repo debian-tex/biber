@@ -43,25 +43,58 @@ All functions are exported by default.
 
 =cut
 
-our @EXPORT = qw{ locate_biber_file makenamesid makenameid stringify_hash
+our @EXPORT = qw{ glob_data_file locate_data_file makenamesid makenameid stringify_hash
   normalise_string normalise_string_hash normalise_string_underscore
   normalise_string_sort normalise_string_label reduce_array remove_outer
   has_outer add_outer ucinit strip_nosort strip_noinit is_def is_undef
   is_def_and_notnull is_def_and_null is_undef_or_null is_notnull is_null
   normalise_utf8 inits join_name latex_recode_output filter_entry_options
   biber_error biber_warn ireplace imatch validate_biber_xml
-  process_entry_options remove_entry_options escape_label unescape_label
+  process_entry_options escape_label unescape_label
   biber_decode_utf8 out parse_date_start parse_date_end parse_date_range locale2bcp47
   bcp472locale rangelen match_indices process_comment map_boolean
   parse_range parse_range_alt maploopreplace get_transliterator
   call_transliterator normalise_string_bblxml gen_initials join_name_parts
-  split_xsv date_monthday tzformat expand_option strip_annotation};
+  split_xsv date_monthday tzformat expand_option_input strip_annotation
+  appendstrict_check merge_entry_options process_backendin};
 
 =head1 FUNCTIONS
 
-=head2 locate_biber_file
 
-  Searches for a file by
+
+=head2 glob_data_file
+
+  Expands a data file glob to a list of filenames
+
+=cut
+
+sub glob_data_file {
+  my $source = shift;
+  my @sources;
+
+  $logger->info("Globbing data source '$source'");
+
+  if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms) {
+    $logger->info("Data source '$source' is remote, no globbing to do");
+    push @sources, $source;
+  }
+
+  # Use Windows style globbing on Windows
+  if ($^O =~ /Win/) {
+    $logger->debug("Enabling Windows-style globbing");
+    require File::DosGlob;
+    File::DosGlob->import('glob');
+  }
+
+  push @sources, glob($source);
+
+  $logger->info("Globbed data source '$source' to " . join(',', @sources));
+  return @sources;
+}
+
+=head2 locate_data_file
+
+  Searches for a data file by
 
   The exact path if the filename is absolute
   In the input_directory, if defined
@@ -72,24 +105,96 @@ our @EXPORT = qw{ locate_biber_file makenamesid makenameid stringify_hash
 
 =cut
 
-sub locate_biber_file {
-  my $filename = shift;
-  my $filenamepath = $filename; # default if nothing else below applies
+sub locate_data_file {
+  my $source = shift;
+  my $sourcepath = $source; # default if nothing else below applies
   my $foundfile;
+
+  if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms) {
+    $logger->info("Data source '$source' is a remote BibTeX data source - fetching ...");
+    if (my $cf = $REMOTE_MAP{$source}) {
+      $logger->info("Found '$source' in remote source cache");
+      $sourcepath = $cf;
+    }
+    else {
+      if ($1) { # HTTPS/FTPS
+        # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
+        # We have to explicitly set the cert path because otherwise the https module
+        # can't find the .pem when PAR::Packer'ed
+        # Have to explicitly try to require Mozilla::CA here to get it into %INC below
+        # It may, however, have been removed by some biber unpacked dists
+        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
+            not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
+            not defined(Biber::Config->getoption('ssl-nointernalca')) and
+            eval {require Mozilla::CA}) {
+          # we assume that the default CA file is in .../Mozilla/CA/cacert.pem
+          (my $vol, my $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
+          $dir =~ s/\/$//;      # splitpath sometimes leaves a trailing '/'
+          $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
+        }
+
+        # fallbacks for, e.g., linux
+        unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
+          foreach my $ca_bundle (qw{
+                                     /etc/ssl/certs/ca-certificates.crt
+                                     /etc/pki/tls/certs/ca-bundle.crt
+                                     /etc/ssl/ca-bundle.pem
+                                 }) {
+            next if ! -e $ca_bundle;
+            $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
+            last;
+          }
+          foreach my $ca_path (qw{
+                                   /etc/ssl/certs/
+                                   /etc/pki/tls/
+                               }) {
+            next if ! -d $ca_path;
+            $ENV{PERL_LWP_SSL_CA_PATH} = $ca_path;
+            last;
+          }
+        }
+
+        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
+          $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
+        }
+
+        require LWP::Protocol::https;
+      }
+      require LWP::Simple;
+      # no need to unlink file as tempdir will be unlinked. Also, the tempfile
+      # will be needed after this sub has finished and so it must not be unlinked
+      # by going out of scope
+      my $tf = File::Temp->new(TEMPLATE => 'biber_remote_data_source_XXXXX',
+                               DIR => $Biber::MASTER->biber_tempdir,
+                               SUFFIX => '.bib',
+                               UNLINK => 0);
+
+      # Pretend to be a browser otherwise some sites refuse the default LWP UA string
+      $LWP::Simple::ua->agent('Mozilla/5.0');
+
+      my $retcode = LWP::Simple::getstore($source, $tf->filename);
+      unless (LWP::Simple::is_success($retcode)) {
+        biber_error("Could not fetch '$source' (HTTP code: $retcode)");
+      }
+      $sourcepath = $tf->filename;
+      # cache any remote so it persists and so we don't fetch it again
+      $REMOTE_MAP{$source} = $sourcepath;
+    }
+  }
 
   # If input_directory is set, perhaps the file can be found there so
   # construct a path to test later
   if (my $indir = Biber::Config->getoption('input_directory')) {
-    $foundfile = File::Spec->catfile($indir, $filename);
+    $foundfile = File::Spec->catfile($indir, $sourcepath);
   }
   # If output_directory is set, perhaps the file can be found there so
   # construct a path to test later
   elsif (my $outdir = Biber::Config->getoption('output_directory')) {
-    $foundfile = File::Spec->catfile($outdir, $filename);
+    $foundfile = File::Spec->catfile($outdir, $sourcepath);
   }
 
   # Filename is absolute
-  if (File::Spec->file_name_is_absolute($filename) and my $f = file_exist_check($filename)) {
+  if (File::Spec->file_name_is_absolute($sourcepath) and my $f = file_exist_check($sourcepath)) {
     return $f;
   }
 
@@ -98,7 +203,7 @@ sub locate_biber_file {
     return $f;
   }
 
-  if (my $f = file_exist_check($filename)) {
+  if (my $f = file_exist_check($sourcepath)) {
     return $f;
   }
 
@@ -112,7 +217,7 @@ sub locate_biber_file {
       $ctldir .= '/' unless $ctldir =~ /\/\z/;
     }
 
-    my $path = "$ctlvolume$ctldir$filename";
+    my $path = "$ctlvolume$ctldir$sourcepath";
 
     if (my $f = file_exist_check($path)) {
       return $f;
@@ -122,11 +227,11 @@ sub locate_biber_file {
   # File is in kpse path
   if (can_run('kpsewhich')) {
     if ($logger->is_debug()) {# performance tune
-      $logger->debug("Looking for file '$filename' via kpsewhich");
+      $logger->debug("Looking for file '$sourcepath' via kpsewhich");
     }
     my $found;
     my $err;
-    run3  [ 'kpsewhich', $filename ], \undef, \$found, \$err, { return_if_system_error => 1};
+    run3  [ 'kpsewhich', $sourcepath ], \undef, \$found, \$err, { return_if_system_error => 1};
     if ($?) {
       if ($logger->is_debug()) {# performance tune
         $logger->debug("kpsewhich returned error: $err ($!)");
@@ -137,7 +242,7 @@ sub locate_biber_file {
     }
     if ($found) {
       if ($logger->is_debug()) {# performance tune
-        $logger->debug("Found '$filename' via kpsewhich");
+        $logger->debug("Found '$sourcepath' via kpsewhich");
       }
       chomp $found;
       $found =~ s/\cM\z//xms; # kpsewhich in cygwin sometimes returns ^M at the end
@@ -147,11 +252,13 @@ sub locate_biber_file {
     }
     else {
       if ($logger->is_debug()) {# performance tune
-        $logger->debug("Could not find '$filename' via kpsewhich");
+        $logger->debug("Could not find '$sourcepath' via kpsewhich");
       }
     }
   }
-  return undef;
+
+  # Not found
+  biber_error("Cannot find '$source'!")
 }
 
 =head2 
@@ -205,11 +312,11 @@ sub biber_warn {
 =cut
 
 sub biber_error {
-  my $error = shift;
+  my ($error, $nodie) = @_;
   $logger->error($error);
   $Biber::MASTER->{errors}++;
   # exit unless user requested not to for errors
-  unless (Biber::Config->getoption('nodieonerror')) {
+  unless ($nodie or Biber::Config->getoption('nodieonerror')) {
     $Biber::MASTER->display_problems;
     exit EXIT_ERROR;
   }
@@ -273,7 +380,7 @@ sub strip_noinit {
     $string =~ s/$re//gxms;
   }
   # remove latex macros (assuming they have only ASCII letters)
-  $string =~ s/\\[A-Za-z]+\s*\{?([^\}]+)\}?/$1/g;
+  $string =~ s{\\[A-Za-z]+\s*(\{([^\}]*)?\})?}{defined($2)?$2:q{}}eg;
   return $string;
 }
 
@@ -315,7 +422,8 @@ sub strip_nosort {
 
 =head2 normalise_string_label
 
-Remove some things from a string for label generation.
+Remove some things from a string for label generation. Don't strip \p{Dash}
+as this is needed to process compound names or label generation.
 
 =cut
 
@@ -769,9 +877,13 @@ sub normalise_utf8 {
 sub inits {
   my $istring = shift;
   $istring =~ s/[{}]//; # Remove any spurious braces left by btparse inits routines
-  return [ split(/(?<!\\)~/, $istring) ];
+  # The map {} is there to remove broken hyphenated initials returned from btparse
+  # For example, in the, admittedly strange 'al- Hassan, John', we want the 'al-'
+  # interpreted as a prefix (because of the following space) but because of the
+  # hypen, this is intialised as "a-" by btparse. So we correct such edge cases here by
+  # removing any trailing dashes in initials
+  return [ map {s/\p{Pd}$//r} split(/(?<!\\)~/, $istring) ];
 }
-
 
 =head2 join_name
 
@@ -797,34 +909,20 @@ sub join_name {
 =cut
 
 sub filter_entry_options {
-  my $options = shift;
-  return [] unless $options;
+  my ($secnum, $be) = @_;
+  my $bee = $be->get_field('entrytype');
+  my $citekey = $be->get_field('citekey');
   my $roptions = [];
-  foreach ($options->@*) {
-    m/^([^=\s]+)\s*=?\s*([^\s]+)?$/;
-    my $cfopt = $CONFIG_BIBLATEX_ENTRY_OPTIONS{lc($1)}{OUTPUT};
-    # convert booleans
-    my $val = $2;
-    if ($val and
-        $CONFIG_OPTTYPE_BIBLATEX{lc($1)} and
-        $CONFIG_OPTTYPE_BIBLATEX{lc($1)} eq 'boolean') {
-      $val = map_boolean($val, 'tostring');
-    }
-    # Standard option
-    if (not defined($cfopt) or $cfopt == 1) {
-      push $roptions->@*, $1 . ($val ? "=$val" : '') ;
-    }
-    # Set all split options to same value as parent
-    elsif (ref($cfopt) eq 'ARRAY') {
-      foreach my $map ($cfopt->@*) {
-        push $roptions->@*, "$map=$val";
-      }
-    }
-    # Set all splits to specific values
-    elsif (ref($cfopt) eq 'HASH') {
-      foreach my $map (keys $cfopt->%*) {
-        push $roptions->@*, "$map=" . $_->{$map};
-      }
+
+  foreach my $opt (sort Biber::Config->getblxentryoptions($secnum, $citekey)) {
+
+    my $val = Biber::Config->getblxoption($secnum, $opt, undef, $citekey);
+    my $cfopt = $CONFIG_BIBLATEX_OPTIONS{ENTRY}{$opt}{OUTPUT};
+    $val = map_boolean($opt, $val, 'tostring');
+
+    # By this point, all entry meta-options have been expanded by expand_option_input
+    if ($cfopt) { # suppress only explicitly ignored output options
+      push $roptions->@*, $opt . ($val ? "=$val" : '') ;
     }
   }
   return $roptions;
@@ -955,8 +1053,12 @@ sub validate_biber_xml {
 =cut
 
 sub map_boolean {
-  my $b = lc(shift);
-  my $dir = shift;
+  my ($bn, $bv, $dir) = @_;
+  my $b = lc($bv);
+  # Ignore non-booleans
+  return $bv unless exists($CONFIG_OPTTYPE_BIBLATEX{$bn});
+  return $bv unless $CONFIG_OPTTYPE_BIBLATEX{$bn} eq 'boolean';
+
   my %map = (true  => 1,
              false => 0,
             );
@@ -971,26 +1073,6 @@ sub map_boolean {
   }
 }
 
-=head2 remove_entry_options
-
-    Remove per-entry options
-
-=cut
-
-sub remove_entry_options {
-  my $options = shift;
-  my $mods = shift;
-  my $changed_opts;
-  foreach ($options->@*) {
-    s/\s+=\s+/=/g; # get rid of spaces around any "="
-    m/^([^=]+)(=?)(.+)?$/;
-    unless ($mods->{$1}) {
-      push $changed_opts->@*, ($1 . ($2 // '') . ($3 // ''));
-    }
-  }
-  return $changed_opts;
-}
-
 =head2 process_entry_options
 
     Set per-entry options
@@ -998,37 +1080,77 @@ sub remove_entry_options {
 =cut
 
 sub process_entry_options {
-  my $citekey = shift;
-  my $options = shift;
+  my ($citekey, $options, $secnum) = @_;
   return unless $options;       # Just in case it's null
   foreach ($options->@*) {
     s/\s+=\s+/=/g; # get rid of spaces around any "="
     m/^([^=]+)=?(.+)?$/;
     my $val = $2 // 1; # bare options are just boolean numerals
-    if ($CONFIG_OPTTYPE_BIBLATEX{lc($1)} and
-        $CONFIG_OPTTYPE_BIBLATEX{lc($1)} eq 'boolean') {
-      $val = map_boolean($val, 'tonum');
-    }
-    my $oo = expand_option($1, $val, $CONFIG_BIBLATEX_ENTRY_OPTIONS{lc($1)}->{INPUT});
+    my $oo = expand_option_input($1, $val, $CONFIG_BIBLATEX_OPTIONS{ENTRY}{lc($1)}{INPUT});
 
     foreach my $o ($oo->@*) {
-      Biber::Config->setblxoption($o->[0], $o->[1], 'ENTRY', $citekey);
+      Biber::Config->setblxoption($secnum, $o->[0], $o->[1], 'ENTRY', $citekey);
     }
   }
   return;
 }
 
-=head2 expand_option
+=head2 merge_entry_options
 
-    Expand option such as meta-options coming from biblatex
+    Merge entry options, dealing with conflicts
 
 =cut
 
-sub expand_option {
+sub merge_entry_options {
+  my ($opts, $overrideopts) = @_;
+  return $opts unless defined($overrideopts);
+  return $overrideopts unless defined($opts);
+  my $merged = [];
+  my $used_overrides = [];
+
+  foreach my $ov ($opts->@*) {
+    my $or = 0;
+    my ($o, $e, $v) = $ov =~ m/^([^=]+)(=?)(.*)$/;
+    foreach my $oov ($overrideopts->@*) {
+      my ($oo, $eo, $vo) = $oov =~ m/^([^=]+)(=?)(.*)$/;
+      if ($o eq $oo) {
+        $or = 1;
+        my $oropt = "$oo" . ($eo // '') . ($vo // '');
+        push $merged->@*, $oropt;
+        push $used_overrides->@*, $oropt;
+        last;
+      }
+    }
+    unless ($or) {
+      push $merged->@*, ("$o" . ($e // '') .($v // ''));
+    }
+  }
+
+  # Now push anything in the overrides array which had no conflicts
+  foreach my $oov ($overrideopts->@*) {
+    unless(first {$_ eq $oov} $used_overrides->@*) {
+      push $merged->@*, $oov;
+    }
+  }
+
+  return $merged;
+}
+
+=head2 expand_option_input
+
+    Expand options such as meta-options coming from biblatex
+
+=cut
+
+sub expand_option_input {
   my ($opt, $val, $cfopt) = @_;
   my $outopts;
+
+  # Coerce $val to integer so we know what to test with later
+  $val = map_boolean($opt, $val, 'tonum');
+
   # Standard option
-  if (not defined($cfopt)) {
+  if (not defined($cfopt)) { # no special input meta-option handling
     push $outopts->@*, [$opt, $val];
   }
   # Set all split options
@@ -1037,12 +1159,34 @@ sub expand_option {
       push $outopts->@*, [$k, $val];
     }
   }
+  # ASSUMPTION - only biblatex booleans resolve to hashes (currently, only dataonly)
   # Specify values per all splits
   elsif (ref($cfopt) eq 'HASH') {
     foreach my $k (keys $cfopt->%*) {
-      push $outopts->@*, [$k, $cfopt->{$k}];
+      my $subval = map_boolean($k, $cfopt->{$k}, 'tonum');
+
+      # meta-opt $val is 0/false - invert any boolean sub-options and ignore others
+      # for example, if datonly=false in a per-entry option:
+      # skipbib => false
+      # skiplab => false
+      # skipbiblist => false
+      # uniquename => DON'T SET ANYTHING (picked up from higher scopes)
+      # uniquelist => DON'T SET ANYTHING (picked up from higher scopes)
+      unless ($val) {
+        if (exists($CONFIG_OPTTYPE_BIBLATEX{$k}) and
+            $CONFIG_OPTTYPE_BIBLATEX{$k} eq 'boolean') {
+
+          # The defaults for the sub-options are for when $val=true
+          # invert booleans when $val=false
+          push $outopts->@*, [$k, $subval ? 0 : 1];
+        }
+      }
+      else {
+        push $outopts->@*, [$k, $subval];
+      }
     }
   }
+
   return $outopts;
 }
 
@@ -1166,12 +1310,12 @@ sub parse_date {
   # "1565" could be "1564" or "1565" in Julian, depending on the month/day of the Gregorian date
   # For example, "1565-01-01" (which is what DateTime will default to for bare years), is
   # "1564-12-22" Julian but 1564-01-11" and later is "1565" Julian year.
-  if (Biber::Config->getblxoption('julian') and
+  if (Biber::Config->getblxoption(undef,'julian') and
       not $obj->missing('month') and
       not $obj->missing('day')) {
 
     # There is guaranteed to be an end point since biblatex has a default
-    my $gs = Biber::Config->getblxoption('gregorianstart');
+    my $gs = Biber::Config->getblxoption(undef,'gregorianstart');
     my ($gsyear, $gsmonth, $gsday) = $gs =~ m/^(\d{4})\p{Dash}(\d{2})\p{Dash}(\d{2})$/;
     my $dtgs = DateTime->new( year  => $gsyear,
                               month => $gsmonth,
@@ -1552,6 +1696,43 @@ sub tzformat {
   }
 }
 
+# Wrapper to enforce map_appendstrict
+sub appendstrict_check {
+  my ($step, $orig, $val) = @_;
+  # Strict append?
+  if ($step->{map_appendstrict}) {
+    if ($orig) {
+      return $orig . $val;
+    }
+    else { # orig is empty, don't append
+      return '';
+    }
+  }
+  # Normal append, don't care if orig is empty
+  else {
+    return $orig . $val;
+  }
+}
+
+# Process backendin attribute from .bcf
+sub process_backendin {
+  my $bin = shift;
+  return undef unless $bin;
+  my $opts = [split(/\s*,\s*/, $bin)];
+  if (grep {/=/} $opts->@*) {
+    my $hopts;
+    foreach my $o ($opts->@*) {
+      my ($k, $v) = $o =~ m/\s*([^=]+)=(.+)\s*/;
+      $hopts->{$k} = $v;
+    }
+    return $hopts;
+  }
+  else {
+    return $opts;
+  }
+  return undef;
+}
+
 1;
 
 __END__
@@ -1568,7 +1749,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

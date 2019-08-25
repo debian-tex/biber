@@ -5,6 +5,14 @@ start =
       attribute type { "GLOBAL" | "ENTRYTYPE" | "ENTRY" | "NAMELIST" | "NAME" },
       element option {
         attribute datatype { "boolean" | "integer" | "string" | "xml" },
+        # Applies to ENTRY, NAMELIST and NAME scope
+        # Only set for meta-options and if defined, what biber should split
+        # the option into on reading it
+        attribute backendin {xsd:string}?,
+        # Applies to ENTRY, NAMELIST and NAME scope
+        # Determines whether biber will write the option to its ouput (e.g.
+        # .bbl) because biblatex needs to know the value.
+        attribute backendout {xsd:boolean}?,
         xsd:string
       }+
     }* &
@@ -324,6 +332,7 @@ map =
           attribute map_field_set { xsd:string {minLength="1"} }?,
           attribute map_entry_null { "1" }?,
           attribute map_append { "1" }?,
+          attribute map_appendstrict { "1" }?,
           attribute map_final { "1" }?,
           attribute map_match { xsd:string {minLength="1"} }?,
           attribute map_matchi { xsd:string {minLength="1"} }?,
@@ -449,7 +458,7 @@ element sort {
 dmfieldtype =  "field" | "list"
 dmdatatype =  "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "code" | "uri" | "datepart" | "keyword" | "option"
 
-# Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+# Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 # This code is free software.  You can redistribute it and/or
 # modify it under the terms of the Artistic License 2.0.

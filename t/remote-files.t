@@ -9,7 +9,7 @@ use Test::Differences;
 unified_diff;
 
 if ($ENV{BIBER_DEV_TESTS}) {
-  plan tests => 3;
+  plan tests => 2;
 }
 else {
   plan skip_all => 'BIBER_DEV_TESTS not set';
@@ -52,74 +52,15 @@ my $section = $biber->sections->get_section(0);
 my $main = $biber->datalists->get_list('nty/global//global/global');
 my $bibentries = $section->bibentries;
 
-my $cu1 = q|    \entry{citeulike:8283461}{article}{}
-      \name{author}{4}{}{%
-        {{uniquename=0,uniquepart=base,hash=45569c08e4409a489ea0089b05700737}{%
-           family={Marazziti},
-           familyi={M\bibinitperiod},
-           given={D.},
-           giveni={D\bibinitperiod},
-           givenun=0}}%
-        {{uniquename=0,uniquepart=base,hash=64c5a832511e0dd6aecf02f2d598b4e4}{%
-           family={Akiskal},
-           familyi={A\\bibinitperiod},
-           given={H.\bibnamedelimi S.},
-           giveni={H\bibinitperiod\bibinitdelim S\bibinitperiod},
-           givenun=0}}%
-        {{uniquename=0,uniquepart=base,hash=161a28db2496421f437aa4390748e14d}{%
-           family={Rossi},
-           familyi={R\bibinitperiod},
-           given={A.},
-           giveni={A\bibinitperiod},
-           givenun=0}}%
-        {{uniquename=0,uniquepart=base,hash=a586782bf328ff75bf4f3120e1f5787d}{%
-           family={Cassano},
-           familyi={C\bibinitperiod},
-           given={G.\bibnamedelimi B.},
-           giveni={G\bibinitperiod\bibinitdelim B\bibinitperiod},
-           givenun=0}}%
-      }
-      \strng{namehash}{a700cc0bdce78f5a1f50ff6314ff6f2a}
-      \strng{fullhash}{094b095bbb7ac93fdd3e2eafdcec0cac}
-      \strng{bibnamehash}{a700cc0bdce78f5a1f50ff6314ff6f2a}
-      \strng{authorbibnamehash}{a700cc0bdce78f5a1f50ff6314ff6f2a}
-      \strng{authornamehash}{a700cc0bdce78f5a1f50ff6314ff6f2a}
-      \strng{authorfullhash}{094b095bbb7ac93fdd3e2eafdcec0cac}
-      \field{sortinit}{M}
-      \field{sortinithash}{cfd219b90152c06204fab207bc6c7cab}
-      \field{extradatescope}{labelyear}
-      \field{labeldatesource}{year}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{abstract}{{BACKGROUND}: The evolutionary consequences of love are so important that there must be some long-established biological process regulating it. Recent findings suggest that the serotonin ({5-HT}) transporter might be linked to both neuroticism and sexual behaviour as well as to obsessive-compulsive disorder ({OCD}). The similarities between an overvalued idea, such as that typical of subjects in the early phase of a love relationship, and obsession, prompted us to explore the possibility that the two conditions might share alterations at the level of the {5-HT} transporter. {METHODS}: Twenty subjects who had recently (within the previous 6 months) fallen in love, 20 unmedicated {OCD} patients and 20 normal controls, were included in the study. The {5-HT} transporter was evaluated with the specific binding of {3H}-paroxetine ({3H}-Par) to platelet membranes. {RESULTS}: The results showed that the density of {3H}-Par binding sites was significantly lower in subjects who had recently fallen in love and in {OCD} patients than in controls. {DISCUSSION}: The main finding of the present study is that subjects who were in the early romantic phase of a love relationship were not different from {OCD} patients in terms of the density of the platelet {5-HT} transporter, which proved to be significantly lower than in the normal controls. This would suggest common neurochemical changes involving the {5-HT} system, linked to psychological dimensions shared by the two conditions, perhaps at an ideational level.}
-      \field{issn}{0033-2917}
-      \field{journaltitle}{Psychological medicine}
-      \field{month}{5}
-      \field{number}{3}
-      \field{title}{Alteration of the platelet serotonin transporter in romantic love.}
-      \field{volume}{29}
-      \field{year}{1999}
-      \field{pages}{741\bibrangedash 745}
-      \range{pages}{5}
-      \verb{urlraw}
-      \verb http://www.biomedexperts.com/Abstract.bme/10405096
-      \endverb
-      \verb{url}
-      \verb http://www.biomedexperts.com/Abstract.bme/10405096
-      \endverb
-      \keyw{love,romantic}
-    \endentry
-|;
-
 my $dl1 = q|    \entry{AbdelbarH98}{article}{}
       \name{author}{2}{}{%
-        {{uniquename=0,uniquepart=base,hash=03fb065ad674e2c6269f3542112e30df}{%
+        {{un=0,uniquepart=base,hash=03fb065ad674e2c6269f3542112e30df}{%
            family={Abdelbar},
            familyi={A\bibinitperiod},
            given={A.M.},
            giveni={A\bibinitperiod},
            givenun=0}}%
-        {{uniquename=0,uniquepart=base,hash=6ad6790ec94c4b5195bcac153b20da0e}{%
+        {{un=0,uniquepart=base,hash=6ad6790ec94c4b5195bcac153b20da0e}{%
            family={Hedetniemi},
            familyi={H\bibinitperiod},
            given={S.M.},
@@ -133,7 +74,7 @@ my $dl1 = q|    \entry{AbdelbarH98}{article}{}
       \strng{authornamehash}{bb887c5d0458bfb1f3f7e6afc8d1def4}
       \strng{authorfullhash}{bb887c5d0458bfb1f3f7e6afc8d1def4}
       \field{sortinit}{A}
-      \field{sortinithash}{d77c7cdd82ff690d4c3ef13216f92f0b}
+      \field{sortinithash}{a3dcedd53b04d1adfd5ac303ecd5e6fa}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{year}
       \field{labelnamesource}{author}
@@ -147,56 +88,40 @@ my $dl1 = q|    \entry{AbdelbarH98}{article}{}
     \endentry
 |;
 
-my $ssl = q|    \entry{merleau-ponty_philosophe_2010}{incollection}{}
+my $ssl = q|    \entry{crossley_politics_1994}{book}{}
       \name{author}{1}{}{%
-        {{uniquename=0,uniquepart=base,hash=83d062f99d033839537243075d75bad2}{%
-           family={Merleau-Ponty},
-           familyi={M\bibinithyphendelim P\bibinitperiod},
-           given={Maurice},
-           giveni={M\bibinitperiod},
+        {{un=0,uniquepart=base,hash=92a23f84d2ee0a6817cf6e31edda9ac2}{%
+           family={Crossley},
+           familyi={C\bibinitperiod},
+           given={Nick},
+           giveni={N\bibinitperiod},
            givenun=0}}%
       }
-      \name{editor}{1}{}{%
-        {{hash=ff5f90046157eecef0c22da4dac6486e}{%
-           family={Lefort},
-           familyi={L\bibinitperiod},
-           given={Claude},
-           giveni={C\bibinitperiod}}}%
-      }
       \list{language}{1}{%
-        {Fransk}%
-      }
-      \list{location}{1}{%
-        {Paris}%
+        {en}%
       }
       \list{publisher}{1}{%
-        {Éditions Gallimard}%
+        {Avebury}%
       }
-      \strng{namehash}{83d062f99d033839537243075d75bad2}
-      \strng{fullhash}{83d062f99d033839537243075d75bad2}
-      \strng{bibnamehash}{83d062f99d033839537243075d75bad2}
-      \strng{authorbibnamehash}{83d062f99d033839537243075d75bad2}
-      \strng{authornamehash}{83d062f99d033839537243075d75bad2}
-      \strng{authorfullhash}{83d062f99d033839537243075d75bad2}
-      \strng{editorbibnamehash}{ff5f90046157eecef0c22da4dac6486e}
-      \strng{editornamehash}{ff5f90046157eecef0c22da4dac6486e}
-      \strng{editorfullhash}{ff5f90046157eecef0c22da4dac6486e}
-      \field{sortinit}{M}
-      \field{sortinithash}{cfd219b90152c06204fab207bc6c7cab}
+      \strng{namehash}{92a23f84d2ee0a6817cf6e31edda9ac2}
+      \strng{fullhash}{92a23f84d2ee0a6817cf6e31edda9ac2}
+      \strng{bibnamehash}{92a23f84d2ee0a6817cf6e31edda9ac2}
+      \strng{authorbibnamehash}{92a23f84d2ee0a6817cf6e31edda9ac2}
+      \strng{authornamehash}{92a23f84d2ee0a6817cf6e31edda9ac2}
+      \strng{authorfullhash}{92a23f84d2ee0a6817cf6e31edda9ac2}
+      \field{sortinit}{C}
+      \field{sortinithash}{4c244ceae61406cdc0cc2ce1cb1ff703}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{year}
       \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{booktitle}{Œuvres}
-      \field{title}{Le philosophe et son ombre}
-      \field{year}{2010}
-      \field{pages}{1267\bibrangedash 1289}
-      \range{pages}{23}
-      \keyw{Husserl,Edmund,autrui,chair,constitution,intercorporéité,l'impensé,ouverture}
+      \field{labeltitlesource}{shorttitle}
+      \field{isbn}{9781856288866}
+      \field{shorttitle}{The politics of subjectivity}
+      \field{title}{The politics of subjectivity : {Between} {Foucault} and {Merleau}-{Ponty}}
+      \field{year}{1994}
+      \keyw{Philosophy / General,Philosophy / History \& Surveys / Modern,Subjectivity}
     \endentry
 |;
 
-
-eq_or_diff( $out->get_output_entry('citeulike:8283461', $main), $cu1, 'Fetch from citeulike') ;
 eq_or_diff( $out->get_output_entry('AbdelbarH98', $main), $dl1, 'Fetch from plain bib download') ;
-eq_or_diff( $out->get_output_entry('merleau-ponty_philosophe_2010', $main), $ssl, 'HTTPS test') ;
+eq_or_diff( $out->get_output_entry('crossley_politics_1994', $main), $ssl, 'HTTPS test') ;

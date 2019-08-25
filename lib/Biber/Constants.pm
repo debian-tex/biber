@@ -24,9 +24,7 @@ our @EXPORT = qw{
                   %CONFIG_OPTSCOPE_BIBLATEX
                   %CONFIG_SCOPEOPT_BIBLATEX
                   %CONFIG_OPTTYPE_BIBLATEX
-                  %CONFIG_BIBLATEX_ENTRY_OPTIONS
-                  %CONFIG_BIBLATEX_NAMELIST_OPTIONS
-                  %CONFIG_BIBLATEX_NAME_OPTIONS
+                  %CONFIG_BIBLATEX_OPTIONS
                   %CONFIG_META_MARKERS
                   %CONFIG_DATE_PARSERS
                   %DATAFIELD_SETS
@@ -42,9 +40,9 @@ our @EXPORT = qw{
 
 # Version of biblatex control file which this release expects. Matched against version
 # passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '3.5';
+our $BCF_VERSION = '3.6';
 # Format version of the .bbl. Used when writing the .bbl
-our $BBL_VERSION = '3.0';
+our $BBL_VERSION = '3.1';
 
 # Global flags needed for sorting
 our $BIBER_SORT_FINAL;
@@ -98,16 +96,16 @@ our %DS_EXTENSIONS = (
                       );
 
 # Mapping of biblatex uniquename option to disambiguation level
-our %UNIQUENAME_CONTEXTS = (0 => 'none',        # false
-                            1 => 'init',        # init
-                            2 => 'initorfull',  # full/true
-                            3 => 'init',        # allinit
-                            4 => 'initorfull',  # allfull
-                            5 => 'init',        # mininit
-                            6 => 'initorfull'); # minfull
+our %UNIQUENAME_CONTEXTS = ('false' => 'none',
+                            'init' => 'init',
+                            'full' => 'initorfull',
+                            'allinit' => 'init',
+                            'allfull' => 'initorfull',
+                            'mininit' => 'init',
+                            'minfull' => 'initorfull');
 
 # Mapping of strings to numeric uniquename values for easier biblatex processing
-our %UNIQUENAME_VALUES = ('none' => 0, 'init' => 1, full => '2');
+our %UNIQUENAME_VALUES = ('none' => 0, 'init' => 1, full => 2);
 
 # Biber option defaults. Mostly not needed outside of tool mode since they are passed by .bcf
 our $CONFIG_DEFAULT_BIBER = {
@@ -133,13 +131,13 @@ our $CONFIG_DEFAULT_BIBER = {
   no_bblxml_schema                            => { content => 0 },
   no_bltxml_schema                            => { content => 0 },
   nodieonerror                                => { content => 0 },
-  noinit                                      => { option => [ {value => q/\b\p{Ll}{2}\p{Pd}/},
+  noinit                                      => { option => [ {value => q/\b\p{Ll}{2}\p{Pd}(?=\S)/},
                                                                {value => q/[\x{2bf}\x{2018}]/} ] },
-  nolabel                                     => { option => [ {value => q/[\p{P}\p{S}\p{C}]+/} ] },
+  nolabel                                     => { option => [ {value => q/[\p{Pc}\p{Ps}\p{Pe}\p{Pi}\p{Pf}\p{Po}\p{S}\p{C}]+/} ] },
 #  nolabelwidthcount                          => { option =>  }, # default is nothing
   nolog                                       => { content => 0 },
   nostdmacros                                 => { content => 0 },
-  nosort                                      => { option => [ { name => 'setnames', value => q/\A\p{L}{2}\p{Pd}/ },
+  nosort                                      => { option => [ { name => 'setnames', value => q/\A\p{L}{2}\p{Pd}(?=\S)/ },
                                                                { name => 'setnames', value => q/[\x{2bf}\x{2018}]/ } ] },
   onlylog                                     => { content => 0 },
   others_string                               => { content => 'others' },
@@ -519,74 +517,9 @@ our %CONFIG_OPTSCOPE_BIBLATEX;
 our %CONFIG_SCOPEOPT_BIBLATEX;
 # Holds the datatype of an option at a particular scope
 our %CONFIG_OPTTYPE_BIBLATEX;
-
-# For per-entry options, what should be set when we find them and
-# what should be output to the .bbl for biblatex.
-# Basically, here we have to emulate relevant parts of biblatex's options processing
-# for local entry-specific options, note therefore the presence here of some
-# options like max/mincitenames which are not passed in the .bcf
-our %CONFIG_BIBLATEX_ENTRY_OPTIONS =
-  (
-   dataonly          => {OUTPUT => 1,
-                         INPUT => {skiplab     => 1,
-                                   skipbiblist => 1,
-                                   uniquename  => 0,
-                                   uniquelist  => 0}
-                        },
-   maxitems          => {OUTPUT => 1},
-   minitems          => {OUTPUT => 1},
-   maxbibnames       => {OUTPUT => 1},
-   minbibnames       => {OUTPUT => 1},
-   maxcitenames      => {OUTPUT => 1},
-   mincitenames      => {OUTPUT => 1},
-   maxsortnames      => {OUTPUT => 1},
-   minsortnames      => {OUTPUT => 1},
-   maxalphanames     => {OUTPUT => 0},
-   minalphanames     => {OUTPUT => 0},
-   maxnames          => {OUTPUT => ['maxcitenames', 'maxbibnames', 'maxsortnames'],
-                         INPUT  => ['maxcitenames', 'maxbibnames', 'maxsortnames']},
-   minnames          => {OUTPUT => ['mincitenames', 'minbibnames', 'minsortnames'],
-                         INPUT  => ['mincitenames', 'minbibnames', 'minsortnames']},
-   nametemplates     => {OUTPUT => ['sortingnamekeytemplatename',
-                                    'uniquenametemplatename',
-                                    'labelalphanametemplatename'],
-                         INPUT  => ['sortingnamekeytemplatename',
-                                    'uniquenametemplatename',
-                                    'labelalphanametemplatename']},
-   noinherit         => {OUTPUT => 0},
-   presort           => {OUTPUT => 0},
-   skipbib           => {OUTPUT => 1},
-   skipbiblist       => {OUTPUT => 1},
-   skiplab           => {OUTPUT => 1},
-   sortingnamekeytemplatename => {OUTPUT => 1},
-   uniquenametemplatename => {OUTPUT => 1},
-   labelalphanametemplatename => {OUTPUT => 1},
-   uniquelist        => {OUTPUT => 0},
-   useauthor         => {OUTPUT => 1},
-   useeditor         => {OUTPUT => 1},
-   useprefix         => {OUTPUT => 1},
-   usetranslator     => {OUTPUT => 1},
-  );
-
-our %CONFIG_BIBLATEX_NAMELIST_OPTIONS =
-  (
-   nametemplates     => {OUTPUT => ['sortingnamekeytemplatename',
-                                    'uniquenametemplatename',
-                                    'labelalphanametemplatename'],
-                         INPUT  => ['sortingnamekeytemplatename',
-                                    'uniquenametemplatename',
-                                    'labelalphanametemplatename']},
-  );
-
-our %CONFIG_BIBLATEX_NAME_OPTIONS =
-  (
-   nametemplates     => {OUTPUT => ['sortingnamekeytemplatename',
-                                    'uniquenametemplatename',
-                                    'labelalphanametemplatename'],
-                         INPUT  => ['sortingnamekeytemplatename',
-                                    'uniquenametemplatename',
-                                    'labelalphanametemplatename']},
-  );
+# For per-entry, per-namelist and per-name options, what should be set when we find them and
+# should they be output to the .bbl for biblatex.
+our %CONFIG_BIBLATEX_OPTIONS;
 
 1;
 
@@ -612,7 +545,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

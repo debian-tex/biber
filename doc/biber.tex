@@ -26,8 +26,8 @@
 \newcommand*{\biblatex}{Biblatex\xspace}
 \MakeAutoQuote{«}{»}
 
-\gdef\biberversion{2.12}    % BIBER VERSION
-\gdef\biblatexversion{3.12}   % BIBLATEX VERSION
+\gdef\biberversion{2.13}    % BIBER VERSION
+\gdef\biblatexversion{3.13}   % BIBLATEX VERSION
 
 % colour for tables
 \definecolor{Gray}{gray}{0.85}
@@ -96,6 +96,13 @@
 Please see the \verb+Changes+ file which accompanies \biber\ for the
 details on changes in each version. This section is just for important
 things like incompatible changes which users should be aware of.
+
+\minisec{2.13}
+In tool mode (\opt{--tool}), \biber now allows datamodel configuration in
+a user configuration file to add to or override the default datamodel
+contained in the main \file{biber-tool.conf} file. Previously it was
+necessary to copy the entire default data model into a user configuration
+file and then alter it.
 
 \minisec{2.6}
 When outputting \bibtex\ data in tool mode (\opt{--tool}), \biber now
@@ -253,6 +260,7 @@ compatibility matrix for the recent versions.
 \toprule
 \biber\ version & \biblatex\ version\\
 \midrule
+2.13 & 3.13\\
 2.12 & 3.12\\
 2.11 & 3.11\\
 2.10 & 3.10\\
@@ -469,7 +477,7 @@ sources, please make sure your entries are legal \TeX\ code.
 
 Running \opt{biber --help} will display all options and description of
 each and is the primary source of usage information. \biber\
-returns an exit code of 0 on success or 1 if there was an error.
+returns an exit code of 0 on success or 2 if there was an error.
 
 Most \biber\ options can be specified in long or short format. When
 mentioning options below, they are referred to as
@@ -628,7 +636,7 @@ an example config file which displays the \biber\ defaults:
   <nodieonerror>0</nodieonerror>
   <noinit>
     <!-- strip lowercase prefices like 'al-' when generating initials -->
-    <option value="\b\p{Ll}{2}\p{Pd}"/>
+    <option value="\b\p{Ll}{2}\p{Pd}(?=\S)"/>
     <!-- strip diacritics when generating initials -->
     <option value="[\x{2bf}\x{2018}]"/>
   </noinit>
@@ -640,7 +648,7 @@ an example config file which displays the \biber\ defaults:
   <nostdmacros>0</nostdmacros>
   <nosort>
     <!-- strip prefices like 'El-' when sorting name fields -->
-    <option name="setnames" value="\A\p{L}{2}\p{Pd}"/>
+    <option name="setnames" value="\A\p{L}{2}\p{Pd}(?=\S)"/>
     <!-- strip some diacritics when sorting name fields -->
     <option name="setnames" value="[\x{2bf}\x{2018}]"/>
   </nosort>
@@ -827,6 +835,7 @@ examples. A \opt{map} element looks like this:
              +\textcolor{blue}{map\_entry\_newtype="\textcolor{red}{newentrykeytype}"}+
              +\textcolor{blue}{map\_entry\_entrytarget="\textcolor{red}{newentrykey}"}+
              +\textcolor{blue}{map\_append="1"}+
+             +\textcolor{blue}{map\_appendstrict="1"}+
              +\textcolor{blue}{map\_null="1"}+
              +\textcolor{blue}{map\_entry\_null="1"}+
              +\textcolor{blue}{map\_entry\_clone="\textcolor{red}{clonekey}"}+
@@ -938,9 +947,10 @@ datasource entry being processed. A \opt{map\_step} works like this:
   \textcolor{blue}{\texttt{map\_final}} is also set on this step, then
   processing of the parent map stops at this point. If
   \textcolor{blue}{\texttt{map\_append}} is set, then the value to set is
-  appended to the current value of \textcolor{red}{\texttt{set-field}}. The
-  value to set is specified by a mandatory one and only one of the
-  following attributes:
+  appended to the current value of \textcolor{red}{\texttt{set-field}}.
+  \textcolor{blue}{\texttt{map\_appendstrict}} appends only if the
+  \textcolor{red}{\texttt{set-field}} is not empty. The value to set is
+  specified by a mandatory one and only one of the following attributes:
   \begin{itemize}
     \item \textcolor{blue}{\texttt{map\_field\_value}} --- The
       \textcolor{red}{\texttt{set-field}} is set to
@@ -1282,7 +1292,7 @@ in names which should not be considered when sorting. Given (the default):
 \begin{lstlisting}[language=xml]
   <noinit>
     <!-- strip lowercase prefices like 'al-' when generating initials -->
-    <option value="\b\p{Ll}{2}\p{Pd}"/>
+    <option value="\b\p{Ll}{2}\p{Pd}(?=\S)"/>
     <!-- strip diacritics when generating initials -->
     <option value="[\x{2bf}\x{2018}]"/>
   </noinit>
@@ -1684,7 +1694,7 @@ in names which should not be considered when sorting. Given (the default):
 \begin{lstlisting}[language=xml]
 <nosort>
   <!-- strip prefices like 'al-' when sorting names -->
-  <option name="setnames" value="\A\p{L}{2}\p{Pd}"/>
+  <option name="setnames" value="\A\p{L}{2}\p{Pd}(?=\S)"/>
   <!-- strip diacritics when sorting names -->
   <option name="setnames" value="[\x{2bf}\x{2018}]"/>
 </nosort>
@@ -2644,6 +2654,17 @@ output-xnamesep & \checkmark & - & - & -\\
 \label{tab:outopts}
 \end{table}
 \bigskip
+\subsubsection{Customising the Tool Mode Data Model}
+The default \file{biber-tool.conf} contains the default data model
+specification. You may add to or override the default data model by using
+your own config file via the \opt{--configfile|-g} option. The data model
+in the default \file{biber-tool.conf} will be read and then any datamodel
+section in your config file will be read, taking precedence over the
+default settings. There is no need to include a complete data model in your
+own config file--the \file{biber-tool.conf} provides a base. Naturally, for
+complex changes to the the default data model, then you may wish to include
+a complete data model in your config file.
+
 \subsubsection{Customising Tool Mode Inheritance Resolution}
 The default \file{biber-tool.conf} contains, as mentioned above, the
 default \biblatex \bibfield{CROSSREF} inheritance setup and \bibtex source
@@ -2735,28 +2756,12 @@ directory/folder and then run the current binary again. You can see the active c
 
 \subsection{Binary Architectures}
 
-Binaries are available for many architectures, directly on SourceForge and
-also via \TeX Live:
-
-\begin{itemize}
-\item \verb+darwin_x86_64+
-\item \verb+darwin_x86_i386+
-\item \verb+linux_x86_32+
-\item \verb+linux_x86_64+
-\item \verb+MSWin32+
-\item \verb+MSWin64+
-\item \verb+cygwin32+\tpb
-\item \verb+freebsd_x86+\tpb
-\item \verb+freebsd_amd64+\tpb
-\item \verb+solaris_i386+\tpb
-\item \verb+solaris_x86_64+\tpb
-\end{itemize}
-
-\noindent If you want to run development versions, they are usually only
-regularly updated for the core architectures which are not flagged as
-third-party built above. If you want to regularly run the latest
-development version, you should probably git clone the relevant branch and
-run \biber\ as a pure Perl program directly.
+Binaries are available for many architectures, directly on SourceForge. If
+you want to run development versions, they are usually only regularly
+updated for the core architectures which are not flagged as third-party
+built above. If you want to regularly run the latest development version,
+you should probably git clone the relevant branch and run \biber\ as a pure
+Perl program directly.
 
 \subsection{Installing}
 
@@ -2932,7 +2937,7 @@ of \biber\ version and locale of course but there should be no errors
 or warnings).
 
 \begin{verbatim}
-INFO - This is Biber 2.12
+INFO - This is Biber 2.13
 INFO - Logfile is 'test.blg'
 INFO - BibLaTeX control file 'test.bcf' validates
 INFO - Converted BibLaTeX control file 'test.bcf' to 'test.bcf.html'

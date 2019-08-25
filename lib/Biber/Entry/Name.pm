@@ -184,14 +184,8 @@ sub name_to_biblatexml {
     if (defined($self->${\"get_$no"})) {
       my $nov = $self->${\"get_$no"};
 
-      if ($CONFIG_OPTTYPE_BIBLATEX{lc($no)} and
-          $CONFIG_OPTTYPE_BIBLATEX{lc($no)} eq 'boolean') {
-        $nov = map_boolean($nov, 'tostring');
-      }
-
-      my $oo = expand_option($no, $nov, $CONFIG_BIBLATEX_NAME_OPTIONS{$no}->{OUTPUT});
-      foreach my $o ($oo->@*) {
-        push @attrs, ($o->[0] => $o->[1]);
+      if ($CONFIG_BIBLATEX_OPTIONS{NAME}{$no}{OUTPUT}) {
+        push @attrs, ($no => Biber::Utils::map_boolean($no, $nov, 'tostring'));
       }
     }
   }
@@ -302,14 +296,14 @@ sub name_to_bbl {
       push @namestrings, "           $np={$npc}",
                          "           ${np}i={$npci}";
       # Only if uniquename is true
-      if ($un) {
+      if ($un ne 'false') {
         push @namestrings, "           <BDS>UNP-${np}-${nid}</BDS>";
       }
     }
   }
 
   # Generate uniquename if uniquename is requested
-  if ($un) {
+  if ($un ne 'false') {
     push @pno, "<BDS>UNS-${nid}</BDS>";
     push @pno, "<BDS>UNP-${nid}</BDS>";
   }
@@ -319,14 +313,8 @@ sub name_to_bbl {
     if (defined($self->${\"get_$no"})) {
       my $nov = $self->${\"get_$no"};
 
-      if ($CONFIG_OPTTYPE_BIBLATEX{lc($no)} and
-          $CONFIG_OPTTYPE_BIBLATEX{lc($no)} eq 'boolean') {
-        $nov = Biber::Utils::map_boolean($nov, 'tostring');
-      }
-
-      my $oo = Biber::Utils::expand_option($no, $nov, $CONFIG_BIBLATEX_NAME_OPTIONS{$no}->{OUTPUT});
-      foreach my $o ($oo->@*) {
-        push @pno, $o->[0] . '=' . $o->[1];
+      if ($CONFIG_BIBLATEX_OPTIONS{NAME}{$no}{OUTPUT}) {
+        push @pno, $no . '=' . Biber::Utils::map_boolean($no, $nov, 'tostring');
       }
     }
   }
@@ -368,15 +356,15 @@ sub name_to_bblxml {
     $npci //= '';
     if ($npc) {
       $names{$np} = [$npc, $npci];
-      if ($un) {
+      if ($un ne 'false') {
         push $names{$np}->@*, "[BDS]UNP-${np}-${nid}[/BDS]";
       }
     }
   }
 
   # Generate uniquename if uniquename is requested
-  if ($un) {
-    $pno{uniquename} = "[BDS]UNS-${nid}[/BDS]";
+  if ($un ne 'false') {
+    $pno{un} = "[BDS]UNS-${nid}[/BDS]";
     $pno{uniquepart} = "[BDS]UNP-${nid}[/BDS]";
   }
 
@@ -385,14 +373,8 @@ sub name_to_bblxml {
     if (defined($self->${\"get_$no"})) {
       my $nov = $self->${\"get_$no"};
 
-      if ($CONFIG_OPTTYPE_BIBLATEX{lc($no)} and
-          $CONFIG_OPTTYPE_BIBLATEX{lc($no)} eq 'boolean') {
-        $nov = Biber::Utils::map_boolean($nov, 'tostring');
-      }
-
-      my $oo = Biber::Utils::expand_option($no, $nov, $CONFIG_BIBLATEX_NAME_OPTIONS{$no}->{OUTPUT});
-      foreach my $o ($oo->@*) {
-        $pno{$o->[0]} = $o->[1];
+      if ($CONFIG_BIBLATEX_OPTIONS{NAME}{$no}{OUTPUT}) {
+        $pno{$no} = Biber::Utils::map_boolean($no, $nov, 'tostring');
       }
     }
   }
@@ -404,8 +386,8 @@ sub name_to_bblxml {
   foreach my $key (sort keys %names) {
     my $value = $names{$key};
     my %un;
-    if ($un) {
-      %un = (uniquename => $value->[2]);
+    if ($un ne 'false') {
+      %un = (un => $value->[2]);
     }
     $xml->startTag([$xml_prefix, 'namepart'],
                    type => $key,
@@ -469,7 +451,7 @@ sub name_to_xname {
 
   # Name scope useprefix
   if (defined($self->get_useprefix)) {# could be 0
-    push @namestring, "useprefix$xns" . Biber::Utils::map_boolean($self->get_useprefix, 'tostring');
+    push @namestring, "useprefix$xns" . Biber::Utils::map_boolean('useprefix', $self->get_useprefix, 'tostring');
   }
 
   # Name scope sortingnamekeytemplatename
@@ -508,7 +490,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2018 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

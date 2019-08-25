@@ -5,7 +5,7 @@ use utf8;
 no warnings 'utf8' ;
 use open qw/:std :utf8/;
 
-use Test::More tests => 81;
+use Test::More tests => 83;
 use Test::Differences;
 unified_diff;
 
@@ -42,12 +42,12 @@ Log::Log4perl->init(\$l4pconf);
 # Using File::Spec->canonpath() to normalise path separators so these tests work
 # on Windows/non-Windows
 # Absolute path
-eq_or_diff(File::Spec->canonpath(locate_biber_file("$cwd/t/tdata/general.bcf")), File::Spec->canonpath("$cwd/t/tdata/general.bcf"), 'File location - 1');
+eq_or_diff(File::Spec->canonpath(locate_data_file("$cwd/t/tdata/general.bcf")), File::Spec->canonpath("$cwd/t/tdata/general.bcf"), 'File location - 1');
 # Relative path
-eq_or_diff(File::Spec->canonpath(locate_biber_file('t/tdata/general.bcf')), File::Spec->canonpath('t/tdata/general.bcf'), 'File location - 2');
+eq_or_diff(File::Spec->canonpath(locate_data_file('t/tdata/general.bcf')), File::Spec->canonpath('t/tdata/general.bcf'), 'File location - 2');
 # Same place as control file
 Biber::Config->set_ctrlfile_path('t/tdata/general.bcf');
-eq_or_diff(File::Spec->canonpath(locate_biber_file('t/tdata/examples.bib')), File::Spec->canonpath('t/tdata/examples.bib'), 'File location - 3');
+eq_or_diff(File::Spec->canonpath(locate_data_file('t/tdata/examples.bib')), File::Spec->canonpath('t/tdata/examples.bib'), 'File location - 3');
 
 # The \cM* is there because if cygwin picks up miktex kpsewhich, it will return a path
 # with a Ctrl-M on the end
@@ -55,12 +55,12 @@ eq_or_diff(File::Spec->canonpath(locate_biber_file('t/tdata/examples.bib')), Fil
 SKIP: {
   skip "No LaTeX installation", 1 unless can_run('kpsewhich');
   # using kpsewhich
-  like(File::Spec->canonpath(locate_biber_file('plain.tex')), qr|plain.tex\cM*\z|, 'File location - 4');
+  like(File::Spec->canonpath(locate_data_file('plain.tex')), qr|plain.tex\cM*\z|, 'File location - 4');
     }
 
 # In output_directory
 Biber::Config->setoption('output_directory', 't/tdata');
-eq_or_diff(File::Spec->canonpath(locate_biber_file('general.bcf')), File::Spec->canonpath("t/tdata/general.bcf"), 'File location - 5');
+eq_or_diff(File::Spec->canonpath(locate_data_file('general.bcf')), File::Spec->canonpath("t/tdata/general.bcf"), 'File location - 5');
 
 # String normalising
 eq_or_diff(normalise_string('"a, b–c: d" ', 1),  'a bc d', 'normalise_string' );
@@ -151,11 +151,12 @@ eq_or_diff(rangelen([['I-II', 'III-IV']]), -1, 'Rangelen test 9');
 eq_or_diff(rangelen([[22,4],[123,7],[113,15]]), 11, 'Rangelen test 10');
 
 # Test boolean mappings
-eq_or_diff(map_boolean('true', 'tonum'), 1, 'Boolean conversion - 1');
-eq_or_diff(map_boolean('False', 'tonum'), 0, 'Boolean conversion - 2');
-eq_or_diff(map_boolean(1, 'tostring'), 'true', 'Boolean conversion - 3');
-eq_or_diff(map_boolean(0, 'tostring'), 'false', 'Boolean conversion - 4');
-eq_or_diff(map_boolean(0, 'tonum'), 0, 'Boolean conversion - 5');
+$Biber::Utils::CONFIG_OPTTYPE_BIBLATEX{test} = 'boolean'; # mock this for tests
+eq_or_diff(map_boolean('test', 'true', 'tonum'), 1, 'Boolean conversion - 1');
+eq_or_diff(map_boolean('test', 'False', 'tonum'), 0, 'Boolean conversion - 2');
+eq_or_diff(map_boolean('test', 1, 'tostring'), 'true', 'Boolean conversion - 3');
+eq_or_diff(map_boolean('test', 0, 'tostring'), 'false', 'Boolean conversion - 4');
+eq_or_diff(map_boolean('test', 0, 'tonum'), 0, 'Boolean conversion - 5');
 
 # Range parsing
 eq_or_diff(parse_range('1--2'), [1,2], 'Range parsing - 1');
@@ -170,3 +171,5 @@ eq_or_diff([split_xsv('"family={Something, here}", given=b')], ['family={Somethi
 
 eq_or_diff(strip_noinit('\texttt{freedesktop.org}'), 'freedesktop.org', 'Name strip - 1');
 eq_or_diff(strip_noinit('\texttt freedesktop.org'), 'freedesktop.org', 'Name strip - 2');
+eq_or_diff(strip_noinit('{\texttt freedesktop.org}'), '{freedesktop.org}', 'Name strip - 3');
+eq_or_diff(strip_noinit('{C.\bibtexspatium A.}'), '{C.A.}', 'Name strip - 4');
