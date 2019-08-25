@@ -1,3 +1,11 @@
+biber (2.13-1) UNRELEASED; urgency=medium
+
+  * New upstream version 2.13
+  * break against tl with old biblatex
+  * update/cleanup patches
+
+ -- Norbert Preining <norbert@preining.info>  Sun, 25 Aug 2019 11:51:13 +0900
+
 biber (2.12-3) unstable; urgency=medium
 
   * Add me to list of Uploaders.
