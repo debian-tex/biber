@@ -181,6 +181,9 @@ sub clone {
     }
   }
 
+  # Clone annotations
+  Biber::Annotation->copy_annotations($self->get_field('citekey'), $newkey);
+
   # Need to add entrytype and datatype
   $new->{derivedfields}{entrytype} = $self->{derivedfields}{entrytype};
   $new->{derivedfields}{datatype} = $self->{derivedfields}{datatype};
@@ -206,6 +209,115 @@ sub notnull {
   my @arr = keys %$self;
   return $#arr > -1 ? 1 : 0;
 }
+
+=head2 add_xdata_ref
+
+  Add an XDATA reference to the entry
+  Reference can be simply to an entire XDATA entry or a particular field+position in field
+  Record reference and target positions so that the XDATA marker can be removed as otherwise
+  it would break further parsing
+
+=cut
+
+sub add_xdata_ref {
+  my ($self, $reffield, $value, $reffieldposition) = @_;
+  if ($reffield eq 'xdata') { # whole XDATA fields are a simple case
+    push $self->{xdatarefs}->@*, {# field pointing to XDATA
+                                  reffield => 'xdata',
+                                  refposition => 0,
+                                  xdataentries => $value,
+                                  xdatafield => undef,
+                                  xdataposition => 0};
+    return 1;
+  }
+  else { # Granular XDATA reference
+    my $xnamesep = Biber::Config->getoption('xnamesep');
+    my $xdatamarker = Biber::Config->getoption('xdatamarker');
+    if (my ($xdataref) = $value =~ m/^$xdatamarker$xnamesep(\S+)$/xi) {
+      my $xdatasep = Biber::Config->getoption('xdatasep');
+      my ($xe, $xf, $xfp) = $xdataref =~ m/^([^$xdatasep]+)$xdatasep([^$xdatasep]+)(?:$xdatasep(\d+))?$/x;
+      unless ($xf) { # There must be a field in a granular XDATA ref
+        my $entry_key = $self->get_field('citekey');
+        my $secnum = $Biber::MASTER->get_current_section;
+        biber_warn("Entry '$entry_key' has XDATA reference from field '$reffield' that contains no source field (section $secnum)", $self);
+        return 0;
+      }
+      push $self->{xdatarefs}->@*, {# field pointing to XDATA
+                                    reffield => $reffield,
+                                    # field position pointing to XDATA, 1-based
+                                    refposition => defined($reffieldposition) ? $reffieldposition+1 : 1,
+                                    # XDATA entry
+                                    xdataentries => [$xe],
+                                    # XDATA field
+                                    xdatafield => $xf,
+                                    # XDATA field position, 1-based
+                                    xdataposition => $xfp//1};
+      return 1;
+    }
+    else {
+      return 0;
+    }
+  }
+}
+
+=head2 get_xdata_refs
+
+  Get the XDATA references
+
+=cut
+
+sub get_xdata_refs {
+  my $self = shift;
+  return $self->{xdatarefs};
+}
+
+=head2 get_xdata_ref
+
+  Get a specific XDATA reference
+
+=cut
+
+sub get_xdata_ref {
+  my ($self, $field, $pos) = @_;
+  foreach my $xdatum ($self->{xdatarefs}->@*) {
+    if ($xdatum->{reffield} eq $field) {
+      if ($pos) {
+        if ($xdatum->{refposition} == $pos) {
+          return $xdatum;
+        }
+      }
+      else {
+        return $xdatum;
+      }
+    }
+  }
+  return undef;
+}
+
+=head2 is_xdata_resolved
+
+  Checks if an XDATA reference was resolved. Returns false also for
+  "no such reference".
+
+=cut
+
+sub is_xdata_resolved {
+  my ($self, $field, $pos) = @_;
+  foreach my $xdatum ($self->{xdatarefs}->@*) {
+    if ($xdatum->{reffield} eq $field) {
+      if ($pos) {
+        if ($xdatum->{refposition} == $pos) {
+          return $xdatum->{resolved};
+        }
+      }
+      else {
+        return $xdatum->{resolved};
+      }
+    }
+  }
+  return 0;
+}
+
 
 =head2 set_labelname_info
 
@@ -425,6 +537,22 @@ sub date_fields_exist {
   return 0;
 }
 
+=head2 delete_date_fields
+
+    Delete all parts of a date field when passed any datepart field name
+
+=cut
+
+sub delete_date_fields {
+  my ($self, $field) = @_;
+  my $t = $field =~ s/(?:end)?(?:year|month|day|hour|minute|second|season|timezone)$//r;
+  foreach my $dp ('year', 'month', 'day', 'hour', 'minute', 'second', 'season', 'timezone') {
+    delete($self->{datafields}{"$t$dp"});
+    delete($self->{datafields}{"${t}end$dp"});
+  }
+  return 1;
+}
+
 =head2 datafields
 
     Returns a sorted array of the fields which came from the data source
@@ -569,9 +697,10 @@ sub set_inherit_from {
 
 =head2 resolve_xdata
 
-    Recursively resolve XDATA fields in an entry
+    Recursively resolve XDATA in an entry. Sets a flag in the XDATA metadata to
+    say if the reference was successfully resolved.
 
-    $entry->resolve_xdata($xdata_entry);
+    $entry->resolve_xdata($xdata);
 
 =cut
 
@@ -580,42 +709,136 @@ sub resolve_xdata {
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
   my $entry_key = $self->get_field('citekey');
+  my $dm = Biber::Config->get_dm;
 
-  foreach my $xdatum (@$xdata) {
-    unless (my $xdatum_entry = $section->bibentry($xdatum)) {
-      biber_warn("Entry '$entry_key' references XDATA entry '$xdatum' which does not exist in section $secnum");
-      next;
-    }
-    else {
-      # Skip xdata inheritance if we've already done it
-      # This will only ever be between two XDATA entrytypes since we
-      # always start at a non-XDATA entrytype, which we'll not look at again
-      # and recursion is always between XDATA entrytypes.
-      next if Biber::Config->get_inheritance('xdata', $xdatum, $entry_key);
+  # $xdata =
+  # [
+  #  { # xdata info for an actual XDATA field (XDATA = {key, key})
+  #    reffield      => 'xdata',
+  #    refposition   => 0,
+  #    xdataentries  => # array ref of XDATA entry keys
+  #    xdatafield    => undef,
+  #    xdataposition => 0,
+  #    resolved      => 1 or 0
+  #  },
+  #  { # xdata info for an granular XDATA ref in another field
+  #    reffield      => # field pointing to XDATA
+  #    refposition   => # field position pointing to XDATA (or 1), 1-based
+  #    xdataentries  => # array ref containing single XDATA entry key
+  #    xdatafield    => # field within XDATA entry
+  #    xdataposition => # position in list field within XDATA entry (or 1), 1-based
+  #    resolved      => 1 or 0
+  #  }
+  #  {
+  #    .
+  #    .
+  #    .
+  #  }
+  # ]
 
-      # record the XDATA resolve between these entries to prevent loops
-      Biber::Config->set_inheritance('xdata', $xdatum, $entry_key);
+  foreach my $xdatum ($xdata->@*) {
 
-      # Detect XDATA loops
-      unless (Biber::Config->is_inheritance_path('xdata', $entry_key, $xdatum)) {
-        if (my $recurse_xdata = $xdatum_entry->get_field('xdata')) { # recurse
-          $xdatum_entry->resolve_xdata($recurse_xdata);
-        }
-        foreach my $field ($xdatum_entry->datafields()) { # set fields
-          next if $field eq 'ids'; # Never inherit aliases
-          $self->set_datafield($field, $xdatum_entry->get_field($field));
+    foreach my $xdref ($xdatum->{xdataentries}->@*) {
 
-          # Record graphing information if required
-          if (Biber::Config->getoption('output_format') eq 'dot') {
-            Biber::Config->set_graph('xdata', $xdatum_entry->get_field('citekey'), $entry_key, $field, $field);
-          }
-          if ($logger->is_debug()) { # performance tune
-            $logger->debug("Setting field '$field' in entry '$entry_key' via XDATA");
-          }
-        }
+      unless (my $xdataentry = $section->bibentry($xdref)) {
+        biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which does not exist, not resolving (section $secnum)", $self);
+        $xdatum->{resolved} = 0;
+        next;
       }
       else {
-        biber_error("Circular XDATA inheritance between '$xdatum'<->'$entry_key'");
+        unless ($xdataentry->get_field('entrytype') eq 'xdata') {
+          biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which is not an XDATA entry, not resolving (section $secnum)", $self);
+          $xdatum->{resolved} = 0;
+          next;
+        }
+
+        # record the XDATA resolve between these entries to prevent loops
+        Biber::Config->set_inheritance('xdata', $xdref, $entry_key);
+        # Detect XDATA loops
+        unless (Biber::Config->is_inheritance_path('xdata', $entry_key, $xdref)) {
+          if (my $recurse_xdata = $xdataentry->get_xdata_refs) { # recurse
+            $xdataentry->resolve_xdata($recurse_xdata);
+          }
+
+          # Whole entry XDATA reference so inherit all fields
+          if (not defined($xdatum->{xdatafield})) {
+            foreach my $field ($xdataentry->datafields()) { # set fields
+              next if $field eq 'ids'; # Never inherit aliases
+              $self->set_datafield($field, $xdataentry->get_field($field));
+
+              # Record graphing information if required
+              if (Biber::Config->getoption('output_format') eq 'dot') {
+                Biber::Config->set_graph('xdata', $xdataentry->get_field('citekey'), $entry_key, $field, $field);
+              }
+              if ($logger->is_debug()) { # performance tune
+                $logger->debug("Setting field '$field' in entry '$entry_key' via XDATA");
+              }
+            }
+          }
+          else { # Granular XDATA inheritance
+            my $xdatafield = $xdatum->{xdatafield};
+            my $xdataposition = $xdatum->{xdataposition};
+            my $reffield = $xdatum->{reffield};
+            my $refposition = $xdatum->{refposition};
+            my $reffielddm = $dm->get_dm_for_field($reffield);
+            my $xdatafielddm = $dm->get_dm_for_field($xdatafield);
+
+            unless ($reffielddm->{fieldtype} eq $xdatafielddm->{fieldtype} and
+                    $reffielddm->{datatype} eq $xdatafielddm->{datatype}) {
+              biber_warn("Field '$reffield' in entry '$entry_key' which xdata references field '$xdatafield' in entry '$xdref' are not the same types, not resolving (section $secnum)", $self);
+              $xdatum->{resolved} = 0;
+              next;
+            }
+
+            unless ($xdataentry->get_field($xdatafield)) {
+              biber_warn("Field '$reffield' in entry '$entry_key' references XDATA field '$xdatafield' in entry '$xdref' and this field does not exist, not resolving (section $secnum)", $self);
+              $xdatum->{resolved} = 0;
+              next;
+            }
+
+            # Name lists
+            if ($dm->field_is_type('list', 'name', $reffield)){
+
+              unless ($xdataentry->get_field($xdatafield)->is_nth_name($xdataposition)) {
+                biber_warn("Field '$reffield' in entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
+                $xdatum->{resolved} = 0;
+                next;
+              }
+
+              $self->get_field($reffield)->replace_name($xdataentry->get_field($xdatafield)->nth_name($xdataposition), $refposition);
+              if ($logger->is_debug()) { # performance tune
+                $logger->debug("Setting position $refposition in name field '$reffield' in entry '$entry_key' via XDATA");
+              }
+            }
+            # Non-name lists
+            elsif ($dm->field_is_fieldtype('list', $reffield)) {
+
+              unless ($xdataentry->get_field($xdatafield)->[$xdataposition-1]) {
+                biber_warn("Field '$reffield' in entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
+                $xdatum->{resolved} = 0;
+                next;
+              }
+
+              $self->get_field($reffield)->[$refposition-1] =
+                $xdataentry->get_field($xdatafield)->[$refposition-1];
+              if ($logger->is_debug()) { # performance tune
+                $logger->debug("Setting position $refposition in list field '$reffield' in entry '$entry_key' via XDATA");
+              }
+            }
+            # Non-list
+            else {
+
+              $self->set_datafield($reffield, $xdataentry->get_field($xdatafield));
+              if ($logger->is_debug()) { # performance tune
+                $logger->debug("Setting field '$reffield' in entry '$entry_key' via XDATA");
+              }
+            }
+          }
+          $xdatum->{resolved} = 1;
+        }
+        else {
+          biber_error("Circular XDATA inheritance between '$xdref'<->'$entry_key'");
+        }
       }
     }
   }
@@ -730,18 +953,49 @@ sub inherit_from {
   if ($inherit_all eq 'true') {
     my @fields = $parent->datafields;
 
-    # Special case - if the child has any Xdate datepart, don't inherit any Xdateparts
+    # Special case:
+    # WITH NO override: If the child has any Xdate datepart, don't inherit any Xdateparts
     # from parent otherwise you can end up with rather broken dates in the child.
     # Remove such fields before we start since it can't be done in the loop because
     # as soon as one Xdatepart field has been inherited, no more will be.
+    # Save removed fields as this is needed when copying derived special date fields below
+    # as these also need skipping if have skipped the *date field from which they were derived
+    # WITH override: Remove all related dateparts so that there is no conflict with inherited
     my @filtered_fields;
+    my @removed_fields;
     foreach my $field (@fields) {
       if (first {$_ eq $field} $dmh->{dateparts}->@*) {
-        next if $self->date_fields_exist($field);
+        if ($self->date_fields_exist($field)) {
+          if ($override_target eq 'true') {
+            $self->delete_date_fields($field); # clear out all date field parts in target
+          }
+          else {
+            push @removed_fields, $field;
+            next;
+          }
+        }
       }
       push @filtered_fields, $field;
     }
     @fields = @filtered_fields;
+
+    # copy derived date fields as these are technically data
+    foreach my $datefield ($dmh->{datefields}->@*) {
+      my $df = $datefield =~ s/date$//r;
+      # Ignore derived date special fields from date fields which we have skipped
+      # because they already exist in the child.
+      next if first {$_ eq $datefield} @removed_fields;
+      foreach my $dsf ('dateunspecified', 'datesplit', 'datejulian',
+                       'enddatejulian', 'dateapproximate', 'enddateapproximate',
+                       'dateuncertain', 'enddateuncertain', 'season', 'endseason',
+                       'era', 'endera') {
+        if (my $ds = $parent->{derivedfields}{"$df$dsf"}) {
+          # Set unless the child has the *date datepart, otherwise you can
+          # end up with rather broken dates in the child.
+          $self->{derivedfields}{"$df$dsf"} = $ds;
+        }
+      }
+    }
 
     foreach my $field (@fields) {
       # Skip for fields in the per-entry noinherit datafield set
@@ -799,7 +1053,6 @@ __END__
 
 =head1 AUTHORS
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -809,7 +1062,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

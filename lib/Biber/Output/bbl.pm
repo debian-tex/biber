@@ -107,6 +107,8 @@ sub _printfield {
   my $field_type = 'field';
   my $dm = Biber::Config->get_dm;
 
+  my $outfield = $dm->get_outcase($field);
+
   return '' if is_null($str) and not $dm->field_is_nullok($field);
 
   # crossref and xref are of type 'strng' in the .bbl
@@ -132,18 +134,18 @@ sub _printfield {
 
   if (Biber::Config->getoption('wraplines')) {
     ## 16 is the length of '      \field{}{}' or '      \strng{}{}'
-    if ( 16 + Unicode::GCString->new($field)->length + Unicode::GCString->new($str)->length > 2*$Text::Wrap::columns ) {
-      return "      \\${field_type}{$field}{%\n" . wrap('      ', '      ', $str) . "%\n      }\n";
+    if ( 16 + Unicode::GCString->new($outfield)->length + Unicode::GCString->new($str)->length > 2*$Text::Wrap::columns ) {
+      return "      \\${field_type}{$outfield}{%\n" . wrap('      ', '      ', $str) . "%\n      }\n";
     }
-    elsif ( 16 + Unicode::GCString->new($field)->length + Unicode::GCString->new($str)->length > $Text::Wrap::columns ) {
-      return wrap('      ', '      ', "\\${field_type}{$field}{$str}" ) . "\n";
+    elsif ( 16 + Unicode::GCString->new($outfield)->length + Unicode::GCString->new($str)->length > $Text::Wrap::columns ) {
+      return wrap('      ', '      ', "\\${field_type}{$outfield}{$str}" ) . "\n";
     }
     else {
-      return "      \\${field_type}{$field}{$str}\n";
+      return "      \\${field_type}{$outfield}{$str}\n";
     }
   }
   else {
-    return "      \\${field_type}{$field}{$str}\n";
+    return "      \\${field_type}{$outfield}{$str}\n";
   }
   return;
 }
@@ -194,6 +196,7 @@ sub set_output_undefkey {
 sub set_output_entry {
   my ($self, $be, $section, $dm) = @_;
   my $bee = $be->get_field('entrytype');
+  my $outtype = $dm->get_outcase($bee);
   my $secnum = $section->number;
   my $key = $be->get_field('citekey');
   my $acc = '';
@@ -215,7 +218,7 @@ sub set_output_entry {
 
   # Skip entrytypes we don't want to output according to datamodel
   return if $dm->entrytype_is_skipout($bee);
-  $acc .= "    \\entry{$key}{$bee}{" . join(',', filter_entry_options($secnum, $be)->@*) . "}\n";
+  $acc .= "    \\entry{$key}{$outtype}{" . join(',', filter_entry_options($secnum, $be)->@*) . "}\n";
 
   # Generate set information.
   # Set parents are special and need very little
@@ -421,6 +424,7 @@ sub set_output_entry {
   foreach my $field ($dmh->{fields}->@*) {
     # Performance - as little as possible here - loop over DM fields for every entry
     my $val = $be->get_field($field);
+
     if ( length($val) or # length() catches '0' values, which we want
          ($dm->field_is_nullok($field) and
           $be->field_exists($field)) ) {
@@ -759,7 +763,6 @@ __END__
 
 =head1 AUTHORS
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -769,7 +772,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

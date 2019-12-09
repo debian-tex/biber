@@ -8,16 +8,17 @@ use Biber::Constants;
 use Biber::Utils;
 use Biber::DataModel;
 use Data::Compare;
+use Digest::MD5 qw( md5_hex );
+use Encode;
 use List::AllUtils qw( :all );
 use Log::Log4perl qw(:no_extra_logdie_message);
-use Digest::MD5 qw( md5_hex );
 use POSIX qw( locale_h ); # for lc()
 use Scalar::Util qw(looks_like_number);
 use Text::Roman qw(isroman roman2int);
 use Unicode::GCString;
 use Unicode::Collate::Locale;
 use Unicode::Normalize;
-use Encode;
+use Unicode::UCD qw(num);
 
 =encoding utf-8
 
@@ -1226,18 +1227,16 @@ sub _sort_integer {
   my $dmtype = $args->[0]; # get int field type
   my $bee = $be->get_field('entrytype');
   if (my $field = $be->get_field($dmtype)) {
+
     # Make an attempt to map roman numerals to integers for sorting unless suppressed
-    if (not looks_like_number($field) and
+    if (isroman(NFKD($field)) and
         not Biber::Config->getblxoption($secnum, 'noroman', $be->get_field('entrytype'), $citekey)) {
-      $field = NFKD($field);
-      if (isroman($field)) {
-        $field = roman2int($field);
-      }
+      $field = roman2int(NFKD($field));
     }
-    # Make an attempt to map alpha fields to integers for sorting
-    if (not looks_like_number($field)) {
-      $field = sum(map {ord} split('', $field));
-    }
+
+    # Use Unicode::UCD::num() to map Unicode numbers to integers if possible
+    $field = num($field) //$field;
+
     return _process_sort_attributes($field, $sortelementattributes);
   }
   else {
@@ -1496,14 +1495,6 @@ sub _namestring {
     $useprefix = $names->get_useprefix;
   }
 
-  # These should be symbols which can't appear in names and which sort before all alphanum
-  # so that "Alan Smith" sorts after "Al Smith". This means, symbols which normalise_string_sort()
-  # strips out. Unfortuately, this means using punctuation and these are by default variable
-  # weight and ignorable in DUCET so we have to set U::C to variable=>'non-ignorable' as
-  # sorting default so that they are non-ignorable
-  my $nsi    = '!';          # name separator, internal
-  my $nse    = '#';          # name separator, external
-  # Guaranteed to sort after everything else as it's the last legal Unicode code point
   my $trunc = "\x{10FFFD}";  # sort string for "et al" truncated name
 
   # We strip nosort first otherwise normalise_string_sort damages diacritics
@@ -1525,9 +1516,11 @@ sub _namestring {
     my $snk = Biber::Config->getblxoption(undef, 'sortingnamekeytemplate')->{$snkname};
 
     # Get the sorting name key specification and use it to construct a sorting key for each name
+    my $kpa = [];
     foreach my $kp ($snk->@*) {
-      my $kps;
-      foreach my $np ($kp->@*) {
+      my $kps = '';
+      for (my $i=0; $i<=$kp->$#*; $i++) {
+        my $np = $kp->[$i];
         if ($np->{type} eq 'namepart') {
           my $namepart = $np->{value};
           my $useopt = exists($np->{use}) ? "use$namepart" : undef;
@@ -1543,14 +1536,34 @@ sub _namestring {
 
             if (not $useopt or
                 ($useopt and $useoptval == $np->{use})) {
+
+              my $nps = '';
               # Do we only want initials for sorting?
               if ($np->{inits}) {
                 my $npistring = $n->get_namepart_initial($namepart);
-                $kps .= normalise_string_sort(join('', $npistring->@*), $field);
+
+                # The namepart is padded to the longest namepart in the ref
+                # section as this is the only way to make sorting work
+                # properly The padding is spaces as this sorts before all
+                # glyphs but it also of variable weight and ignorable in
+                # DUCET so we have to set U::C to variable=>'non-ignorable'
+                # as sorting default so that spaces are non-ignorable
+                $nps = normalise_string_sort(join('', $npistring->@*), $field);
+
+                # Only pad the last namepart
+                if ($i == $kp->$#*) {
+                  $nps = sprintf("%-*s", $section->get_np_length("${namepart}-i"), $nps);
+                }
               }
               else {
-                $kps .= normalise_string_sort($npstring, $field);
+                $nps = normalise_string_sort($npstring, $field);
+
+                # Only pad the last namepart
+                if ($i == $kp->$#*) {
+                  $nps = sprintf("%-*s", $section->get_np_length($namepart), $nps);
+                }
               }
+              $kps .= $nps;
             }
           }
         }
@@ -1558,12 +1571,10 @@ sub _namestring {
           $kps .= $np->{value};
         }
       }
-      # Now append the key part string plus internal name sep if the string is not empty
-      $str .= $kps . $nsi if $kps;
+      # Now append the key part string if the string is not empty
+      $str .= $kps if $kps;
+      push $kpa->@*, $kps;
     }
-
-    $str =~ s/\Q$nsi\E\z//xms;       # Remove any trailing internal separator
-    $str .= $nse;                    # Add separator in between names
   }
 
   my $nso = Biber::Config->getblxoption($secnum, 'nosortothers', $bee, $citekey);
@@ -1573,20 +1584,12 @@ sub _namestring {
     $nso = $names->get_nosortothers;
   }
 
-  # If we had an explicit "and others"
-  unless ($nso) {
-    if ($names->get_morenames) {
-      $str .= "+$nse";
-    }
-  }
-
-  $str =~ s/\s+\Q$nse\E/$nse/gxms;   # Remove any whitespace before external separator
-  $str =~ s/\Q$nse\E\z//xms;         # strip final external separator as we have finished
-
   unless ($nso) {
     $str .= $trunc if $visible < $count; # name list was truncated
   }
+
   return $str;
+
 }
 
 sub _liststring {
@@ -1658,7 +1661,6 @@ __END__
 
 =head1 AUTHOR
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -1668,7 +1670,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

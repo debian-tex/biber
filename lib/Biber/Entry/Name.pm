@@ -45,6 +45,14 @@ sub new {
   my $dm = Biber::Config->get_dm;
   if (%params) {
     my $name = {};
+
+    # Name is an XDATA reference
+    if (my $xdata = $params{xdata}) {
+      $name->{xdata} = $xdata;
+      $name->{id} = suniqid;
+      return bless $name, $class;
+    }
+
     foreach my $attr (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*,
                       'gender',
                       'useprefix',
@@ -117,6 +125,17 @@ sub was_stripped {
 sub get_nameparts {
   my $self = shift;
   return keys $self->{nameparts}->%*;
+}
+
+=head2 get_xdata
+
+    Get any xdata reference information for a name
+
+=cut
+
+sub get_xdata {
+  my $self = shift;
+  return $self->{xdata} || '';
 }
 
 =head2 get_namepart
@@ -401,16 +420,20 @@ sub name_to_bblxml {
   return;
 }
 
-=head2 name_to_bib
+=head2 name_to_bibtex
 
     Return standard bibtex data format for name
 
 =cut
 
-sub name_to_bib {
+sub name_to_bibtex {
   my $self = shift;
   my $parts;
   my $namestring = '';
+
+  if (my $xdata = $self->get_xdata) {
+    return $xdata;
+  }
 
   foreach my $np ('prefix', 'family', 'suffix', 'given') {
     if ($parts->{$np} = $self->get_namepart($np)) {
@@ -480,7 +503,6 @@ __END__
 
 =head1 AUTHORS
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -490,7 +512,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

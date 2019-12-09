@@ -31,9 +31,11 @@ Biber::Entry::Names
 =cut
 
 sub new {
-  my $class = shift;
+  my ($class, %params) = @_;
+
   return bless {namelist => [],
-                id       => suniqid}, $class;
+                id       => suniqid,
+                %params}, $class;
 }
 
 
@@ -90,6 +92,20 @@ sub add_name {
   return;
 }
 
+=head2 replace_name
+
+    Replace a Biber::Entry::Name at a position (1-based)
+    with a provided one
+
+=cut
+
+sub replace_name {
+  my ($self, $name_obj, $position) = @_;
+  $name_obj->set_index($position-1);
+  $self->{namelist}->[$position-1] = $name_obj;
+  return;
+}
+
 =head2 set_morenames
 
     Sets a flag to say that we had a "and others" in the data
@@ -124,6 +140,18 @@ sub count_names {
   return scalar $self->{namelist}->@*;
 }
 
+=head2 is_nth_name
+
+    Returns boolean to say of there is an nth name
+
+=cut
+
+sub is_nth_name {
+  my ($self, $n) = @_;
+  # name n is 1-based, don't go into negative indices
+  return $self->{namelist}[($n == 0) ? 0 : $n-1];
+}
+
 =head2 nth_name
 
     Returns the nth Biber::Entry::Name object in the object or the last one
@@ -132,8 +160,7 @@ sub count_names {
 =cut
 
 sub nth_name {
-  my $self = shift;
-  my $n = shift;
+  my ($self, $n) = @_;
   my $size = $self->{namelist}->@*;
   return $self->{namelist}[$n > $size ? $size-1 : $n-1];
 }
@@ -175,6 +202,17 @@ sub last_name {
   return $self->{namelist}[-1];
 }
 
+=head2 get_xdata
+
+    Get any xdata reference information for a namelist
+
+=cut
+
+sub get_xdata {
+  my $self = shift;
+  return $self->{xdata} || '';
+}
+
 =head2 dump
 
     Dump a Biber::Entry::Names object for debugging purposes
@@ -193,7 +231,6 @@ __END__
 
 =head1 AUTHORS
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -203,7 +240,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

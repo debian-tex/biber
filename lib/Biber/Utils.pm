@@ -56,7 +56,7 @@ our @EXPORT = qw{ glob_data_file locate_data_file makenamesid makenameid stringi
   parse_range parse_range_alt maploopreplace get_transliterator
   call_transliterator normalise_string_bblxml gen_initials join_name_parts
   split_xsv date_monthday tzformat expand_option_input strip_annotation
-  appendstrict_check merge_entry_options process_backendin};
+  appendstrict_check merge_entry_options process_backendin xdatarefout xdatarefcheck};
 
 =head1 FUNCTIONS
 
@@ -86,7 +86,7 @@ sub glob_data_file {
     File::DosGlob->import('glob');
   }
 
-  push @sources, glob($source);
+  push @sources, glob($source =~ s/\s/\\ /r); # quote spaces
 
   $logger->info("Globbed data source '$source' to " . join(',', @sources));
   return @sources;
@@ -160,7 +160,8 @@ sub locate_data_file {
 
         require LWP::Protocol::https;
       }
-      require LWP::Simple;
+
+      require LWP::UserAgent;
       # no need to unlink file as tempdir will be unlinked. Also, the tempfile
       # will be needed after this sub has finished and so it must not be unlinked
       # by going out of scope
@@ -170,11 +171,14 @@ sub locate_data_file {
                                UNLINK => 0);
 
       # Pretend to be a browser otherwise some sites refuse the default LWP UA string
-      $LWP::Simple::ua->agent('Mozilla/5.0');
+      my $ua = LWP::UserAgent->new;  # we create a global UserAgent object
+      $ua->agent('Mozilla/5.0');
+      $ua->env_proxy;
+      my $request = HTTP::Request->new('GET', $source, ['Zotero-Allowed-Request' => '1']);
+      my $response = $ua->request($request, $tf->filename);
 
-      my $retcode = LWP::Simple::getstore($source, $tf->filename);
-      unless (LWP::Simple::is_success($retcode)) {
-        biber_error("Could not fetch '$source' (HTTP code: $retcode)");
+      unless ($response->is_success) {
+        biber_error("Could not fetch '$source' (HTTP code: " . $response->code. ")");
       }
       $sourcepath = $tf->filename;
       # cache any remote so it persists and so we don't fetch it again
@@ -317,7 +321,7 @@ sub biber_error {
   $Biber::MASTER->{errors}++;
   # exit unless user requested not to for errors
   unless ($nodie or Biber::Config->getoption('nodieonerror')) {
-    $Biber::MASTER->display_problems;
+    $Biber::MASTER->display_end;
     exit EXIT_ERROR;
   }
 }
@@ -445,8 +449,9 @@ sub normalise_string_label {
 
 =head2 normalise_string_sort
 
-Removes LaTeX macros, and all punctuation, symbols, separators and control characters,
+Removes LaTeX macros, and all punctuation, symbols, separators
 as well as leading and trailing whitespace for sorting strings.
+Control chars don't need to be stripped as they are completely ignorable in DUCET
 
 =cut
 
@@ -460,7 +465,7 @@ sub normalise_string_sort {
   $str =~ s/([^\\])~/$1 /g; # Foo~Bar -> Foo Bar
   # Don't use normalise_string_common() as this strips out things needed for sorting
   $str =~ s/\\[A-Za-z]+//g;        # remove latex macros (assuming they have only ASCII letters)
-  $str =~ s/[\{\}\p{C}]+//g;       # remove embedded braces and control
+  $str =~ s/[{}]+//g;              # remove embedded braces
   $str =~ s/^\s+|\s+$//g;          # Remove leading and trailing spaces
   $str =~ s/\s+/ /g;               # collapse spaces
   return $str;
@@ -1634,13 +1639,16 @@ sub gen_initials {
   foreach my $str (@strings) {
     # Deal with hyphenated name parts and normalise to a '-' character for easy
     # replacement with macro later
-    if ($str =~ m/\p{Dash}/) {
+    # Dont' split a name part if it's brace-wrapped
+    if ($str !~ m/^\{.+\}$/ and $str =~ m/\p{Dash}/) {
       push @strings_out, join('-', gen_initials(split(/\p{Dash}/, $str)));
     }
     else {
+      # remove any leading braces from latex decoding or protection
+      $str =~ s/^\{//;
       my $chr = Unicode::GCString->new($str)->substr(0, 1)->as_string;
       # Keep diacritics with their following characters
-      if ($chr =~ m/\p{Dia}/) {
+      if ($chr =~ m/^\p{Dia}/) {
         push @strings_out, Unicode::GCString->new($str)->substr(0, 2)->as_string;
       }
       else {
@@ -1733,13 +1741,45 @@ sub process_backendin {
   return undef;
 }
 
+# Replace xnamesep/xdatasep with output variants
+# Some datasource formats don't need the marker (biblatexml)
+sub xdatarefout {
+  my ($xdataref, $implicitmarker) = @_;
+  my $xdmi = Biber::Config->getoption('xdatamarker');
+  my $xdmo = Biber::Config->getoption('output_xdatamarker');
+  my $xnsi = Biber::Config->getoption('xnamesep');
+  my $xnso = Biber::Config->getoption('output_xnamesep');
+  my $xdsi = Biber::Config->getoption('xdatasep');
+  my $xdso = Biber::Config->getoption('output_xdatasep');
+  if ($implicitmarker) { # Don't want output marker at all
+    $xdataref =~ s/^$xdmi$xnsi//x;
+  }
+  else {
+    $xdataref =~ s/^$xdmi(?=$xnsi)/$xdmo/x; # Should be only one
+    $xdataref =~ s/$xnsi/$xnso/xg;
+  }
+  $xdataref =~ s/$xdsi/$xdso/xg;
+  return $xdataref;
+}
+
+# Check an output value for an xdata ref and replace output markers if necessary.
+sub xdatarefcheck {
+  my ($val, $implicitmarker) = @_;
+  return undef unless $val;
+  my $xdmi = Biber::Config->getoption('xdatamarker');
+  my $xnsi = Biber::Config->getoption('xnamesep');
+  if ($val =~ m/^\s*$xdmi(?=$xnsi)/) {
+    return xdatarefout($val, $implicitmarker);
+  }
+  return undef;
+}
+
 1;
 
 __END__
 
 =head1 AUTHOR
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -1749,7 +1789,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

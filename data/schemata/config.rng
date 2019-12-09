@@ -387,6 +387,16 @@
           </element>
         </optional>
         <optional>
+          <element name="output_xdatamarker">
+            <text/>
+          </element>
+        </optional>
+        <optional>
+          <element name="output_xdatasep">
+            <text/>
+          </element>
+        </optional>
+        <optional>
           <element name="output_xname">
             <choice>
               <value>0</value>
@@ -580,6 +590,29 @@
             </choice>
           </element>
         </optional>
+        <optional>
+          <element name="xdatamarker">
+            <text/>
+          </element>
+        </optional>
+        <optional>
+          <element name="xdatasep">
+            <text/>
+          </element>
+        </optional>
+        <optional>
+          <element name="xname">
+            <choice>
+              <value>0</value>
+              <value>1</value>
+            </choice>
+          </element>
+        </optional>
+        <optional>
+          <element name="xnamesep">
+            <text/>
+          </element>
+        </optional>
       </interleave>
     </element>
   </start>
@@ -682,6 +715,14 @@
           </oneOrMore>
         </element>
       </oneOrMore>
+      <!-- Allowable multiscript fields which can have alternate form/languages -->
+      <element name="multiscriptfields">
+        <oneOrMore>
+          <element name="field">
+            <text/>
+          </element>
+        </oneOrMore>
+      </element>
       <oneOrMore>
         <!-- Constraints on field (co-)existence and format -->
         <element name="constraints">
@@ -1055,6 +1096,26 @@
               </attribute>
             </group>
             <group>
+              <optional>
+                <attribute name="map_entrykey_cited">
+                  <value>1</value>
+                </attribute>
+              </optional>
+              <optional>
+                <attribute name="map_entrykey_nocited">
+                  <value>1</value>
+                </attribute>
+              </optional>
+              <optional>
+                <attribute name="map_entrykey_citedornocited">
+                  <value>1</value>
+                </attribute>
+              </optional>
+              <optional>
+                <attribute name="map_entrykey_allnocited">
+                  <value>1</value>
+                </attribute>
+              </optional>
               <optional>
                 <attribute name="map_type_source">
                   <data type="string">
@@ -1569,7 +1630,7 @@
     </choice>
   </define>
 </grammar>
-<!-- Copyright 2009-2019 François Charette and Philip Kime, all rights reserved. -->
+<!-- Copyright 2012-2019 Philip Kime, all rights reserved. -->
 <!--
   This code is free software.  You can redistribute it and/or
   modify it under the terms of the Artistic License 2.0.

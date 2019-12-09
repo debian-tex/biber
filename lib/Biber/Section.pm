@@ -23,8 +23,8 @@ sub new {
   my ($class, %params) = @_;
   my $self = bless {%params}, $class;
   $self->{bibentries} = new Biber::Entries;
+  $self->{namepartlengths} = {};
   $self->{keytorelclone} = {};
-  $self->{explicitcitekeys} = {};
   $self->{relclonetokey} = {};
   $self->{relkeys} = {};
   $self->{allkeys} = 0;
@@ -40,6 +40,7 @@ sub new {
   $self->{keytods} = {};
   $self->{orig_order_citekeys} = [];
   $self->{undef_citekeys} = [];
+  $self->{cite_citekeys} = {};
   $self->{nocite_citekeys} = {};
   $self->{citekey_alias} = {};
   $self->{static_keys} = {};
@@ -61,6 +62,32 @@ sub reset_caches {
   return;
 }
 
+=head2 set_np_length
+
+  Check and record max namepart length. Needed to construct sort keys for names
+
+=cut
+
+sub set_np_length {
+  my ($self, $np, $len) = @_;
+  return unless defined $len;
+  if ($len > ($self->{namepartlengths}{$np} // 0)) {
+    $self->{namepartlengths}{$np} = $len;
+  }
+  return;
+}
+
+=head2 get_np_length
+
+  Return max namepart length. Needed to construct sort keys for names
+
+=cut
+
+sub get_np_length {
+  my ($self, $np) = @_;
+  return $self->{namepartlengths}{$np} // 0;
+}
+
 
 =head2 set_set_pc
 
@@ -69,8 +96,7 @@ sub reset_caches {
 =cut
 
 sub set_set_pc {
-  my $self = shift;
-  my ($parent, $child) = @_;
+  my ($self, $parent, $child) = @_;
   $self->{state}{set}{pc}{$parent}{$child} = 1;
   return;
 }
@@ -82,8 +108,7 @@ sub set_set_pc {
 =cut
 
 sub set_set_cp {
-  my $self = shift;
-  my ($child, $parent) = @_;
+  my ($self, $child, $parent) = @_;
   $self->{state}{set}{cp}{$child}{$parent} = 1;
   return;
 }
@@ -95,8 +120,7 @@ sub set_set_cp {
 =cut
 
 sub get_set_pc {
-  my $self = shift;
-  my ($parent, $child) = @_;
+  my ($self, $parent, $child) = @_;
   return exists($self->{state}{set}{pc}{$parent}{$child}) ? 1 : 0;
 }
 
@@ -107,8 +131,7 @@ sub get_set_pc {
 =cut
 
 sub get_set_cp {
-  my $self = shift;
-  my ($child, $parent) = @_;
+  my ($self, $child, $parent) = @_;
   return exists($self->{state}{set}{cp}{$child}{$parent}) ? 1 : 0;
 }
 
@@ -119,8 +142,7 @@ sub get_set_cp {
 =cut
 
 sub get_set_children {
-  my $self = shift;
-  my $parent = shift;
+  my ($self, $parent) = @_;
   if (exists($self->{state}{set}{pc}{$parent})) {
     return (keys $self->{state}{set}{pc}{$parent}->%*);
   }
@@ -136,8 +158,7 @@ sub get_set_children {
 =cut
 
 sub get_set_parents {
-  my $self = shift;
-  my $child = shift;
+  my ($self, $child) = @_;
   if (exists($self->{state}{set}{cp}{$child})) {
     return (keys $self->{state}{set}{cp}{$child}->%*);
   }
@@ -185,30 +206,16 @@ sub has_badcasekey {
   return $ckey ne $key ? $ckey : undef;
 }
 
+=head2 is_specificcitekey
 
-=head2 add_explicitcitekey
-
-    Record that a key is explicitly cited (as opposed to being
-    included by e.g \nocite{*})
+    Check if a key is specifically cited by \cite{key} or \nocite{key}
 
 =cut
 
-sub add_explicitcitekey {
+sub is_specificcitekey {
   my ($self, $key) = @_;
-  $self->{explicitcitekeys}{$key} = 1;
-  return;
-}
-
-=head2 is_explicitcitekey
-
-    Check if a key is explicitly cited (as opposed to being
-    included by e.g \nocite{*})
-
-=cut
-
-sub is_explicitcitekey {
-  my ($self, $key) = @_;
-  return $self->{explicitcitekeys}{$key};
+  return (defined($self->{cite_citekeys}{$key}) or
+          defined($self->{nocite_citekeys}{$key})) ? 1 : 0;
 }
 
 =head2 add_related
@@ -294,6 +301,30 @@ sub has_relclonetokey {
   return defined($self->{relclonetokey}{$key}) ? 1 : 0;
 }
 
+=head2 add_cite
+
+    Adds a key to the list of those that came via \cite
+
+=cut
+
+sub add_cite {
+  my ($self, $key) = @_;
+  $self->{cite_citekeys}{$key} = 1;
+  return;
+}
+
+=head2 is_cite
+
+    Returns a boolean to say if a key came via \cite
+
+=cut
+
+sub is_cite {
+  my ($self, $key) = @_;
+  return defined($self->{cite_citekeys}{$key}) ? 1 : 0;
+}
+
+
 =head2 add_nocite
 
     Adds a key to the list of those that came via \nocite
@@ -306,15 +337,15 @@ sub add_nocite {
   return;
 }
 
-=head2 get_nocite
+=head2 is_nocite
 
     Returns a boolean to say if a key came via \nocite
 
 =cut
 
-sub get_nocite {
+sub is_nocite {
   my ($self, $key) = @_;
-  return (defined($self->{nocite_citekeys}{$key}) ? 1 : 0);
+  return defined($self->{nocite_citekeys}{$key}) ? 1 : 0;
 }
 
 =head2 add_everykey
@@ -839,7 +870,6 @@ __END__
 
 =head1 AUTHORS
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -849,7 +879,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
