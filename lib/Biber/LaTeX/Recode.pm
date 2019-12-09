@@ -215,7 +215,7 @@ sub latex_decode {
     $text =~ s/\\char(\d+)/"chr($1)"/gee;    # decimal chars
 
     $text =~ s/(\\[a-zA-Z]+)\\(\s+)/$1\{\}$2/g;    # \foo\ bar -> \foo{} bar
-    $text =~ s/([^\{]\\\w)([;,.:%])/$1\{\}$2/g;     #} Aaaa\o,  -> Aaaa\o{},
+    $text =~ s/([^{]\\\w)([;,.:%])/$1\{\}$2/g;     #} Aaaa\o,  -> Aaaa\o{},
 
     foreach my $type ('greek', 'dings', 'punctuation', 'symbols', 'negatedsymbols', 'superscripts', 'cmdsuperscripts', 'letters', 'diacritics') {
       my $map = $remap_d->{$type}{map};
@@ -241,6 +241,7 @@ sub latex_decode {
         $text =~ s/\\($re)(?: \{\}|\s+|\b)/$map->{$1}/ge;
       }
       elsif ($type eq 'diacritics') {
+
         # Using Unicode INFORMATION SEPARATOR ONE/TWO
         my $bracemap = {'' => '',
                         '{' => "\x{1f}",
@@ -249,6 +250,9 @@ sub latex_decode {
         # Rename protecting braces so that they are not broken by RE manipulations
         $text =~ s/(\{?)\\($re)\s*\{(\pL\pM*)\}(\}?)/$bracemap->{$1} . $3 . $map->{$2} . $bracemap->{$4}/ge;
         $text =~ s/(\{?)(\pL\pM*)(\}?)/$bracemap->{$1} . $2 . $bracemap->{$3}/ge;
+
+
+#        $text =~ s/\\($re)\s*\{(\pL\pM*)\}/$2 . $map->{$1}/ge;
 
         # Conditional regexp with code-block condition
         # non letter macros for diacritics (e.g. \=) can be followed by any letter
@@ -261,14 +265,14 @@ sub latex_decode {
         #     Any letter is allowed after the space (\c S)
         #   Else
         #     Only a non basic LaTeX letter is allowed (\c-)
-        $text =~ s/(\{?)\\# slash
+        $text =~ s/\\# slash
                    ($re)# the diacritic
                    (\s*)# optional space
                    (# capture paren
-                     (?(?{$2 !~ m:[A-Za-z]$:})# code block condition (is not a letter?)
+                     (?(?{$1 !~ m:[A-Za-z]$:})# code block condition (is not a letter?)
                        \pL # yes pattern
                      | # no pattern
-                       (?(?{$3}) # code block condition (space matched earlier after diacritic?)
+                       (?(?{$2}) # code block condition (space matched earlier after diacritic?)
                          \pL # yes pattern
                        | # no pattern
                          [^A-Za-z]
@@ -276,7 +280,7 @@ sub latex_decode {
                      ) # close conditional
                      \pM* # optional marks
                    ) # capture paren
-                   (\}?)/$bracemap->{$1} . $4 . $map->{$2} . $bracemap->{$5}/gxe;
+                   /$3 . $map->{$1}/gxe;
       }
     }
 
@@ -284,8 +288,8 @@ sub latex_decode {
       $logger->trace("String in latex_decode() before brace elimination now -> '$text'");
     }
 
-    # Now remove braces around single letters with diacritics (which the replace above
-    # can result in). Things like '{á}'. Such things can break kerning. We can't do this in
+    # Now remove braces around single letters (which the replace above
+    # can result in). Things like '{á}' can break kerning. We can't do this in
     # the RE above as we can't determine if the braces are wrapping a phrase because this
     # match is on an entire field string. So we can't in one step tell the difference between:
     #
@@ -300,12 +304,12 @@ sub latex_decode {
     # or
     # \frac{a}{b}
     #
-    # Workaround perl's lack of variable-width negative look-behind -
-    # Reverse string (and therefore some of the Re) and use variable width negative look-ahead
-    # Careful here - reversing puts any combining chars before the char so \X can't be used
-    $text = reverse $text;
-    $text =~ s/\}(\pM*\pL)\{(?!(?:\}[^}]+\{)*\pL+\\)/$1/g;
-    $text = reverse $text;
+    # This horrible RE is the very clever variable-look-behind implementation from:
+    # http://www.drregex.com/2019/02/variable-length-lookbehinds-actually.html
+    # Perl 5.30 has limited (<255 chars) VLB but it doesn't work here as it can't be determined
+    # that it's <255 chars by the parser
+    $text =~ s/(?!(?=(?'a'[\s\S]*))(?'b'\\\pL+(?:\{[^{]+\})*(?=\k'a'\z)|(?<=(?=x^|(?&b))[\s\S])))\{(\X)\}/$3/g;
+
     # Put brace markers back after doing the brace elimination as we only want to eliminate
     # braces introduced as part of decoding, not explicit braces in the data
     $text =~ s/\x{1f}/{/g;
@@ -406,7 +410,6 @@ __END__
 
 =head1 AUTHOR
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -416,7 +419,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

@@ -81,12 +81,16 @@ GetOptions(
            'output_resolve_sets|output-resolve-sets',
            'output_safechars|output-safechars',
            'output_safecharsset|output-safecharsset=s',
+           'output_xdatamarker|output-xdatamarker=s',
+           'output_xdatasep|output-xdatasep=s',
            'output_xname|output-xname',
            'output_xnamesep|output-xnamesep=s',
            'quiet|q+',
            'recodedata=s',
+           'noremove_tmp_dir|noremove-tmp-dir',
            'noskipduplicates',
            'noxname',
+           'show_tmp_dir|show-tmp-dir',
            'sortdebug',
            'sortcase=s',
            'sortlocale|l=s',
@@ -98,6 +102,7 @@ GetOptions(
            'tool_align|tool-align',                 # legacy alias for output_align
            'tool_config|tool-config',
            'tool_fieldcase|tool-fieldcase=s',       # legacy alias for output_fieldcase
+           'tool_noremove_missing_dependants|tool-noremove-missing-dependants',
            'tool_indent|tool-indent=s',             # legacy alias for output_indent
            'tool_macro_fields|tool-macro-fields=s', # legacy alias for output_macro_fields
            'tool_resolve|tool-resolve',             # legacy alias for output_resolve
@@ -111,6 +116,8 @@ GetOptions(
            'validate_datamodel|validate-datamodel|V',
            'version|v',
            'wraplines|w',
+           'xdatamarker=s',
+           'xdatasep=s',
            'xnamesep=s',
            'xsvsep=s',
           ) or pod2usage(-verbose => 0,
@@ -417,7 +424,7 @@ if (Biber::Config->getoption('trace')) {
 # Write the output to the target
 $biberoutput->output;
 
-$biber->display_problems;
+$biber->display_end;
 
 exit EXIT_OK;
 
@@ -612,11 +619,23 @@ BibTeX parsing C library which can complain about parsing errors which can be ig
 
 Do not write any logfile.
 
+=item B<--noskipduplicates>
+
+Don't skip duplicate bibliography keys if found. The detection of duplicate keys is done across
+all data sources. Sometimes you might need duplicates when using several data sources
+across several refsections in which case you might need to use this option.
+
 =item B<--nostdmacros>
 
 Don't automatically define any standard macros like month abbreviations.
 If you also define these yourself, this option can be used to suppress
 macro redefinition warnings.
+
+=item B<--noremove-tmp-dir>
+
+Do not remove the temporary directory used for various intermediate files
+and data before exit (default is false). Name of the directory can
+be obtained with the B<--show-tmp-dir> option.
 
 =item B<--noxname>
 
@@ -759,9 +778,18 @@ can be customised. See the B<--recodedata> option and the PDF manual.
 The legacy option B<--bblsafecharsset> is supported as an alias. The
 virtual set name "null" may be specified which effectively turns off macro encoding.
 
+=item B<--output-xdatamarker=[marker]>
+
+As B<--xdatamarker> but for tool mode output. Default is 'xdata'.
+
+=item B<--output-xdatasep=[sep]>
+
+As B<--xdatasep> but for tool mode output. Default is '-'.
+
 =item B<--output-xname>
 
-When output is a .bib BibTeX file in tool mode, whether to output names the eXtended BibTeX name field format.
+When output is a .bib BibTeX file in tool mode, whether to output names the
+eXtended BibTeX name field format.
 
 =item B<--output-xnamesep=[sep]>
 
@@ -779,11 +807,10 @@ It defaults to F<recode_data.xml> in the same directory as Biber's F<Recode.pm> 
 See the PDF documentation for the format of this file. If this option is
 used, then F<file> should be somewhere C<kpsewhich> can find it.
 
-=item B<--noskipduplicates>
+=item B<--show-tmp-dir>
 
-Don't skip duplicate bibliography keys if found. The detection of duplicate keys is done across
-all data sources. Sometimes you might need duplicates when using several data sources
-across several refsections in which case you might need to use this option.
+Prints the location of the temporary directory used for various intermediate
+files and data. Only useful if B<--remove-tmp-dir> is set to true.
 
 =item B<--sortdebug>
 
@@ -829,6 +856,13 @@ source mapping, sorting etc.)
 
 Show the location of the default tool mode config file and exit. Useful when you need to
 copy this file and customise it.
+
+=item B<--tool-noremove-missing-dependants>
+
+Use this option in tool mode if you don't want to remove C<XREF>,
+C<CROSSREF> and C<XDATA> fields from the output which point to a missing
+entry. Useful if you have split datafiles where the e.g. C<CROSSREF>s are
+in another file that you are not including in the tool mode run.
 
 =item B<--trace|T>
 
@@ -879,10 +913,24 @@ Display version number.
 
 Wrap lines in the F<.bbl> file.
 
+=item B<--xdatamarker=[marker]>
+
+Use F<marker> as the string before C<--xdatasep> which introduces an XDATA
+reference in BibTeX format data sources. Not used in BibLaTeXML data
+sources as it has a dedicated XML attribute C<xdata>' for this. Default is
+'xdata'.
+
+=item B<--xdatasep=[sep]>
+
+Use F<sep> as the separator between XDATA sub-entry parts
+in the eXtended name format. See biber docs. Default is '-'.
+
 =item B<--xnamesep=[sep]>
 
 Use F<sep> as the separator between namepart names and the namepart values
-in the eXtended name format. See biber docs. Default is '='.
+in the eXtended name format. Also applies to XDATA references as the
+separator between C<--xdatamarker> and the XDATA reference. See biber docs.
+Default is '='.
 
 =item B<--xsvsep=[sep]>
 
@@ -892,7 +940,6 @@ Use F<sep> as the separator for fields of format type "xsv" in the data model. A
 
 =head1 AUTHOR
 
-François Charette, C<firmicus at ankabut.net>E<10>
 Philip Kime, C<Philip at kime.org.uk>
 
 =head1 BUGS & DOCUMENTATION
@@ -905,7 +952,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

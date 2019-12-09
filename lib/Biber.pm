@@ -19,6 +19,7 @@ use Biber::Entries;
 use Biber::Entry;
 use Biber::Entry::Names;
 use Biber::Entry::Name;
+use Biber::LangTags;
 use Biber::Sections;
 use Biber::Section;
 use Biber::LaTeX::Recode;
@@ -77,8 +78,11 @@ sub new {
 
   Biber::Config->_initopts(\%opts);
 
-  # Add a reference to a global temp dir we might use for various things
-  $self->{TEMPDIR} = File::Temp->newdir();
+  # Add a reference to a global temp dir used for various things
+  $self->{TEMPDIR} = File::Temp->newdir("biber_tmp_XXXX",
+                                        TMPDIR => 1,
+                                        CLEANUP => (Biber::Config->getoption('noremove_tmp_dir') ? 0 : 1));
+  $self->{TEMPDIRNAME} = $self->{TEMPDIR}->dirname;
 
   # Initialise recoding schemes
   Biber::LaTeX::Recode->init_sets(Biber::Config->getoption('decodecharsset'),
@@ -95,18 +99,32 @@ sub new {
     validate_biber_xml($opts{configfile}, 'config', '');
   }
 
+  # Set up LangTag parser
+  $self->{langtags} = Biber::LangTags->new();
+
   return $self;
 }
 
 
-=head2 display_problems
+=head2 display_end
 
-   Output summary of warnings/errors before exit
+   Output summary of warnings/errors/misc before exit
 
 =cut
 
-sub display_problems {
+sub display_end {
   my $self = shift;
+
+  # Show location of temporary directory
+  if (Biber::Config->getoption('show_tmp_dir')) {
+    if (Biber::Config->getoption('noremove_tmp_dir')) {
+      $logger->info("TEMP DIR: " . $self->biber_tempdir_name);
+    }
+    else {
+      biber_warn("--noremove-tmp-dir was not set, no temporary directory to show");
+    }
+  }
+
   if ($self->{warnings}) {
     $logger->info('WARNINGS: ' . $self->{warnings});
   }
@@ -118,8 +136,6 @@ sub display_problems {
 
 =head2 biber_tempdir
 
-    my $sections= $biber->biber_tempdir
-
     Returns a File::Temp directory object for use in various things
 
 =cut
@@ -129,6 +145,16 @@ sub biber_tempdir {
   return $self->{TEMPDIR};
 }
 
+=head2 biber_tempdir_name
+
+    Returns the directory name of the File::Temp directory object
+
+=cut
+
+sub biber_tempdir_name {
+  my $self = shift;
+  return $self->{TEMPDIRNAME};
+}
 
 =head2 sections
 
@@ -157,7 +183,7 @@ sub add_sections {
 
 =head2 datalists
 
-    my $datalists= $biber->datalists
+    my $datalists = $biber->datalists
 
     Returns a Biber::DataLists object describing the bibliography sorting lists
 
@@ -168,7 +194,16 @@ sub datalists {
   return $self->{datalists};
 }
 
+=head2 langtags
 
+    Returns a Biber::LangTags object containing a parser for BCP47 tags
+
+=cut
+
+sub langtags {
+  my $self = shift;
+  return $self->{langtags};
+}
 
 =head2 set_output_obj
 
@@ -244,10 +279,15 @@ sub tool_mode_setup {
   my $bib_sections = new Biber::Sections;
   # There are no sections in tool mode so create a pseudo-section
   my $bib_section = new Biber::Section('number' => 99999);
-  $bib_section->set_datasources([{type => 'file',
-                                  name => $ARGV[0],
-                                  datatype => Biber::Config->getoption('input_format'),
-                                  encoding => Biber::Config->getoption('input_encoding')}]);
+  my $ifs = [];
+  foreach my $if (@ARGV) {
+    push $ifs->@*, {type => 'file',
+                    name => $if,
+                    datatype => Biber::Config->getoption('input_format'),
+                    encoding => Biber::Config->getoption('input_encoding')};
+  }
+  $bib_section->set_datasources($ifs);
+
   $bib_section->set_allkeys(1);
   $bib_sections->add_section($bib_section);
 
@@ -313,7 +353,7 @@ sub parse_ctrlfile {
     # Reading ctrl-file as UTF-8 failed. Probably it was written by fontenc as latin1
     # with some latin1 char in it (probably a sourcemap), so try that as a last resort
     unless (eval {$checkbuf = File::Slurper::read_text($ctrl_file_path, 'latin1')}) {
-      biber_error("$ctrl_file_path is not UTF-8 or even latin1, how horrible.");
+      biber_error("$ctrl_file_path is not UTF-8 or even latin1, please delete it and run latex again or check that biblatex is writing a valid .bcf file.");
     }
     # Write ctrl file as UTF-8
     File::Slurper::write_text($ctrl_file_path, NFC($checkbuf));# Unicode NFC boundary
@@ -836,11 +876,6 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
     foreach my $keyc ($section->{citekey}->@*) {
       my $key = NFD($keyc->{content}); # Key is already UTF-8 - it comes from UTF-8 XML
 
-      # Add explicit cite info
-      unless ($key eq '*') {
-        $bib_section->add_explicitcitekey($key);
-      }
-
       if ($keyc->{nocite}) {# \nocite'd
         # Don't add if there is an identical key without nocite since \cite takes precedence
         unless (first {$key eq NFD($_->{content})} @prekeys) {
@@ -881,9 +916,12 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
         }
         else {
           next if $bib_section->is_allkeys; # Skip if we have already encountered '*'
-          # Track nocite information
+          # Track cite/nocite - needed for sourcemapping logic
           if ($keyc->{nocite}) {
             $bib_section->add_nocite($key);
+          }
+          else {
+            $bib_section->add_cite($key);
           }
           # Set order information - there is no order on dynamic key defs above
           # as they are a definition, not a cite
@@ -1027,7 +1065,6 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
   # and then add a special section which contains all cited keys from all sections
   if (Biber::Config->getoption('output_format') eq 'bibtex') {
     Biber::Config->setoption('tool' ,1);
-    Biber::Config->setoption('pseudo_tool' ,1);
 
     my $bib_section = new Biber::Section('number' => 99999);
 
@@ -1167,6 +1204,7 @@ sub resolve_alias_refs {
   my $self = shift;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
+  my $dm = Biber::Config->get_dm;
   foreach my $citekey ($section->get_citekeys) {
     my $be = $section->bibentry($citekey);
 
@@ -1183,13 +1221,22 @@ sub resolve_alias_refs {
       }
     }
     # XDATA
-    if (my $xdata = $be->get_field('xdata')) {
+    if (my $xdata = $be->get_xdata_refs) {
       my $resolved_keys;
-      foreach my $refkey ($xdata->@*) {
-        $refkey = $section->get_citekey_alias($refkey) // $refkey;
-        push $resolved_keys->@*, $refkey;
+      foreach my $xdataref ($xdata->@*) {
+        if (not defined($xdataref->{xdatafield})) { # XDATA ref to whole entry
+          foreach my $refkey ($xdataref->{xdataentries}->@*) { # whole entry XDATA can be xsv
+            $refkey = $section->get_citekey_alias($refkey) // $refkey;
+            push $resolved_keys->@*, $refkey;
+          }
+          $xdataref->{xdataentries} = $resolved_keys;
+        }
+        else { # granular XDATA ref - only one entry key
+          my $refkey = $xdataref->{xdataentries}->[0];
+          $refkey = $section->get_citekey_alias($refkey) // $refkey;
+          $xdataref->{xdataentries} = [$refkey];
+        }
       }
-      $be->set_datafield('xdata', $resolved_keys);
     }
   }
 }
@@ -1278,7 +1325,7 @@ sub instantiate_dynamic {
 
 =head2 resolve_xdata
 
-    Resolve xdata entries
+    Resolve xdata
 
 =cut
 
@@ -1287,7 +1334,7 @@ sub resolve_xdata {
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   if ($logger->is_debug()) {# performance tune
-    $logger->debug("Resolving XDATA entries for section $secnum");
+    $logger->debug("Resolving XDATA for section $secnum");
   }
 
   # We are not looping over citekeys here as XDATA entries are not cited.
@@ -1297,7 +1344,7 @@ sub resolve_xdata {
     # Otherwise, we will die on loops etc. for XDATA entries which are never referenced from
     # any cited entry
     next if $be->get_field('entrytype') eq 'xdata';
-    next unless my $xdata = $be->get_field('xdata');
+    next unless my $xdata = $be->get_xdata_refs;
     $be->resolve_xdata($xdata);
   }
 }
@@ -1586,6 +1633,7 @@ sub process_namedis {
   my $bee = $be->get_field('entrytype');
 
   my $un = Biber::Config->getblxoption($secnum, 'uniquename', $bee, $citekey);
+  my $ul = Biber::Config->getblxoption($secnum, 'uniquelist', $bee, $citekey);
 
   # Can be per-entry
   $untname = Biber::Config->getblxoption($secnum, 'uniquenametemplatename', undef, $citekey) // $untname;
@@ -1601,6 +1649,11 @@ MAIN:  foreach my $pn ($dmh->{namelistsall}->@*) {
     # per-namelist uniquenametemplatename
     if (defined($nl->get_uniquenametemplatename)) {
       $untname = $nl->get_uniquenametemplatename;
+    }
+
+    # per-namelist uniquelist
+    if (defined($nl->get_uniquelist)) {
+      $ul = $nl->get_uniquelist;
     }
 
     # per-namelist uniquename
@@ -1714,7 +1767,11 @@ MAIN:  foreach my $pn ($dmh->{namelistsall}->@*) {
         $logger->trace("namestrings in '$citekey': " . join (',', $namestrings->@*));
       }
 
+      # namelistul is the option value of the effective uniquelist option at the level
+      # of the list in which the name occurs. It's useful to know this where the results
+      # of the sub are used
       $namedis->{$nlid}{$nid} = {nameun        => $nameun,
+                                 namelistul    => $ul,
                                  namestring    => $namestring,
                                  namestrings   => $namestrings,
                                  namedisschema => $namedisschema};
@@ -1797,19 +1854,21 @@ sub process_entries_pre {
   foreach my $citekey ( $section->get_citekeys ) {
 
     my $be = $section->bibentry($citekey);
-    my $bee = $be->get_field('entrytype');
-    my $lni = $be->get_labelname_info;
-    next unless defined($lni); # only care about labelname
-    my $nl = $be->get_field($lni);
 
     # process name disambiguation schemata
     my $namedis = $self->process_namedis($citekey, $dlist);
 
     foreach my $nlid (keys $namedis->%*) {
       foreach my $nid (keys $namedis->{$nlid}->%*) {
-        # process_namedis() has to record uniquename as it has access to name-scope
-        # uniquename and makes this visible here so it can be checked
-        next if $namedis->{$nlid}{$nid}{nameun} eq 'false';
+        # process_namedis() has to record uniquelist/uniquename as it has access to
+        # namelist-scope and name-scope uniquelist/uniquename and makes this visible
+        # here so that they can be checked
+        # We only don't set name disambiguation data if both uniquelist/uniquename
+        # effective options are 'false'. If either are not false, we need the information
+        if ($namedis->{$nlid}{$nid}{nameun} eq 'false' and
+            $namedis->{$nlid}{$nid}{namelistul} eq 'false') {
+          next;
+        }
         $dlist->set_namedis($nlid,
                             $nid,
                             $namedis->{$nlid}{$nid}{namestring},
@@ -2294,9 +2353,9 @@ sub process_nocite {
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $be = $section->bibentry($citekey);
-  # Either explicitly nocited or \nocite{*} and not explicitly cited without nocite
-  if ($section->get_nocite($citekey) or
-      ($section->is_allkeys_nocite and not $section->is_explicitcitekey($citekey))) {
+  # Either specifically nocited or \nocite{*} and not specifically cited without nocite
+  if ($section->is_nocite($citekey) or
+      ($section->is_allkeys_nocite and not $section->is_specificcitekey($citekey))) {
     $be->set_field('nocite', '1');
   }
 }
@@ -3351,6 +3410,7 @@ sub create_uniquename_info {
       # As above but here we are collecting (separate) information for all
       # names, regardless of visibility (needed to track uniquelist)
       my $eul = Biber::Config->getblxoption($secnum, 'uniquelist', $bee, $citekey);
+
       # Per-namelist uniquelist
       my $nl = $be->get_field($lni);
       if (defined($lni) and $nl->get_uniquelist) {
@@ -4098,7 +4158,7 @@ sub sort_list {
       my $sortfield = $dlist->get_sortdata_for_key($key)->[1][$i];
       # Resolve real zeros back again
       if ($lsds->[$i]{int}) {
-        # There is special cases to be careful of here in that "final" elements
+        # There are special cases to be careful of here in that "final" elements
         # in sorting copy themselves as strings to further sort fields and therefore
         # need coercing to 0 for int tests. Fallback of '0' for int fields should
         # be handled in the sorting spec otherwise this will be the default for missing
@@ -4362,8 +4422,30 @@ sub fetch_data {
       }
     }
     my $package = 'Biber::Input::' . $type . '::' . $datatype;
-    eval "require $package" or
-      biber_error("Error loading data source package '$package': $@");
+    unless(eval "require $package") {
+
+      my ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Biber.pm"} );
+      $dir =~ s/\/$//;          # splitpath sometimes leaves a trailing '/'
+
+      # Use Windows style globbing on Windows
+      if ($^O =~ /Win/) {
+        $logger->debug("Enabling Windows-style globbing");
+        require File::DosGlob;
+        File::DosGlob->import('glob');
+      }
+
+      my @vts;
+      foreach my $t (glob("$vol$dir/Biber/Input/*")) {
+        my (undef, undef, $tleaf) = File::Spec->splitpath($t);
+        foreach my $dt (map {s/\.pm$//r} glob("$vol$dir/Biber/Input/$tleaf/*.pm")) {
+          my (undef, undef, $dtleaf) = File::Spec->splitpath($dt);
+          push @vts, "$tleaf/$dtleaf";
+        }
+      }
+
+      biber_error("Error loading data source package '$package' for '$datatype' '$type' datasource. Valid type/datatypes are: " . join(',', @vts));
+
+    }
 
     # Slightly different message for tool mode
     if (Biber::Config->getoption('tool')) {
@@ -4448,14 +4530,16 @@ sub get_dependents {
       my $be = $section->bibentry($citekey);
 
       # xdata
-      if (my $xdata = $be->get_field('xdata')) {
+      if (my $xdata = $be->get_xdata_refs) {
         foreach my $xdatum ($xdata->@*) {
-          # skip looking for dependent if it's already there (loop suppression)
-          push $new_deps->@*, $xdatum unless $section->bibentry($xdatum);
-          if ($logger->is_debug()) {# performance tune
-            $logger->debug("Entry '$citekey' has xdata '$xdatum'");
+          foreach my $xdref ($xdatum->{xdataentries}->@*) {
+            # skip looking for dependent if it's already there (loop suppression)
+            push $new_deps->@*, $xdref unless $section->bibentry($xdref);
+            if ($logger->is_debug()) { # performance tune
+              $logger->debug("Entry '$citekey' has xdata '$xdref'");
+            }
+            push $keyswithdeps->@*, $citekey unless first {$citekey eq $_} $keyswithdeps->@*;
           }
-          push $keyswithdeps->@*, $citekey unless first {$citekey eq $_} $keyswithdeps->@*;
         }
       }
 
@@ -4601,29 +4685,45 @@ sub remove_undef_dependent {
   }
   else {
     my $be = $section->bibentry($citekey);
+
     # remove any xrefs
     if ($be->get_field('xref') and ($be->get_field('xref') eq $missing_key)) {
-      $be->del_field('xref');
       biber_warn("I didn't find a database entry for xref '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
+
+      if ($logger->is_trace()) { # performance tune
+        $logger->trace("Removed xref dependency for missing key '$missing_key' from '$citekey' in section '$secnum'");
+      }
+
+      if (not Biber::Config->getoption('tool_noremove_missing_dependants')) {
+        $be->del_field('xref');
+      }
     }
 
     # remove any crossrefs
     if ($be->get_field('crossref') and ($be->get_field('crossref') eq $missing_key)) {
-      $be->del_field('crossref');
-      if ($logger->is_trace()) {# performance tune
+      biber_warn("I didn't find a database entry for crossref '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
+
+      if ($logger->is_trace()) { # performance tune
         $logger->trace("Removed crossref dependency for missing key '$missing_key' from '$citekey' in section '$secnum'");
       }
-      biber_warn("I didn't find a database entry for crossref '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
+
+      if (not Biber::Config->getoption('tool_noremove_missing_dependants')) {
+        $be->del_field('crossref');
+      }
     }
 
     # remove xdata
     if (my $xdata = $be->get_field('xdata')) {
       if (first {$missing_key eq $_} $xdata->@*) {
-        $be->set_datafield('xdata', [ grep {$_ ne $missing_key} $xdata->@* ]) ;
-        if ($logger->is_trace()) {# performance tune
-          $logger->trace("Removed xdata dependency for missing key '$missing_key' from '$citekey' in section '$secnum'");
-        }
         biber_warn("I didn't find a database entry for xdata entry '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
+      }
+
+      if ($logger->is_trace()) { # performance tune
+        $logger->trace("Removed xdata dependency for missing key '$missing_key' from '$citekey' in section '$secnum'");
+      }
+
+      if (not Biber::Config->getoption('tool_noremove_missing_dependants')) {
+        $be->set_datafield('xdata', [ grep {$_ ne $missing_key} $xdata->@* ]);
       }
     }
 
@@ -4740,7 +4840,6 @@ __END__
 
 =head1 AUTHORS
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -4750,7 +4849,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

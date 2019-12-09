@@ -44,17 +44,18 @@
             "IPC::Cmd" : "0",
             "IPC::Run3" : "0",
             "LWP::Protocol::https" : "0",
-            "LWP::Simple" : "0",
+            "LWP::UserAgent" : "0",
             "Lingua::Translit" : "0.28",
             "List::AllUtils" : "0",
             "List::MoreUtils" : "0",
             "List::MoreUtils::XS" : "0",
             "Log::Log4perl" : "0",
             "Mozilla::CA" : "20160104",
+            "Parse::RecDescent" : "0",
             "PerlIO::utf8_strict" : "0",
             "Regexp::Common" : "0",
             "Sort::Key" : "0",
-            "Text::BibTeX" : "0.85",
+            "Text::BibTeX" : "0.88",
             "Text::CSV" : "0",
             "Text::CSV_XS" : "0",
             "Text::Roman" : "0",
@@ -68,7 +69,7 @@
             "XML::LibXSLT" : "0",
             "XML::Writer" : "0",
             "autovivification" : "0",
-            "perl" : "v5.26.0"
+            "perl" : "v5.30.0"
          }
       },
       "test" : {
@@ -88,7 +89,7 @@
       },
       "Biber::Config" : {
          "file" : "lib/Biber/Config.pm",
-         "version" : "2.13"
+         "version" : "2.14"
       },
       "Biber::Constants" : {
          "file" : "lib/Biber/Constants.pm"
@@ -129,6 +130,12 @@
       "Biber::LaTeX::Recode" : {
          "file" : "lib/Biber/LaTeX/Recode.pm"
       },
+      "Biber::LangTag" : {
+         "file" : "lib/Biber/LangTag.pm"
+      },
+      "Biber::LangTags" : {
+         "file" : "lib/Biber/LangTags.pm"
+      },
       "Biber::Output::base" : {
          "file" : "lib/Biber/Output/base.pm"
       },
@@ -166,5 +173,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "2.13"
+   "version" : "2.14"
 }

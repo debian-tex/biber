@@ -40,7 +40,7 @@ our @EXPORT = qw{
 
 # Version of biblatex control file which this release expects. Matched against version
 # passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '3.6';
+our $BCF_VERSION = '3.7';
 # Format version of the .bbl. Used when writing the .bbl
 our $BBL_VERSION = '3.1';
 
@@ -136,6 +136,7 @@ our $CONFIG_DEFAULT_BIBER = {
   nolabel                                     => { option => [ {value => q/[\p{Pc}\p{Ps}\p{Pe}\p{Pi}\p{Pf}\p{Po}\p{S}\p{C}]+/} ] },
 #  nolabelwidthcount                          => { option =>  }, # default is nothing
   nolog                                       => { content => 0 },
+  noskipduplicates                            => { content => 0 },
   nostdmacros                                 => { content => 0 },
   nosort                                      => { option => [ { name => 'setnames', value => q/\A\p{L}{2}\p{Pd}(?=\S)/ },
                                                                { name => 'setnames', value => q/[\x{2bf}\x{2018}]/ } ] },
@@ -156,14 +157,17 @@ our $CONFIG_DEFAULT_BIBER = {
   output_resolve_sets                         => { content => 0 },
   output_safechars                            => { content => 0 },
   output_safecharsset                         => { content => 'base' },
+  output_xdatamarker                          => { content => 'xdata' },
+  output_xdatasep                             => { content => '-' },
   output_xnamesep                             => { content => '=' },
   quiet                                       => { content => 0 },
-  noskipduplicates                            => { content => 0 },
+  remove_tmp_dir                              => { content => 1 },
   sortdebug                                   => { content => 0 },
   sortcase                                    => { content => 1 },
   sortupper                                   => { content => 1 },
   strip_comments                              => { content => 0 },
   tool                                        => { content => 0 },
+  tool_noremove_missing_dependants            => { content => 0 },
   trace                                       => { content => 0 },
   nouri_encode                                => { content => 0 },
   validate_bblxml                             => { content => 0 },
@@ -172,6 +176,8 @@ our $CONFIG_DEFAULT_BIBER = {
   validate_control                            => { content => 0 },
   validate_datamodel                          => { content => 0 },
   wraplines                                   => { content => 0 },
+  xdatamarker                                 => { content => 'xdata' },
+  xdatasep                                    => { content => '-' },
   xnamesep                                    => { content => '=' },
   xsvsep                                      => { content => q/\s*,\s*/ },
 };
@@ -535,7 +541,6 @@ Biber::Constants - global constants for biber
 
 =head1 AUTHOR
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -545,7 +550,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

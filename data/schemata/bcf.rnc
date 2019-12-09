@@ -328,6 +328,10 @@ start =
          element bcf:entrytype { text }*,
          element bcf:field { text }+
       }+,
+      # Allowable multiscript fields which can have alternate form/languages
+      element bcf:multiscriptfields {
+         element bcf:field { text }+
+      },
       # Constraints on field (co-)existence and format
       element bcf:constraints {
         # Set of entrytypes that this constraint applies to
@@ -850,7 +854,11 @@ map =
         ( attribute map_entry_new { xsd:string {minLength="1"} },
           attribute map_entry_newtype { xsd:string {minLength="1"} }
         ) |
-        ( attribute map_type_source { xsd:string {minLength="1"} }?,
+        ( attribute map_entrykey_cited { "1" }?,
+          attribute map_entrykey_nocited { "1" }?,
+          attribute map_entrykey_citedornocited { "1" }?,
+          attribute map_entrykey_allnocited { "1" }?,
+          attribute map_type_source { xsd:string {minLength="1"} }?,
           attribute map_type_target { xsd:string {minLength="1"} }?,
           attribute map_field_source { xsd:string {minLength="1"} }?,
           attribute map_notfield { xsd:string {minLength="1"} }?,
@@ -880,7 +888,8 @@ map =
 dmfieldtype =  "field" | "list"
 dmdatatype =  "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "code" | "uri" | "datepart" | "keyword" | "option"
 
-# Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+# Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+# Copyright 2012-2019 Philip Kime, all rights reserved.
 
 # This code is free software.  You can redistribute it and/or
 # modify it under the terms of the Artistic License 2.0.

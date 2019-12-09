@@ -221,6 +221,7 @@ sub extract_entries {
       $logger->debug('Wanted keys: ' . join(', ', $keys->@*));
     }
     foreach my $wanted_key ($keys->@*) {
+
       if ($logger->is_debug()) {# performance tune
         $logger->debug("Looking for key '$wanted_key' in BibLaTeXML file '$filename'");
       }
@@ -479,6 +480,89 @@ sub create_entry {
               }
             }
             $fieldcontinue = 1;
+          }
+
+          # \cite{key}   -> is_cite(key)=true, is_explicitcitekey(key)=true
+          # \nocite{key} -> is_nocite(key)=true, is_explicitcitekey(key)=true
+          # \nocite{*}   -> is_allkeys_nocite=true
+          # Check entry cited/nocited verbs
+
+          # \cite{key} or \nocite{key}
+          if ($step->{map_entrykey_citedornocited}) {
+            if (not $section->is_specificcitekey($key)) { # check if NOT \cited{} and NOT \nocited{}
+              if ($step->{map_final}) {
+                if ($logger->is_debug()) { # performance tune
+                  $logger->debug("Source mapping (type=$level, key=$key): Key is neither \\cited nor \\nocited and step has 'final' set, skipping rest of map ...");
+                }
+                next MAP;
+              }
+              else {
+                # just ignore this step
+                if ($logger->is_debug()) { # performance tune
+                  $logger->debug("Source mapping (type=$level, key=$key): Key is neither \\cited nor \\nocited, skipping step ...");
+                }
+                next;
+              }
+            }
+          }
+
+          # \cite{key}
+          if ($step->{map_entrykey_cited}) {
+            if (not $section->is_cite($key)) { # check if NOT cited
+              if ($step->{map_final}) {
+                if ($logger->is_debug()) { # performance tune
+                  $logger->debug("Source mapping (type=$level, key=$key): Key is not explicitly \\cited and step has 'final' set, skipping rest of map ...");
+                }
+                next MAP;
+              }
+              else {
+                # just ignore this step
+                if ($logger->is_debug()) { # performance tune
+                  $logger->debug("Source mapping (type=$level, key=$key): Key is not explicitly \\cited, skipping step ...");
+                }
+                next;
+              }
+            }
+          }
+
+          # \nocite{key}
+          if ($step->{map_entrykey_nocited}) {
+            # If cited, don't want to do the allkeys_nocite check as this overrides
+            if ($section->is_cite($key) or
+                (not $section->is_nocite($key) and not $section->is_allkeys_nocite)) { # check if NOT nocited
+              if ($step->{map_final}) {
+                if ($logger->is_debug()) { # performance tune
+                  $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocited and step has 'final' set, skipping rest of map ...");
+                }
+                next MAP;
+              }
+              else {
+                # just ignore this step
+                if ($logger->is_debug()) { # performance tune
+                  $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocited, skipping step ...");
+                }
+                next;
+              }
+            }
+          }
+
+          # \nocite{*}
+          if ($step->{map_entrykey_allnocited}) {
+            if (not $section->is_allkeys_nocite) { # check if NOT allnoncited
+              if ($step->{map_final}) {
+                if ($logger->is_debug()) { # performance tune
+                  $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocite{*}'ed and step has 'final' set, skipping rest of map ...");
+                }
+                next MAP;
+              }
+              else {
+                # just ignore this step
+                if ($logger->is_debug()) { # performance tune
+                  $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocite{*}'ed, skipping step ...");
+                }
+                next;
+              }
+            }
           }
 
           # Field map
@@ -771,27 +855,48 @@ sub _related {
 # literal fields
 sub _literal {
   my ($bibentry, $entry, $f, $key) = @_;
-  foreach my $node ($entry->findnodes("./$f")) {
-    # eprint is special case
-    if ($f eq "$NS:eprint") {
-      $bibentry->set_datafield('eprinttype', $node->getAttribute('type'));
-      if (my $ec = $node->getAttribute('class')) {
-        $bibentry->set_datafield('eprintclass', $ec);
-      }
-    }
-    else {
-      $bibentry->set_datafield(_norm($f), $node->textContent());
+  my $node = $entry->findnodes("./$f")->get_node(1);
+  my $setval = $node->textContent();
+  my $xdmi = Biber::Config->getoption('xdatamarker');
+  my $xnsi = Biber::Config->getoption('xnamesep');
+
+  # XDATA is special, if found, set it
+  if (my $xdatav = $node->getAttribute('xdata')) {
+    $xdatav = "$xdmi$xnsi$xdatav"; # normalise to same as bibtex input
+    $bibentry->add_xdata_ref(_norm($f), $xdatav);
+    $setval = $xdatav;
+  }
+
+  # eprint is special case
+  if ($f eq "$NS:eprint") {
+    $bibentry->set_datafield('eprinttype', $node->getAttribute('type'));
+    if (my $ec = $node->getAttribute('class')) {
+      $bibentry->set_datafield('eprintclass', $ec);
     }
   }
+  else {
+    $bibentry->set_datafield(_norm($f), $setval);
+  }
+
   return;
 }
 
 # xSV field
 sub _xsv {
   my ($bibentry, $entry, $f, $key) = @_;
-  foreach my $node ($entry->findnodes("./$f")) {
-    $bibentry->set_datafield(_norm($f), _split_list($node, $key, $f));
+  my $node = $entry->findnodes("./$f")->get_node(1);
+
+  # XDATA is special
+  if (fc(_norm($f)) eq 'xdata') {
+    # Just split with no XDATA setting on list items
+    my $value = _split_list($bibentry, $node, $key, $f, 1);
+    $bibentry->add_xdata_ref('xdata', $value);
+    $bibentry->set_datafield(_norm($f), $value);
   }
+  else {
+    $bibentry->set_datafield(_norm($f), _split_list($bibentry, $node, $key, $f));
+  }
+
   return;
 }
 
@@ -800,15 +905,26 @@ sub _xsv {
 sub _uri {
   my ($bibentry, $entry, $f, $key) = @_;
   my $node = $entry->findnodes("./$f")->get_node(1);
-  my $value = $node->textContent();
+  my $setval = $node->textContent();
+  my $xdmi = Biber::Config->getoption('xdatamarker');
+  my $xnsi = Biber::Config->getoption('xnamesep');
 
-  # URL escape if it doesn't look like it already is
-  # This is useful if we are generating URLs automatically with maps which may
-  # contain UTF-8 from other fields
-  unless ($value =~ /\%/) {
-   $value = URI->new($value)->as_string;
+  # XDATA is special, if found, set it
+  if (my $xdatav = $node->getAttribute('xdata')) {
+    $xdatav = "$xdmi$xnsi$xdatav"; # normalise to same as bibtex input
+    $bibentry->add_xdata_ref(_norm($f), $xdatav);
+    $setval = $xdatav;
   }
-  $bibentry->set_datafield(_norm($f), $value);
+  else {
+    # URL escape if it doesn't look like it already is
+    # This is useful if we are generating URLs automatically with maps which may
+    # contain UTF-8 from other fields
+    unless ($setval =~ /\%/) {
+      $setval = URI->new($setval)->as_string;
+    }
+  }
+
+  $bibentry->set_datafield(_norm($f), $setval);
 
   return;
 }
@@ -817,25 +933,37 @@ sub _uri {
 # List fields
 sub _list {
   my ($bibentry, $entry, $f, $key) = @_;
-  foreach my $node ($entry->findnodes("./$f")) {
-    $bibentry->set_datafield(_norm($f), _split_list($node, $key, $f));
-  }
+  my $node = $entry->findnodes("./$f")->get_node(1);
+
+  $bibentry->set_datafield(_norm($f), _split_list($bibentry, $node, $key, $f));
+
   return;
 }
 
 # Range fields
 sub _range {
   my ($bibentry, $entry, $f, $key) = @_;
-  foreach my $node ($entry->findnodes("./$f")) {
-    # List of ranges/values
-    if (my @rangelist = $node->findnodes("./$NS:list/$NS:item")) {
-      my $rl;
-      foreach my $range (@rangelist) {
-        push $rl->@*, _parse_range_list($range);
-      }
-      $bibentry->set_datafield(_norm($f), $rl);
-    }
+  my $node = $entry->findnodes("./$f")->get_node(1);
+  my $xdmi = Biber::Config->getoption('xdatamarker');
+  my $xnsi = Biber::Config->getoption('xnamesep');
+
+  # XDATA is special, if found, set it
+  if (my $xdatav = $node->getAttribute('xdata')) {
+    $xdatav = "$xdmi$xnsi$xdatav"; # normalise to same as bibtex input
+    $bibentry->add_xdata_ref(_norm($f), $xdatav);
+    $bibentry->set_datafield(_norm($f), [$xdatav]);
+    return;
   }
+
+  # List of ranges/values
+  if (my @rangelist = $node->findnodes("./$NS:list/$NS:item")) {
+    my $rl;
+    foreach my $range (@rangelist) {
+      push $rl->@*, _parse_range_list($range);
+    }
+    $bibentry->set_datafield(_norm($f), $rl);
+  }
+
   return;
 }
 
@@ -1016,39 +1144,53 @@ sub _datetime {
 
 # Name fields
 sub _name {
-  my ($be, $entry, $f, $key) = @_;
+  my ($bibentry, $entry, $f, $key) = @_;
   my $secnum = $Biber::MASTER->get_current_section;
-  my $bee = $be->get_field('entrytype');
+  my $section = $Biber::MASTER->sections->get_section($secnum);
+  my $bee = $bibentry->get_field('entrytype');
+  my $node = $entry->findnodes("./$NS:names[\@type='$f']")->get_node(1);
+  my $xdmi = Biber::Config->getoption('xdatamarker');
+  my $xnsi = Biber::Config->getoption('xnamesep');
 
-  foreach my $node ($entry->findnodes("./$NS:names[\@type='$f']")) {
-    my $names = new Biber::Entry::Names;
+  my $names = new Biber::Entry::Names;
 
-    # per-namelist options
-    foreach my $nlo (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
-      if ($node->hasAttribute($nlo)) {
-        my $nlov = $node->getAttribute($nlo);
-        my $oo = expand_option_input($nlo, $nlov, $CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{INPUT});
+  # per-namelist options
+  foreach my $nlo (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+    if ($node->hasAttribute($nlo)) {
+      my $nlov = $node->getAttribute($nlo);
+      my $oo = expand_option_input($nlo, $nlov, $CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{INPUT});
 
-        foreach my $o ($oo->@*) {
-          my $method = 'set_' . $o->[0];
-          $names->$method($o->[1]);
-        }
+      foreach my $o ($oo->@*) {
+        my $method = 'set_' . $o->[0];
+        $names->$method($o->[1]);
+      }
+    }
+  }
+
+  my @names = $node->findnodes("./$NS:name");
+  for (my $i = 0; $i <= $#names; $i++) {
+    my $namenode = $names[$i];
+
+    # XDATA is special, if found, set it
+    if (my $xdatav = $namenode->getAttribute('xdata')) {
+      $xdatav = "$xdmi$xnsi$xdatav"; # normalise to same as bibtex input
+      if ($bibentry->add_xdata_ref(_norm($f), $xdatav, $i)) {
+        # Add special xdata ref empty name as placeholder
+        $names->add_name(Biber::Entry::Name->new(xdata => $xdatav));
+        next;
       }
     }
 
-    my $numname = 1;
-    foreach my $namenode ($node->findnodes("./$NS:name")) {
-      $names->add_name(parsename($namenode, $f, $key, $numname++));
-    }
-
-    # Deal with explicit "moreenames" in data source
-    if ($node->getAttribute('morenames')) {
-      $names->set_morenames;
-    }
-
-    $be->set_datafield(_norm($f), $names);
-
+    $names->add_name(parsename($section, $namenode, $f, $key, $i+1));
   }
+
+  # Deal with explicit "moreenames" in data source
+  if ($node->getAttribute('morenames')) {
+    $names->set_morenames;
+  }
+
+  $bibentry->set_datafield(_norm($f), $names);
+
   return;
 }
 
@@ -1074,7 +1216,7 @@ sub _name {
 =cut
 
 sub parsename {
-  my ($node, $fieldname, $key, $count) = @_;
+  my ($section, $node, $fieldname, $key, $count) = @_;
   if ($logger->is_debug()) {# performance tune
     $logger->debug('Parsing BibLaTeXML name object ' . $node->nodePath);
   }
@@ -1119,14 +1261,18 @@ sub parsename {
     }
   }
 
-  my %nps;
-  foreach my $n ($dm->get_constant_value('nameparts')) { # list type so returns list
-    $nps{$n} = {string  => $namec{$n} // undef,
-                initial => exists($namec{$n}) ? $namec{"${n}-i"} : undef};
+  my %nameparts;
+  foreach my $np ($dm->get_constant_value('nameparts')) { # list type so returns list
+    $nameparts{$np} = {string  => $namec{$np} // undef,
+                       initial => exists($namec{$np}) ? $namec{"${np}-i"} : undef};
+
+    # Record max namepart lengths
+    $section->set_np_length($np, length($nameparts{$np}{string}))  if $nameparts{$np}{string};
+    $section->set_np_length("${np}-i", length(join('', $nameparts{$np}{initial}->@*))) if $nameparts{$np}{initial};
   }
 
   my $newname = Biber::Entry::Name->new(
-                                        %nps,
+                                        %nameparts,
                                         gender => $node->getAttribute('gender')
                                        );
 
@@ -1164,9 +1310,29 @@ sub _parse_range_list {
 
 # Splits a list field into an array ref
 sub _split_list {
-  my ($node, $key, $f) = @_;
+  my ($bibentry, $node, $key, $f, $noxdata) = @_;
+  my $xdmi = Biber::Config->getoption('xdatamarker');
+  my $xnsi = Biber::Config->getoption('xnamesep');
+
   if (my @list = $node->findnodes("./$NS:list/$NS:item")) {
-    return [ map {$_->textContent()} @list ];
+
+    my @result;
+
+    for (my $i = 0; $i <= $#list; $i++) {
+
+      # Record any XDATA and skip if we did
+      # If this field itself is XDATA, don't analyse XDATA further, just split and return
+      if (my $xdatav = $list[$i]->getAttribute('xdata')) {
+        $xdatav = "$xdmi$xnsi$xdatav"; # normalise to same as bibtex input
+        $bibentry->add_xdata_ref(_norm($f), $xdatav, $i) unless $noxdata;
+        push @result, $xdatav;
+      }
+      else {
+        push @result, $list[$i]->textContent();
+      }
+    }
+
+    return [ @result ];
   }
   else {
     return [ $node->textContent() ];
@@ -1350,7 +1516,6 @@ and instantiate Biber::Entry objects for what it finds
 
 =head1 AUTHOR
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -1360,7 +1525,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

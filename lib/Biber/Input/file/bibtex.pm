@@ -29,6 +29,7 @@ use Scalar::Util qw(looks_like_number);
 use URI;
 use Unicode::Normalize;
 use Unicode::GCString;
+use Unicode::UCD qw(num);
 use XML::LibXML::Simple;
 
 my $logger = Log::Log4perl::get_logger('main');
@@ -188,6 +189,7 @@ sub extract_entries {
     if ($logger->is_debug()) {# performance tune
       $logger->debug("All citekeys will be used for section '$secnum'");
     }
+
     # Loop over all entries, creating objects
     while (my ($key, $entry) = each $cache->{data}{$filename}->%*) {
 
@@ -214,6 +216,7 @@ sub extract_entries {
     # the .bib as in this case the sorting sub "citeorder" means "bib order" as there are
     # no explicitly cited keys
     $section->add_citekeys($cache->{orig_key_order}{$filename}->@*);
+
     if ($logger->is_debug()) {# performance tune
       $logger->debug("Added all citekeys to section '$secnum': " . join(', ', $section->get_citekeys));
     }
@@ -247,7 +250,12 @@ sub extract_entries {
 
         # Skip creation if it's already been done, for example, via a citekey alias
         unless ($section->bibentries->entry_exists($wanted_key)) {
-          create_entry($wanted_key, $entry, $filename, $smaps, \@rkeys);
+          unless (create_entry($wanted_key, $entry, $filename, $smaps, \@rkeys)) {
+            # if create entry returns false, remove the key from the cache and section
+            $section->del_citekey($wanted_key);
+            $cache->{orig_key_order}{$filename}->@* = grep {$wanted_key ne $_} $cache->{orig_key_order}{$filename}->@*;
+            biber_warn("Entry with key '$wanted_key' in section '$secnum' is cited and found but not created (likely due to sourcemap)");
+          }
         }
         # found a key, remove it from the list of keys we want
         @rkeys = grep {$wanted_key ne $_} @rkeys;
@@ -263,7 +271,12 @@ sub extract_entries {
         # the bibliography (minXrefs will take care of adding it there if necessary).
         unless ($section->bibentries->entry_exists($rk)) {
           if (my $entry = $cache->{data}{GLOBALDS}{$rk}) {# Look in cache of all datasource keys
-            create_entry($rk, $entry, $filename, $smaps, \@rkeys);
+            unless (create_entry($rk, $entry, $filename, $smaps, \@rkeys)) {
+              # if create entry returns false, remove the key from the cache
+              $section->del_citekey($wanted_key);
+              $cache->{orig_key_order}{$filename}->@* = grep {$rk ne $_} $cache->{orig_key_order}{$filename}->@*;
+            biber_warn("Entry with key '$rk' in section '$secnum' is cited and found but not created (likely due to sourcemap)");
+            }
             if ($section->has_cited_citekey($wanted_key)) {
               $section->add_citekeys($rk);
             }
@@ -343,6 +356,7 @@ sub create_entry {
   my ($key, $entry, $datasource, $smaps, $rkeys) = @_;
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
+  my $crret = 1; # Return value from create_entry() is used to signal some things
 
   if ( $entry->metatype == BTE_REGULAR ) {
     my %newentries; # In case we create a new entry in a map
@@ -368,13 +382,13 @@ sub create_entry {
         # Logic is "-(-P v Q)" which is equivalent to "P & -Q" but -Q is an array check so
         # messier to write than Q
         unless (not exists($map->{per_type}) or
-                first {lc($_->{content}) eq $entry->type} $map->{per_type}->@*) {
+                first {fc($_->{content}) eq fc($entry->type)} $map->{per_type}->@*) {
           next;
         }
 
         # Check negated pertype restrictions
         if (exists($map->{per_nottype}) and
-            first {lc($_->{content}) eq $entry->type} $map->{per_nottype}->@*) {
+            first {fc($_->{content}) eq fc($entry->type)} $map->{per_nottype}->@*) {
           next;
         }
 
@@ -382,8 +396,12 @@ sub create_entry {
         # Don't compare case insensitively - this might not be correct
         # Logic is "-(-P v Q)" which is equivalent to "P & -Q" but -Q is an array check so
         # messier to write than Q
+        my $test_path = $datasource;
+        if (File::Spec->file_name_is_absolute($test_path)) { # kpsewhich returns abs paths
+          $test_path = (File::Spec->splitpath($datasource))[2];
+        }
         unless (not exists($map->{per_datasource}) or
-                first {$_->{content} eq (File::Spec->splitpath($datasource))[2]} $map->{per_datasource}->@*) {
+                first {$_->{content} eq $test_path} $map->{per_datasource}->@*) {
           next;
         }
 
@@ -396,13 +414,15 @@ sub create_entry {
         # Set up any mapping foreach loop
         my @maploop = ('');
         if (my $foreach = $map->{map_foreach}) {
-          if (my $dslist = $DATAFIELD_SETS{lc($foreach)}) { # datafield set list
+          if (my $dslist = $DATAFIELD_SETS{$foreach}) { # datafield set list
             @maploop = $dslist->@*;
           }
-          elsif (my $felist = $entry->get(lc($foreach))) { # datafield
+          # casefold here as the field name does not come from Text::BibTeX so it might not be
+          # valid in the case found in the mapping
+          elsif (my $felist = $entry->get(encode('UTF-8', NFC(fc($foreach))))) { # datafield
             @maploop = split(/\s*,\s*/, $felist);
           }
-          else {                # explicit CSV
+          else { # explicit CSV
             @maploop = split(/\s*,\s*/, $foreach);
           }
         }
@@ -435,7 +455,7 @@ sub create_entry {
               if ($logger->is_debug()) { # performance tune
                 $logger->debug("Source mapping (type=$level, key=$key): Creating new entry with key '$newkey'");
               }
-              my $newentry = Text::BibTeX::Entry->new();
+              my $newentry = Text::BibTeX::Entry->new({binmode => 'utf-8', normalization => 'NFD'});
               $newentry->set_metatype(BTE_REGULAR);
               $newentry->set_key(encode('UTF-8', NFC($newkey)));
               $newentry->set_type(encode('UTF-8', NFC($newentrytype)));
@@ -449,6 +469,7 @@ sub create_entry {
 
               # Add to the section if explicitly nocited in the map
               if ($step->{map_entry_nocite}) {
+                $section->add_nocite($newkey);
                 $section->add_citekeys($newkey);
               }
 
@@ -479,6 +500,7 @@ sub create_entry {
 
               # Add to the section if explicitly nocited in the map
               if ($step->{map_entry_nocite}) {
+                $section->add_nocite($clonekey);
                 $section->add_citekeys($clonekey);
               }
 
@@ -514,7 +536,7 @@ sub create_entry {
 
             # Entrytype map
             if (my $typesource = maploopreplace($step->{map_type_source}, $maploop)) {
-              $typesource = lc($typesource);
+              $typesource = fc($typesource);
               unless ($etarget->type eq $typesource) {
                 # Skip the rest of the map if this step doesn't match and match is final
                 if ($step->{map_final}) {
@@ -533,7 +555,7 @@ sub create_entry {
               }
               # Change entrytype if requested
               $last_type = $etarget->type;
-              my $t = lc(maploopreplace($step->{map_type_target}, $maploop));
+              my $t = fc(maploopreplace($step->{map_type_target}, $maploop));
               if ($logger->is_debug()) { # performance tune
                 $logger->debug("Source mapping (type=$level, key=$etargetkey): Changing entry type from '$last_type' to $t");
               }
@@ -545,7 +567,7 @@ sub create_entry {
             my $nfieldsource;
             # Negated source field map
             if ($nfieldsource = maploopreplace($step->{map_notfield}, $maploop)) {
-              $nfieldsource = lc($nfieldsource);
+              $nfieldsource = fc($nfieldsource);
               if ($etarget->exists($nfieldsource)) {
                 if ($step->{map_final}) {
                   if ($logger->is_debug()) { # performance tune
@@ -564,9 +586,93 @@ sub create_entry {
               $fieldcontinue = 1;
             }
 
+            # \cite{key}   -> is_cite(key)=true, is_explicitcitekey(key)=true
+            # \nocite{key} -> is_nocite(key)=true, is_explicitcitekey(key)=true
+            # \nocite{*}   -> is_allkeys_nocite=true
+            #
+            # Check entry cited/nocited verbs
+
+            # \cite{key} or \nocite{key}
+            if ($step->{map_entrykey_citedornocited}) {
+              if (not $section->is_specificcitekey($key)) { # check if NOT \cited{} and NOT \nocited{}
+                if ($step->{map_final}) {
+                  if ($logger->is_debug()) { # performance tune
+                    $logger->debug("Source mapping (type=$level, key=$key): Key is neither \\cited nor \\nocited and step has 'final' set, skipping rest of map ...");
+                  }
+                  next MAP;
+                }
+                else {
+                  # just ignore this step
+                  if ($logger->is_debug()) { # performance tune
+                    $logger->debug("Source mapping (type=$level, key=$key): Key is neither \\cited nor \\nocited, skipping step ...");
+                  }
+                  next;
+                }
+              }
+            }
+
+            # \cite{key}
+            if ($step->{map_entrykey_cited}) {
+              if (not $section->is_cite($key)) { # check if NOT cited
+                if ($step->{map_final}) {
+                  if ($logger->is_debug()) { # performance tune
+                    $logger->debug("Source mapping (type=$level, key=$key): Key is not \\cited and step has 'final' set, skipping rest of map ...");
+                  }
+                  next MAP;
+                }
+                else {
+                  # just ignore this step
+                  if ($logger->is_debug()) { # performance tune
+                    $logger->debug("Source mapping (type=$level, key=$key): Key is not \\cited, skipping step ...");
+                  }
+                  next;
+                }
+              }
+            }
+
+            # \nocite{key}
+            if ($step->{map_entrykey_nocited}) {
+              # If cited, don't want to do the allkeys_nocite check as this overrides
+              if ($section->is_cite($key) or
+                  (not $section->is_nocite($key) and not $section->is_allkeys_nocite)) {  # check if NOT nocited
+                if ($step->{map_final}) {
+                  if ($logger->is_debug()) { # performance tune
+                    $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocited and step has 'final' set, skipping rest of map ...");
+                  }
+                  next MAP;
+                }
+                else {
+                  # just ignore this step
+                  if ($logger->is_debug()) { # performance tune
+                    $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocited, skipping step ...");
+                  }
+                  next;
+                }
+              }
+            }
+
+            # \nocite{*}
+            if ($step->{map_entrykey_allnocited}) {
+              if (not $section->is_allkeys_nocite) {  # check if NOT allnoncited
+                if ($step->{map_final}) {
+                  if ($logger->is_debug()) { # performance tune
+                    $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocite{*}'ed and step has 'final' set, skipping rest of map ...");
+                  }
+                  next MAP;
+                }
+                else {
+                  # just ignore this step
+                  if ($logger->is_debug()) { # performance tune
+                    $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocite{*}'ed, skipping step ...");
+                  }
+                  next;
+                }
+              }
+            }
+
             # Field map
             if ($fieldsource = maploopreplace($step->{map_field_source}, $maploop)) {
-              $fieldsource = lc($fieldsource);
+              $fieldsource = fc($fieldsource);
 
               # key is a pseudo-field. It's guaranteed to exist so
               # just check if that's what's being asked for
@@ -592,7 +698,9 @@ sub create_entry {
 
             if ($fieldcontinue) {
               $last_field = $fieldsource;
-              $last_fieldval = $fieldsource eq 'entrykey' ? $etarget->key : $etarget->get($fieldsource);
+              # $fieldsource is already casefolded, which is correct as it does not come
+              # from Text::BibTeX's list of fields
+              $last_fieldval = $fieldsource eq 'entrykey' ? $etarget->key : $etarget->get(encode('UTF-8', NFC($fieldsource)));
 
               my $negmatch = 0;
               my $nm;
@@ -617,7 +725,7 @@ sub create_entry {
                   # Can't modify entrykey
                   if ($fieldsource eq 'entrykey') {
                     if ($logger->is_debug()) { # performance tune
-                      $logger->debug("Source mapping (type=$level, key=$etargetkey): Field '$fieldsource' is 'entrykey'- cannot remap the value of this field, skipping ...");
+                      $logger->debug("Source mapping (type=$level, key=$etargetkey): Field '$fieldsource' is 'entrykey' - cannot remap the value of this field, skipping ...");
                     }
                     next;
                   }
@@ -626,16 +734,16 @@ sub create_entry {
                   if ($logger->is_debug()) { # performance tune
                     $logger->debug("Source mapping (type=$level, key=$etargetkey): Doing match/replace '$m' -> '$r' on field '$fieldsource'");
                   }
-                  $etarget->set($fieldsource,
+                  $etarget->set(encode('UTF-8', NFC($fieldsource)),
                                 encode('UTF-8', NFC(ireplace($last_fieldval, $m, $r, $caseinsensitive))));
                 }
                 else {
-                  # Now re-instate any unescaped $1 .. $9 to get round these being
+                  # Now re-instate any unescaped $1 .. $n to get round these being
                   # dynamically scoped and being null when we get here from any
                   # previous map_match
                   # Be aware that imatch() uses m//g so @imatches can have multiple paren group
                   # captures which might be useful
-                  $m =~ s/(?<!\\)\$(\d)/$imatches[$1-1]/ge;
+                  $m =~ s/(?<!\\)\$(\d+)/$imatches[$1-1]/ge;
                   unless (@imatches = imatch($last_fieldval, $m, $negmatch, $caseinsensitive)) {
                     # Skip the rest of the map if this step doesn't match and match is final
                     if ($step->{map_final}) {
@@ -657,7 +765,7 @@ sub create_entry {
 
               # Set to a different target if there is one
               if (my $target = maploopreplace($step->{map_field_target}, $maploop)) {
-                $target = lc($target);
+                $target = fc($target);
                 # Can't remap entry key pseudo-field
                 if ($fieldsource eq 'entrykey') {
                   if ($logger->is_debug()) { # performance tune
@@ -679,14 +787,17 @@ sub create_entry {
                     next;
                   }
                 }
-                $etarget->set($target, encode('UTF-8', NFC($entry->get($fieldsource))));
+                # $target and $fieldsource are already casefolded, which is correct as it
+                # does not come from Text::BibTeX's list of fields
+                $etarget->set(encode('UTF-8', NFC($target)),
+                              encode('UTF-8', NFC($entry->get(encode('UTF-8', NFC($fieldsource))))));
                 $etarget->delete($fieldsource);
               }
             }
 
             # field changes
             if (my $field = maploopreplace($step->{map_field_set}, $maploop)) {
-              $field = lc($field);
+              $field = fc($field);
               # Deal with special tokens
               if ($step->{map_null}) {
                 if ($logger->is_debug()) { # performance tune
@@ -718,7 +829,9 @@ sub create_entry {
                 # If append or appendstrict is set, keep the original value
                 # and append the new.
                 if ($step->{map_append} or $step->{map_appendstrict}) {
-                  $orig = $etarget->get($field) || '';
+                  # $field is already casefolded, which is correct as it does not come
+                  # from Text::BibTeX's list of fields
+                  $orig = $etarget->get(encode('UTF-8', NFC($field))) || '';
                 }
 
                 if ($step->{map_origentrytype}) {
@@ -726,21 +839,24 @@ sub create_entry {
                   if ($logger->is_debug()) { # performance tune
                     $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field '$field' to '${orig}${last_type}'");
                   }
-                  $etarget->set($field, encode('UTF-8', NFC(appendstrict_check($step, $orig,$last_type))));
+                  $etarget->set(encode('UTF-8', NFC($field)),
+                                encode('UTF-8', NFC(appendstrict_check($step, $orig,$last_type))));
                 }
                 elsif ($step->{map_origfieldval}) {
                   next unless $last_fieldval;
                   if ($logger->is_debug()) { # performance tune
                     $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field '$field' to '${orig}${last_fieldval}'");
                   }
-                  $etarget->set($field, encode('UTF-8', NFC(appendstrict_check($step, $orig, $last_fieldval))));
+                  $etarget->set(encode('UTF-8', NFC($field)),
+                                encode('UTF-8', NFC(appendstrict_check($step, $orig, $last_fieldval))));
                 }
                 elsif ($step->{map_origfield}) {
                   next unless $last_field;
                   if ($logger->is_debug()) { # performance tune
                     $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field '$field' to '${orig}${last_field}'");
                   }
-                  $etarget->set($field, encode('UTF-8', NFC(appendstrict_check($step, $orig, $last_field))));
+                  $etarget->set(encode('UTF-8', NFC($field)),
+                                encode('UTF-8', NFC(appendstrict_check($step, $orig, $last_field))));
                 }
                 else {
                   my $fv = maploopreplace($step->{map_field_value}, $maploop);
@@ -751,7 +867,8 @@ sub create_entry {
                   if ($logger->is_debug()) { # performance tune
                     $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field '$field' to '${orig}${fv}'");
                   }
-                  $etarget->set($field, encode('UTF-8', NFC(appendstrict_check($step, $orig, $fv))));
+                  $etarget->set(encode('UTF-8', NFC($field)),
+                                encode('UTF-8', NFC(appendstrict_check($step, $orig, $fv))));
                 }
               }
             }
@@ -760,7 +877,7 @@ sub create_entry {
       }
     }
 
-    _create_entry($key, $entry);
+    $crret = _create_entry($key, $entry);
 
     # reinstate original entry before modifications so that further refsections
     # have a clean slate
@@ -771,12 +888,12 @@ sub create_entry {
       _create_entry($k, $e);
     }
   }
-  return 1;
+  return $crret;
 }
 
 sub _create_entry {
   my ($k, $e) = @_;
-  return unless $e; # newentry might be undef
+  return 1 unless $e; # newentry might be undef
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
   my $ds = $section->get_keytods($k);
@@ -796,27 +913,29 @@ sub _create_entry {
   # We put all the fields we find modulo field aliases into the object
   # validation happens later and is not datasource dependent
   foreach my $f ($e->fieldlist) {
+    my $fc = fc($f);
 
     # We have to process local options as early as possible in order
     # to make them available for things that need them like parsename()
-    if ($f eq 'options') {
-      my $value = $e->get($f);
+    if ($fc eq 'options') {
+      my $value = $e->get(encode('UTF-8', NFC($f)));
       my $Srx = Biber::Config->getoption('xsvsep');
       my $S = qr/$Srx/;
       process_entry_options($k, [ split(/$S/, $value) ], $secnum);
     }
 
     # Now run any defined handler
-    if ($dm->is_field($f)) {
-      if ($e->get($f) ne '') { # Check the raw field in case we have e.g. date = {}
-        my $handler = _get_handler($f);
+    if ($dm->is_field($fc)) {
+      # Check the Text::BibTeX field in case we have e.g. date = {}
+      if ($e->get(encode('UTF-8', NFC($f))) ne '') {
+        my $handler = _get_handler($fc);
         my $v = $handler->($bibentry, $e, $f, $k);
         if (defined($v)) {
           if ($v eq 'BIBER_SKIP_ENTRY') {# field data is bad enough to cause entry to be skipped
-            return;
+            return 0;
           }
           else {
-            $bibentry->set_datafield($f, $v);
+            $bibentry->set_datafield($fc, $v);
           }
         }
       }
@@ -826,13 +945,13 @@ sub _create_entry {
     }
   }
 
-  $bibentry->set_field('entrytype', $entrytype);
+  $bibentry->set_field('entrytype', fc($entrytype));
   $bibentry->set_field('datatype', 'bibtex');
   if ($logger->is_debug()) {# performance tune
     $logger->debug("Adding entry with key '$k' to entry list");
   }
   $section->bibentries->add_entry($k, $bibentry);
-  return;
+  return 1;
 }
 
 # HANDLERS
@@ -841,15 +960,16 @@ sub _create_entry {
 # Data annotation fields
 sub _annotation {
   my ($bibentry, $entry, $field, $key) = @_;
-  my $value = $entry->get($field);
+  my $fc = fc($field); # Casefolded field which is what we need internally
+  my $value = $entry->get(encode('UTF-8', NFC($field)));
   my $ann = quotemeta(Biber::Config->getoption('annotation_marker'));
   my $nam = quotemeta(Biber::Config->getoption('named_annotation_marker'));
   # Get annotation name, "default" if none
   my $name = 'default';
-  if ($field =~ s/^(.+$ann)$nam(.+)$/$1/) {
+  if ($fc =~ s/^(.+$ann)$nam(.+)$/$1/) {
     $name = $2;
   }
-  $field =~ s/$ann$//;
+  $fc =~ s/$ann$//;
 
   foreach my $a (split(/\s*;\s*/, $value)) {
     my ($count, $part, $annotations) = $a =~ /^\s*(\d+)?:?([^=]+)?=(.+)/;
@@ -860,13 +980,13 @@ sub _annotation {
       $annotations = $1;
     }
     if ($part) {
-      Biber::Annotation->set_annotation('part', $key, $field, $name, $annotations, $literal, $count, $part);
+      Biber::Annotation->set_annotation('part', $key, $fc, $name, $annotations, $literal, $count, $part);
     }
     elsif ($count) {
-      Biber::Annotation->set_annotation('item', $key, $field, $name, $annotations, $literal, $count);
+      Biber::Annotation->set_annotation('item', $key, $fc, $name, $annotations, $literal, $count);
     }
     else {
-      Biber::Annotation->set_annotation('field', $key, $field, $name, $annotations, $literal);
+      Biber::Annotation->set_annotation('field', $key, $fc, $name, $annotations, $literal);
     }
   }
   return;
@@ -875,26 +995,32 @@ sub _annotation {
 # Literal fields
 sub _literal {
   my ($bibentry, $entry, $field, $key) = @_;
-  my $value = $entry->get($field);
+  my $fc = fc($field); # Casefolded field which is what we need internally
+  my $value = $entry->get(encode('UTF-8', NFC($field)));
+
+  # Record any XDATA and skip if we did
+  if ($bibentry->add_xdata_ref($field, $value)) {
+    return $value; # Return raw xdata
+  }
 
   # If we have already split some date fields into literal fields
   # like date -> year/month/day, don't overwrite them with explicit
   # year/month
-  if ($field eq 'year') {
+  if ($fc eq 'year') {
     return if $bibentry->get_datafield('year');
-    if ($value and not looks_like_number($value)and not $entry->get('sortyear')) {
+    if ($value and not looks_like_number(num($value))and not $entry->get('sortyear')) {
       biber_warn("year field '$value' in entry '$key' is not an integer - this will probably not sort properly.");
     }
   }
-  if ($field eq 'month') {
+  if ($fc eq 'month') {
     return if $bibentry->get_datafield('month');
-    if ($value and not looks_like_number($value)) {
+    if ($value and not looks_like_number(num($value))) {
       biber_warn("month field '$value' in entry '$key' is not an integer - this will probably not sort properly.");
     }
   }
 
   # Deal with ISBN options
-  if ($field eq 'isbn') {
+  if ($fc eq 'isbn') {
     require Business::ISBN;
     my ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
     $dir =~ s/\/$//;            # splitpath sometimes leaves a trailing '/'
@@ -928,13 +1054,13 @@ sub _literal {
   }
 
   # Try to sanitise months to biblatex requirements
-  if ($field eq 'month') {
+  if ($fc eq 'month') {
     return _hack_month($value);
   }
   # Rationalise any bcp47 style langids into babel/polyglossia names
   # biblatex will convert these back again when loading .lbx files
   # We need this until babel/polyglossia support proper bcp47 language/locales
-  elsif ($field eq 'langid' and my $map = $LOCALE_MAP_R{$value}) {
+  elsif ($fc eq 'langid' and my $map = $LOCALE_MAP_R{$value}) {
     return $map;
   }
   else {
@@ -945,7 +1071,11 @@ sub _literal {
 # URI fields
 sub _uri {
   my ($bibentry, $entry, $field) = @_;
-  my $value = $entry->get($field);
+  my $value = $entry->get(encode('UTF-8', NFC($field)));
+
+  # Record any XDATA
+  $bibentry->add_xdata_ref($field, $value);
+
   return $value;
 }
 
@@ -954,13 +1084,22 @@ sub _xsv {
   my $Srx = Biber::Config->getoption('xsvsep');
   my $S = qr/$Srx/;
   my ($bibentry, $entry, $field) = @_;
-  return [ split(/$S/, $entry->get($field)) ];
+  my $value = [ split(/$S/, $entry->get(encode('UTF-8', NFC($field)))) ];
+
+  # Record any XDATA
+  $bibentry->add_xdata_ref($field, $value);
+
+  return $value ;
 }
 
 # Verbatim fields
 sub _verbatim {
   my ($bibentry, $entry, $field) = @_;
-  my $value = $entry->get($field);
+  my $value = $entry->get(encode('UTF-8', NFC($field)));
+
+  # Record any XDATA
+  $bibentry->add_xdata_ref($field, $value);
+
   return $value;
 }
 
@@ -974,7 +1113,12 @@ sub _verbatim {
 sub _range {
   my ($bibentry, $entry, $field, $key) = @_;
   my $values_ref;
-  my $value = $entry->get($field);
+  my $value = $entry->get(encode('UTF-8', NFC($field)));
+
+  # Record any XDATA and skip if we did
+  if ($bibentry->add_xdata_ref($field, $value)) {
+    return $value; # Return raw value
+  }
 
   my @values = split(/\s*[;,]\s*/, $value);
   # If there is a range sep, then we set the end of the range even if it's null
@@ -995,7 +1139,7 @@ sub _range {
       $end = undef;
     }
     $start =~ s/\A\{([^\}]+)\}\z/$1/;
-    $end =~ s/\A\{([^\}]+)\}\z/$1/;
+    $end =~ s/\A\{([^\}]+)\}\z/$1/ if $end;
     if ($start) {
       push $values_ref->@*, [$start || '', $end];
     }
@@ -1009,12 +1153,15 @@ sub _range {
 
 # Names
 sub _name {
-  my ($be, $entry, $field, $key) = @_;
+  my ($bibentry, $entry, $field, $key) = @_;
+  my $fc = fc($field); # Casefolded field which is what we need internally
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
-  my $value = $entry->get($field);
+  my $value = $entry->get(encode('UTF-8', NFC($field)));
   my $xnamesep = Biber::Config->getoption('xnamesep');
-  my $bee = $be->get_field('entrytype');
+  my $bee = $bibentry->get_field('entrytype');
+
+  my $names = Biber::Entry::Names->new();
 
   my @tmp = Text::BibTeX::split_list(NFC($value),# Unicode NFC boundary
                                      Biber::Config->getoption('namesep'),
@@ -1023,9 +1170,15 @@ sub _name {
                                      undef,
                                      {binmode => 'utf-8', normalization => 'NFD'});
 
-  my $names = Biber::Entry::Names->new();
+  for (my $i = 0; $i <= $#tmp; $i++) {
+    my $name = $tmp[$i];
 
-  foreach my $name (@tmp) {
+    # Record any XDATA and skip if we did
+    if ($bibentry->add_xdata_ref($field, $name, $i)) {
+      # Add special xdata ref empty name as placeholder
+      $names->add_name(Biber::Entry::Name->new(xdata => $name));
+      next;
+    }
 
     # per-namelist options
     if ($name =~ m/^(\S+)\s*$xnamesep\s*(\S+)?$/) {
@@ -1044,7 +1197,7 @@ sub _name {
 
     # Consecutive "and" causes Text::BibTeX::Name to segfault
     unless ($name) {
-      biber_warn("Name in key '$key' is empty (probably consecutive 'and'): skipping entry '$key'", $be);
+      biber_warn("Name in key '$key' is empty (probably consecutive 'and'): skipping entry '$key'", $bibentry);
       $section->del_citekey($key);
       return 'BIBER_SKIP_ENTRY';
     }
@@ -1059,7 +1212,7 @@ sub _name {
       # uniquename defaults to 'false' just in case we are in tool mode otherwise
       # there are spurious uninitialised warnings
 
-      next unless $no = parsename_x($name, $field, $key);
+      next unless $no = parsename_x($section, $name, $fc, $key);
     }
     else { # Normal bibtex name format
       # Check for malformed names in names which aren't completely escaped
@@ -1083,7 +1236,7 @@ sub _name {
       # Skip names that don't parse for some reason
       # unique name defaults to 0 just in case we are in tool mode otherwise there are spurious
       # uninitialised warnings
-      next unless $no = parsename($name, $field);
+      next unless $no = parsename($section, $name, $fc);
     }
 
     # Deal with implied "et al" in data source
@@ -1103,14 +1256,14 @@ sub _name {
 sub _datetime {
   my ($bibentry, $entry, $field, $key) = @_;
   my $datetype = $field =~ s/date\z//xmsr;
-  my $date = $entry->get($field);
+  my $date = $entry->get(encode('UTF-8', NFC($field)));
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
   my $ds = $section->get_keytods($key);
 
   my ($sdate, $edate, $sep, $unspec) = parse_date_range($bibentry, $datetype, $date);
 
-  # Date had EDTF 5.2.2 unspecified format
+  # Date had unspecified format
   # This does not differ for *enddate components as these are split into ranges
   # from non-ranges only
   if ($unspec) {
@@ -1154,22 +1307,28 @@ sub _datetime {
       }
 
       unless ($CONFIG_DATE_PARSERS{start}->missing('year')) {
-        $bibentry->set_datafield($datetype . 'year', $sdate->year);
+        $bibentry->set_datafield($datetype . 'year',
+                                 $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->year));
         # Save era date information
         $bibentry->set_field($datetype . 'era', lc($sdate->secular_era));
       }
 
-      $bibentry->set_datafield($datetype . 'month', $sdate->month)
+      $bibentry->set_datafield($datetype . 'month',
+                               $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->month))
         unless $CONFIG_DATE_PARSERS{start}->missing('month');
 
-      $bibentry->set_datafield($datetype . 'day', $sdate->day)
+      $bibentry->set_datafield($datetype . 'day',
+                               $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->day))
         unless $CONFIG_DATE_PARSERS{start}->missing('day');
 
       # time
       unless ($CONFIG_DATE_PARSERS{start}->missing('time')) {
-        $bibentry->set_datafield($datetype . 'hour', $sdate->hour);
-        $bibentry->set_datafield($datetype . 'minute', $sdate->minute);
-        $bibentry->set_datafield($datetype . 'second', $sdate->second);
+        $bibentry->set_datafield($datetype . 'hour',
+                                 $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->hour));
+        $bibentry->set_datafield($datetype . 'minute',
+                                 $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->minute));
+        $bibentry->set_datafield($datetype . 'second',
+                                 $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->second));
         unless ($sdate->time_zone->is_floating) { # ignore floating timezones
           $bibentry->set_datafield($datetype . 'timezone', tzformat($sdate->time_zone->name));
         }
@@ -1187,15 +1346,18 @@ sub _datetime {
           $bibentry->set_field("${datetype}datesplit", 1);
 
           unless ($CONFIG_DATE_PARSERS{end}->missing('year')) {
-            $bibentry->set_datafield($datetype . 'endyear', $edate->year);
+            $bibentry->set_datafield($datetype . 'endyear',
+                                     $CONFIG_DATE_PARSERS{end}->resolvescript($edate->year));
             # Save era date information
             $bibentry->set_field($datetype . 'endera', lc($edate->secular_era));
           }
 
-          $bibentry->set_datafield($datetype . 'endmonth', $edate->month)
+          $bibentry->set_datafield($datetype . 'endmonth',
+                                   $CONFIG_DATE_PARSERS{end}->resolvescript($edate->month))
             unless $CONFIG_DATE_PARSERS{end}->missing('month');
 
-          $bibentry->set_datafield($datetype . 'endday', $edate->day)
+          $bibentry->set_datafield($datetype . 'endday',
+                                   $CONFIG_DATE_PARSERS{end}->resolvescript($edate->day))
             unless $CONFIG_DATE_PARSERS{end}->missing('day');
 
           # Save end season date information
@@ -1205,9 +1367,12 @@ sub _datetime {
 
           # must be an hour if there is a time but could be 00 so use defined()
           unless ($CONFIG_DATE_PARSERS{end}->missing('time')) {
-            $bibentry->set_datafield($datetype . 'endhour', $edate->hour);
-            $bibentry->set_datafield($datetype . 'endminute', $edate->minute);
-            $bibentry->set_datafield($datetype . 'endsecond', $edate->second);
+            $bibentry->set_datafield($datetype . 'endhour',
+                                     $CONFIG_DATE_PARSERS{end}->resolvescript($edate->hour));
+            $bibentry->set_datafield($datetype . 'endminute',
+                                    $CONFIG_DATE_PARSERS{end}->resolvescript($edate->minute));
+            $bibentry->set_datafield($datetype . 'endsecond',
+                                     $CONFIG_DATE_PARSERS{end}->resolvescript($edate->second));
             unless ($edate->time_zone->is_floating) { # ignore floating timezones
               $bibentry->set_datafield($datetype . 'endtimezone', tzformat($edate->time_zone->name));
             }
@@ -1231,7 +1396,8 @@ sub _datetime {
 # Bibtex list fields with listsep separator
 sub _list {
   my ($bibentry, $entry, $field) = @_;
-  my $value = $entry->get($field);
+  my $value = $entry->get(encode('UTF-8', NFC($field)));
+
   my @tmp = Text::BibTeX::split_list(NFC($value),# Unicode NFC boundary
                                      Biber::Config->getoption('listsep'),
                                      undef,
@@ -1239,13 +1405,25 @@ sub _list {
                                      undef,
                                      {binmode => 'utf-8', normalization => 'NFD'});
   @tmp = map { (remove_outer($_))[1] } @tmp;
-  return [ @tmp ];
+  my @result;
+
+  for (my $i = 0; $i <= $#tmp; $i++) {
+    my $e = $tmp[$i];
+
+    # Record any XDATA and skip if we did
+    $bibentry->add_xdata_ref($field, $e, $i);
+
+    push @result, $e;
+  }
+
+  return [ @result ];
 }
 
 # Bibtex uri lists
 sub _urilist {
   my ($bibentry, $entry, $field) = @_;
-  my $value = $entry->get($field);
+  my $value = $entry->get(encode('UTF-8', NFC($field)));
+
   # Unicode NFC boundary (passing to external library)
   my @tmp = Text::BibTeX::split_list(NFC($value),
                                      Biber::Config->getoption('listsep'),
@@ -1253,7 +1431,19 @@ sub _urilist {
                                      undef,
                                      undef,
                                      {binmode => 'utf-8', normalization => 'NFD'});
-  return [ @tmp ];
+  my @result;
+
+  for (my $i = 0; $i <= $#tmp; $i++) {
+    my $e = $tmp[$i];
+
+    # Record any XDATA and skip if we did
+    $bibentry->add_xdata_ref($field, $e, $i);
+
+    push @result, $e;
+  }
+
+  return [ @result ];
+
 }
 
 =head2 cache_data
@@ -1439,6 +1629,7 @@ sub preprocess_file {
   }
 
   File::Slurper::write_text($ufilename, NFC($lbuf));# Unicode NFC boundary
+
   return $ufilename;
 }
 
@@ -1465,7 +1656,7 @@ sub parse_decode {
     if ( $entry->metatype == BTE_REGULAR ) {
       $lbuf .= '@' . $entry->type . '{' . $entry->key . ',' . "\n";
       foreach my $f ($entry->fieldlist) {
-        my $fv = $entry->get($f);
+        my $fv = $entry->get(encode('UTF-8', NFC($f))); # NFC boundary: $f is "output" to Text::BibTeX
 
         # Don't decode verbatim fields
         if (not first {fc($f) eq fc($_)} $dmh->{verbs}->@*) {
@@ -1484,7 +1675,7 @@ sub parse_decode {
     elsif ($entry->metatype == BTE_MACRODEF) {
       $lbuf .= '@STRING{';
       foreach my $f ($entry->fieldlist) {
-        $lbuf .= $f . ' = {' . Biber::LaTeX::Recode::latex_decode($entry->get($f)) . '}';
+        $lbuf .= $f . ' = {' . Biber::LaTeX::Recode::latex_decode($entry->get(encode('UTF-8', NFC($f)))) . '}';
       }
       $lbuf .= "}\n";
     }
@@ -1525,7 +1716,7 @@ sub parse_decode {
 =cut
 
 sub parsename {
-  my ($namestr, $fieldname) = @_;
+  my ($section, $namestr, $fieldname) = @_;
 
   # First sanitise the namestring due to Text::BibTeX::Name limitations on whitespace
   $namestr =~ s/\A\s*|\s*\z//xms; # leading and trailing whitespace
@@ -1539,7 +1730,7 @@ sub parsename {
   $namestr =~ s/(\w)\.(\w)/$1. $2/g if Biber::Config->getoption('fixinits');
 
   my %namec;
-  my $name = Text::BibTeX::Name->new({binmode => 'utf-8', normalization => 'NFD'}, $namestr);
+  my $name = Text::BibTeX::Name->new({binmode => 'utf-8', normalization => 'NFD'}, NFC($namestr));
 
   # Formats so we can get BibTeX compatible nbsp inserted
   my $l_f = Text::BibTeX::NameFormat->new('l', 0);
@@ -1557,49 +1748,25 @@ sub parsename {
   $namec{prefix} = $name->format($p_f);
   $namec{suffix} = $name->format($s_f);
 
-  # Use a copy of $name so that when we generate the
-  # initials, we do so without certain things. This is easier than trying
-  # hack robust initials code into btparse ...
-  my $nd_namestr = strip_noinit($namestr);
-
-  # Now re-santise after the arbitrary regexps of the noinit removals
-  # leading and trailing whitespace
-  $nd_namestr =~ s/\A\s*|\s*\z//xms;
-
-  # Collapse internal whitespace
-  $nd_namestr =~ s/\s+|\\\s/ /g;
-
-  # Make initials with ties in between work. btparse doesn't understand this so replace with
-  # spaces - this is fine as we are just generating initials
-  $nd_namestr =~ s/\.~\s*/. /g;
-
-  my $nd_name = Text::BibTeX::Name->new({binmode => 'utf-8', normalization => 'NFD'}, $nd_namestr, $fieldname);
-
-  # Initials formats
-  my $li_f = Text::BibTeX::NameFormat->new('l', 1);
-  my $fi_f = Text::BibTeX::NameFormat->new('f', 1);
-  my $pi_f = Text::BibTeX::NameFormat->new('v', 1);
-  my $si_f = Text::BibTeX::NameFormat->new('j', 1);
-
-  # Initials generated with forced tie so we can make an array
-  $li_f->set_text(BTN_LAST,  undef, undef, undef, '');
-  $fi_f->set_text(BTN_FIRST, undef, undef, undef, '');
-  $pi_f->set_text(BTN_VON,   undef, undef, undef, '');
-  $si_f->set_text(BTN_JR,    undef, undef, undef, '');
-  $li_f->set_options(BTN_LAST,  1, BTJ_FORCETIE, BTJ_NOTHING);
-  $fi_f->set_options(BTN_FIRST, 1, BTJ_FORCETIE, BTJ_NOTHING);
-  $pi_f->set_options(BTN_VON,   1, BTJ_FORCETIE, BTJ_NOTHING);
-  $si_f->set_options(BTN_JR,    1, BTJ_FORCETIE, BTJ_NOTHING);
-
-  $namec{'family-i'} = inits($nd_name->format($li_f));
-  $namec{'given-i'}  = inits($nd_name->format($fi_f));
-  $namec{'prefix-i'} = inits($nd_name->format($pi_f));
-  $namec{'suffix-i'} = inits($nd_name->format($si_f));
+  # Not using Text::BibTeX for initials generation as it can't handle combining
+  # chars and diacritics in general
 
   # basic bibtex names have a fixed data model
   foreach my $np ('prefix', 'family', 'given', 'suffix') {
     if ($namec{$np}) {
       ($namec{"${np}-strippedflag"}, $namec{"${np}-stripped"}) = remove_outer($namec{$np});
+
+      # Protect spaces inside {} when splitting to produce initials
+      my $part = $namec{$np};
+      if ($namec{"${np}-strippedflag"}) {
+        $part = $namec{$np} =~ s/\s+/_/gr;
+      }
+
+      # strip noinit
+      $part = strip_noinit($part);
+
+      # split on spaces/tilde outside of brace block
+      $namec{"${np}-i"} = [gen_initials(split(/[\h~]+(?![^{]*\})/, $part))];
     }
   }
 
@@ -1609,6 +1776,10 @@ sub parsename {
     $nameparts{$np} = {string  => $namec{"${np}-stripped"} // undef,
                        initial => $namec{$np} ? $namec{"${np}-i"} : undef};
     $strip->{$np} = $namec{"${np}-strippedflag"};
+
+    # Record max namepart lengths
+    $section->set_np_length($np, length($nameparts{$np}{string})) if $nameparts{$np}{string};
+    $section->set_np_length("${np}-i", length(join('', $nameparts{$np}{initial}->@*))) if $nameparts{$np}{initial};
   }
 
   # The "strip" entry tells us which of the name parts had outer braces
@@ -1639,7 +1810,7 @@ sub parsename {
 =cut
 
 sub parsename_x {
-  my ($namestr, $fieldname, $key) = @_;
+  my ($section, $namestr, $fieldname, $key) = @_;
   my $xnamesep = Biber::Config->getoption('xnamesep');
   my %nps = map {$_ => 1} $dm->get_constant_value('nameparts');
 
@@ -1700,9 +1871,13 @@ sub parsename_x {
   }
 
   my %nameparts;
-  foreach my $n (keys %nps) {
-    $nameparts{$n} = {string  => $namec{$n} // undef,
-                      initial => exists($namec{$n}) ? $namec{"${n}-i"} : undef};
+  foreach my $np (keys %nps) {
+    $nameparts{$np} = {string  => $namec{$np} // undef,
+                       initial => exists($namec{$np}) ? $namec{"${np}-i"} : undef};
+
+    # Record max namepart lengths
+    $section->set_np_length($np, length($nameparts{$np}{string}))  if $nameparts{$np}{string};
+    $section->set_np_length("${np}-i", length(join('', $nameparts{$np}{initial}->@*)))  if $nameparts{$np}{initial};
   }
 
   # The "strip" entry tells us which of the name parts had outer braces
@@ -1803,7 +1978,6 @@ and instantiate Biber::Entry objects for what it finds
 
 =head1 AUTHOR
 
-François Charette, C<< <firmicus at ankabut.net> >>
 Philip Kime C<< <philip at kime.org.uk> >>
 
 =head1 BUGS
@@ -1813,7 +1987,8 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
+Copyright 2012-2019 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

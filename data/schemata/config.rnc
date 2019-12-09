@@ -100,6 +100,8 @@ start =
     element output_resolve_sets { "0" | "1" }? &
     element output_safechars     { "0" | "1" }? &
     element output_safecharsset  { "base" | "full" }? &
+    element output_xdatamarker   { text }? &
+    element output_xdatasep      { text }? &
     element output_xname         { "0" | "1" }? &
     element output_xnamesep      { text }? &
     element quiet                { "0" | "1" }? &
@@ -145,7 +147,11 @@ start =
     element validate_datamodel   { "0" | "1" }? &
     # Meaningless in the config file
     #  element version              { "0" | "1" }? &
-    element wraplines            { "0" | "1" }?
+    element wraplines            { "0" | "1" }? &
+    element xdatamarker          { text }? &
+    element xdatasep             { text }? &
+    element xname                { "0" | "1" }? &
+    element xnamesep             { text }?
   }
 
 datamodel =
@@ -194,6 +200,10 @@ datamodel =
       element entrytype { text }*,
       element field { text }+
     }+,
+    # Allowable multiscript fields which can have alternate form/languages
+    element multiscriptfields {
+      element field { text }+
+    },
     # Constraints on field (co-)existence and format
     element constraints {
       # Set of entrytypes that this constraint applies to
@@ -323,7 +333,11 @@ map =
         ( attribute map_entry_new { xsd:string {minLength="1"} },
           attribute map_entry_newtype { xsd:string {minLength="1"} }
         ) |
-        ( attribute map_type_source { xsd:string {minLength="1"} }?,
+        ( attribute map_entrykey_cited { "1" }?,
+          attribute map_entrykey_nocited { "1" }?,
+          attribute map_entrykey_citedornocited { "1" }?,
+          attribute map_entrykey_allnocited { "1" }?,
+          attribute map_type_source { xsd:string {minLength="1"} }?,
           attribute map_type_target { xsd:string {minLength="1"} }?,
           attribute map_field_source { xsd:string {minLength="1"} }?,
           attribute map_notfield { xsd:string {minLength="1"} }?,
@@ -458,7 +472,7 @@ element sort {
 dmfieldtype =  "field" | "list"
 dmdatatype =  "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "code" | "uri" | "datepart" | "keyword" | "option"
 
-# Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+# Copyright 2012-2019 Philip Kime, all rights reserved.
 
 # This code is free software.  You can redistribute it and/or
 # modify it under the terms of the Artistic License 2.0.
