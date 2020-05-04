@@ -5,7 +5,7 @@ Uploaders: Danai SAE-HAN (韓達耐) <danai@debian.org>,
            Hilmar Preusse <hille42@web.de>
 Section: perl
 Priority: optional
-Build-Depends: debhelper (>= 9),
+Build-Depends: debhelper (>= 12~),
 		perl (>= 5.30),
 		libautovivification-perl,
 		libclass-accessor-perl,
