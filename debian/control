@@ -5,7 +5,7 @@ Uploaders: Danai SAE-HAN (韓達耐) <danai@debian.org>,
            Hilmar Preusse <hille42@web.de>
 Section: perl
 Priority: optional
-Build-Depends: debhelper (>= 9),
+Build-Depends: debhelper-compat (= 12),
 		perl (>= 5.30),
 		libautovivification-perl,
 		libclass-accessor-perl,
@@ -130,4 +130,3 @@ Description: Much-augmented BibTeX replacement for BibLaTeX users
  complex crossrefs, support for remote data sources, structural
  validation of the data against the (customisable) data model, and a
  lot more.
-

@@ -27,4 +27,3 @@ override_dh_install:
 	install -m 0644 doc/biber.pdf debian/biber/usr/share/texmf/doc/bibtex/biber/biber.pdf
 	dh_link usr/share/texmf/doc/bibtex/biber/biber.pdf \
 		usr/share/doc/biber/biber.pdf
-
