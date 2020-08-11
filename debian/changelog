@@ -1,5 +1,6 @@
-biber (2.14-2) UNRELEASED; urgency=medium
+biber (2.14-3) UNRELEASED; urgency=medium
 
+  [ Debian Janitor ]
   * Trim trailing whitespace.
   * Use secure copyright file specification URI.
   * Move source package lintian overrides to debian/source.
@@ -8,7 +9,11 @@ biber (2.14-2) UNRELEASED; urgency=medium
   * Set upstream metadata fields: Bug-Database, Bug-Submit, Repository,
     Repository-Browse.
 
- -- Debian Janitor <janitor@jelmer.uk>  Mon, 04 May 2020 16:52:52 +0000
+  [ Hilmar Preusse ]
+  * Copy file lib/Biber/Output/bblxml.pm form upstream.
+    (Closes: #968200).
+
+ -- Hilmar Preusse <hille42@web.de>  Tue, 11 Aug 2020 08:01:15 +0200
 
 biber (2.14-1) unstable; urgency=medium
 
