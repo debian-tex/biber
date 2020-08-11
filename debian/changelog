@@ -10,7 +10,7 @@ biber (2.14-3) UNRELEASED; urgency=medium
     Repository-Browse.
 
   [ Hilmar Preusse ]
-  * Copy file lib/Biber/Output/bblxml.pm form upstream.
+  * Copy file lib/Biber/Output/bblxml.pm from upstream.
     (Closes: #968200).
 
  -- Hilmar Preusse <hille42@web.de>  Tue, 11 Aug 2020 08:01:15 +0200
