@@ -11,7 +11,7 @@ biber (2.14+1-1) unstable; urgency=medium
 
   [ Hilmar Preusse ]
   * Copy file lib/Biber/Output/bblxml.pm from upstream.
-    (Closes: #968200).
+    First attempt for #968200.
   * Clean up some files created during build.
 
   [ Norbert Preining ]
