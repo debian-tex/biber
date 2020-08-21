@@ -342,21 +342,21 @@ sub parse_ctrlfile {
   my $ctrl_file_path = locate_data_file($ctrl_file);
   Biber::Config->set_ctrlfile_path($ctrl_file_path);
 
-  biber_error("Cannot find control file '$ctrl_file'! - Did latex run successfully on your .tex file before you ran biber?") unless ($ctrl_file_path and -e $ctrl_file_path);
+  biber_error("Cannot find control file '$ctrl_file'! - Did latex run successfully on your .tex file before you ran biber?") unless ($ctrl_file_path and check_exists($ctrl_file_path));
 
   # Early check to make sure .bcf is well-formed. If not, this means that the last biblatex run
   # exited prematurely while writing the .bcf. This results is problems for latexmk. So, if the
   # .bcf is broken, just stop here, remove the .bcf and exit with error so that we don't write
   # a bad .bbl
   my $checkbuf;
-  unless ($checkbuf = eval {File::Slurper::read_text($ctrl_file_path)}) {
+  unless ($checkbuf = eval {slurp_switchr($ctrl_file_path)->$*}) {
     # Reading ctrl-file as UTF-8 failed. Probably it was written by fontenc as latin1
     # with some latin1 char in it (probably a sourcemap), so try that as a last resort
-    unless (eval {$checkbuf = File::Slurper::read_text($ctrl_file_path, 'latin1')}) {
+    unless (eval {$checkbuf = slurp_switchr($ctrl_file_path, 'latin1')->$*}) {
       biber_error("$ctrl_file_path is not UTF-8 or even latin1, please delete it and run latex again or check that biblatex is writing a valid .bcf file.");
     }
     # Write ctrl file as UTF-8
-    File::Slurper::write_text($ctrl_file_path, NFC($checkbuf));# Unicode NFC boundary
+    slurp_switchw($ctrl_file_path, $checkbuf);# Unicode NFC boundary
   }
 
   $checkbuf = NFD($checkbuf);# Unicode NFD boundary
@@ -395,7 +395,7 @@ sub parse_ctrlfile {
       $bcf_xsl = File::Spec->catpath($vol, "$biber_path/Biber", 'bcf.xsl');
     }
 
-    if (-e $bcf_xsl) {
+    if (check_exists($bcf_xsl)) {
       $CFstyle = XML::LibXML->load_xml( location => $bcf_xsl, no_cdata=>1 )
     }
     else {
@@ -413,7 +413,7 @@ sub parse_ctrlfile {
   # Open control file
  LOADCF:
   $logger->info("Reading '$ctrl_file_path'");
-  my $buf = File::Slurper::read_text($ctrl_file_path);
+  my $buf = slurp_switchr($ctrl_file_path)->$*;
   $buf = NFD($buf);# Unicode NFD boundary
 
   # Read control file
@@ -719,9 +719,11 @@ sub parse_ctrlfile {
 
   # UNIQUENAME TEMPLATE
   my $unts;
+  my $checkbase = 0;
   foreach my $unt ($bcfxml->{uniquenametemplate}->@*) {
     my $untval = [];
     foreach my $np (sort {$a->{order} <=> $b->{order}} $unt->{namepart}->@*) {
+      $checkbase = 1 if $np->{base};
       push $untval->@*, {namepart        => $np->{content},
                          use             => $np->{use},
                          disambiguation  => $np->{disambiguation},
@@ -729,6 +731,10 @@ sub parse_ctrlfile {
     }
     $unts->{$unt->{name}} = $untval;
   }
+
+  # Check to make sure we have a base to disambiguate from. If not, we can get infinite loops
+  # in the disambiguation code
+  biber_error("The uniquenametemplate must contain at least one 'base' part otherwise name disambiguation is impossible") unless $checkbase;
 
   Biber::Config->setblxoption(undef, 'uniquenametemplate', $unts);
 
@@ -824,6 +830,9 @@ sub parse_ctrlfile {
 
   # DATAMODEL schema (always global and is an array to accomodate multiple
   # datamodels in tool mode)
+
+  # Because in tests, parse_ctrlfile() is called several times so we need to sanitise this here
+  Biber::Config->setblxoption(undef, 'datamodel', []);
   Biber::Config->addtoblxoption(undef, 'datamodel', $bcfxml->{datamodel});
 
   # SECTIONS
@@ -839,7 +848,8 @@ sub parse_ctrlfile {
         push $bibdatasources{$data->{section}[0]}->@*, { type     => $datasource->{type},
                                                          name     => $datasource->{content},
                                                          datatype => $datasource->{datatype},
-                                                         encoding => $datasource->{encoding} // Biber::Config->getoption('input_encoding')};
+                                                         encoding => $datasource->{encoding} // Biber::Config->getoption('input_encoding'),
+                                                         glob     => $datasource->{glob} // Biber::Config->getoption('glob_datasources')};
       }
     }
   }
@@ -915,7 +925,6 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
           $key_flag = 1; # There is at least one key, used for error reporting below
         }
         else {
-          next if $bib_section->is_allkeys; # Skip if we have already encountered '*'
           # Track cite/nocite - needed for sourcemapping logic
           if ($keyc->{nocite}) {
             $bib_section->add_nocite($key);
@@ -1063,8 +1072,12 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
   # bibtex output when not in tool mode, is essentially entering tool mode but
   # without allkeys. We are not in tool mode if we are here. We fake tool mode
   # and then add a special section which contains all cited keys from all sections
+  # No reference resolution for bibtex output and always include all cross/xrefs
+  # otherwise the output won't be a standalone .bib file
   if (Biber::Config->getoption('output_format') eq 'bibtex') {
-    Biber::Config->setoption('tool' ,1);
+    Biber::Config->setoption('tool', 1);
+    Biber::Config->setoption('mincrossrefs', 1);
+    Biber::Config->setoption('minxrefs', 1);
 
     my $bib_section = new Biber::Section('number' => 99999);
 
@@ -1109,11 +1122,24 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
 sub process_setup {
   my $self = shift;
 
+  # If this is tool mode and therefore there is a 99999 section, delete all other sections
+  # This is because bibtex output not in real tool mode retains sections from the .bcf
+  # which are not needed and cause unnecessary dual-processing of entries since everything
+  # is already in the 99999 section anyway
+  foreach my $section ($self->sections->get_sections->@*) {
+    if (Biber::Config->getoption('output_format') eq 'bibtex') {
+      if ($section->number != 99999) {
+        $self->sections->delete_section($section);
+      }
+    }
+  }
+
   # Make sure there is a default entry list with global sorting for each refsection
   # Needed in case someone cites entries which are included in no
   # bibliography as this results in no entry list in the .bcf
   foreach my $section ($self->sections->get_sections->@*) {
     my $secnum = $section->number;
+
     unless ($self->datalists->has_lists_of_type_for_section($secnum, 'entry')) {
       my $datalist = Biber::DataList->new(sortingtemplatename => Biber::Config->getblxoption(undef, 'sortingtemplatename'),
                                           sortingnamekeytemplatename => 'global',
@@ -1205,6 +1231,15 @@ sub resolve_alias_refs {
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
   my $dm = Biber::Config->get_dm;
+
+
+  # Don't resolve alias refs in tool mode unless told to
+  if (Biber::Config->getoption('tool') and
+      not (Biber::Config->getoption('output_resolve_crossrefs') or
+           Biber::Config->getoption('output_resolve_xdata'))) {
+    return;
+  }
+
   foreach my $citekey ($section->get_citekeys) {
     my $be = $section->bibentry($citekey);
 
@@ -1333,6 +1368,13 @@ sub resolve_xdata {
   my $self = shift;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
+
+  # Don't resolve xdata in tool mode unless told to
+  if (Biber::Config->getoption('tool') and
+      not Biber::Config->getoption('output_resolve_xdata')) {
+    return;
+  }
+
   if ($logger->is_debug()) {# performance tune
     $logger->debug("Resolving XDATA for section $secnum");
   }
@@ -1423,6 +1465,12 @@ sub preprocess_sets {
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
 
+  # Don't preprocess sets in tool mode unless told to
+  if (Biber::Config->getoption('tool') and
+      not Biber::Config->getoption('output_resolve_sets')) {
+    return;
+  }
+
   if ($logger->is_debug()) {# performance tune
     $logger->debug("Recording set information");
   }
@@ -1435,6 +1483,10 @@ sub preprocess_sets {
     # from all other entries in process_sets()
     if ($be->get_field('entrytype') eq 'set') {
       my $entrysetkeys = $be->get_field('entryset');
+      unless ($entrysetkeys) {
+        biber_warn("Set entry '$citekey' has no entryset field, ignoring", $be);
+        next;
+      }
       foreach my $member ($entrysetkeys->@*) {
         $section->set_set_pc($citekey, $member);
         $section->set_set_cp($member, $citekey);
@@ -1446,24 +1498,23 @@ sub preprocess_sets {
   }
 }
 
-=head2 process_interentry
 
-    $biber->process_interentry
+=head2 calculate_interentry
 
-    This does several things:
-    1. Ensures proper inheritance of data from cross-references.
-    2. Ensures that crossrefs/xrefs that are directly cited or cross-referenced
-       at least mincrossrefs/minxrefs times are included in the bibliography.
+    $biber->calculate_interentry
+
+    Ensures that crossrefs/xrefs that are directly cited or cross-referenced
+    at least mincrossrefs/minxrefs times are included in the bibliography.
 
 =cut
 
-sub process_interentry {
+sub calculate_interentry {
   my $self = shift;
   my $secnum = $self->get_current_section;
   my $section = $self->sections->get_section($secnum);
 
   if ($logger->is_debug()) {# performance tune
-    $logger->debug("Processing explicit and implicit xref/crossrefs for section $secnum");
+    $logger->debug("Calculating explicit and implicit xref/crossrefs for section $secnum");
   }
 
   foreach my $citekey ($section->get_citekeys) {
@@ -1521,6 +1572,30 @@ sub process_interentry {
       $section->bibentry($k)->set_field('xrefsource', 1) unless $section->has_citekey($k);
       $section->add_citekeys($k);
     }
+  }
+}
+
+=head2 process_interentry
+
+    $biber->process_interentry
+
+    Ensures proper inheritance of data from cross-references.
+
+=cut
+
+sub process_interentry {
+  my $self = shift;
+  my $secnum = $self->get_current_section;
+  my $section = $self->sections->get_section($secnum);
+
+  # Don't resolve crossrefs in tool mode unless told to
+  if (Biber::Config->getoption('tool') and
+      not Biber::Config->getoption('output_resolve_crossrefs')) {
+    return;
+  }
+
+  if ($logger->is_debug()) {# performance tune
+    $logger->debug("Processing explicit and implicit xref/crossrefs for section $secnum");
   }
 
   # This must come after doing implicit inclusion based on minref/mincrossref
@@ -1923,14 +1998,15 @@ sub process_entries_post {
     # generate information for tracking singletitle, uniquetitle, uniquebaretitle and uniquework
     $self->process_workuniqueness($citekey, $dlist);
 
-    # generate information for tracking uniqueprimaryauthor
-    $self ->process_uniqueprimaryauthor($citekey, $dlist);
-
     # generate namehash
     $self->process_namehash($citekey, $dlist);
 
     # generate per-name hashes
     $self->process_pername_hashes($citekey, $dlist);
+
+    # generate information for tracking uniqueprimaryauthor
+    $self ->process_uniqueprimaryauthor($citekey, $dlist);
+
   }
 
   if ($logger->is_debug()) {# performance tune
@@ -1998,18 +2074,17 @@ sub process_uniqueprimaryauthor {
 
       my $nds = $namedis->{$nl->get_id}{$nl->nth_name(1)->get_id}{namedisschema};
       my $nss = $namedis->{$nl->get_id}{$nl->nth_name(1)->get_id}{namestrings};
-      my $paf;
+      my $pabase;
 
       for (my $i=0;$i<=$nds->$#*;$i++) {
         my $se = $nds->[$i];
         if ($se->[0] eq 'base') {
-          $paf = $nss->[$i];
-          last;
+          $pabase = $nss->[$i];
         }
       }
 
-      $dlist->set_entryfield($citekey, 'seenprimaryauthor', $paf);
-      $dlist->incr_seenpa($paf);
+      $dlist->set_entryfield($citekey, 'seenprimaryauthor', $pabase);
+      $dlist->incr_seenpa($pabase, $nl->nth_name(1)->get_hash);
     }
   }
 }
@@ -2695,7 +2770,9 @@ sub process_pername_hashes {
   foreach my $pn ($dmh->{namelistsall}->@*) {
     next unless my $nl = $be->get_field($pn);
     foreach my $n ($nl->names->@*) {
-      $dlist->set_namehash($nl->get_id, $n->get_id, $self->_genpnhash($citekey, $n));
+      my $pnhash = $self->_genpnhash($citekey, $n);
+      $n->set_hash($pnhash);
+      $dlist->set_namehash($nl->get_id, $n->get_id, $pnhash);
     }
   }
   return;
@@ -2940,13 +3017,7 @@ sub process_lists {
       $self->process_entries_final($list);
     }
 
-    # Sorting
-    $self->generate_sortdataschema($list); # generate the sort schema information
-    $self->generate_sortinfo($list);       # generate the sort information
-    $self->sort_list($list);               # sort the list
-    $self->generate_contextdata($list) unless Biber::Config->getoption('tool');
-
-    # Filtering
+    # Filtering - must come before sorting/labelling so that there are no gaps in e.g. extradate
     if (my $filters = $list->get_filters) {
       my $flist = [];
     KEYLOOP: foreach my $k ($list->get_keys->@*) {
@@ -2968,6 +3039,13 @@ sub process_lists {
       }
       $list->set_keys($flist); # Now save the sorted list in the list object
     }
+
+    # Sorting
+    $self->generate_sortdataschema($list); # generate the sort schema information
+    $self->generate_sortinfo($list);       # generate the sort information
+    $self->sort_list($list);               # sort the list
+    $self->generate_contextdata($list) unless Biber::Config->getoption('tool');
+
   }
   return;
 }
@@ -3778,7 +3856,7 @@ sub generate_contextdata {
         @es = $keys->@[sort {$a <=> $b} @sorted_setkeys];
       }
       else {
-        @es = $be->get_field('entryset')->@*;
+        @es = $be->get_field('entryset')->@* if $be->get_field('entryset');
       }
       $dlist->set_entryfield($key, 'entryset', \@es);
     }
@@ -4266,6 +4344,7 @@ sub prepare {
     $self->resolve_xdata;                # Resolve xdata entries
     $self->cite_setmembers;              # Cite set members
     $self->preprocess_sets;              # Record set information
+    $self->calculate_interentry;         # Calculate crossrefs/xrefs etc.
     $self->process_interentry;           # Process crossrefs/xrefs etc.
     $self->validate_datamodel;           # Check against data model
     $self->postprocess_sets;             # Add options to set members etc.
@@ -4302,22 +4381,11 @@ sub prepare_tool {
   $self->preprocess_options;           # Preprocess any options
   $self->fetch_data;      # Fetch cited key and dependent data from sources
 
-  if (Biber::Config->getoption('output_resolve_xdata') or
-      Biber::Config->getoption('output_resolve_crossrefs')) {
-    $self->resolve_alias_refs; # Resolve xref/crossref/xdata aliases to real keys
-  }
-
-  if (Biber::Config->getoption('output_resolve_sets')) {
-    $self->preprocess_sets;    # Record set information
-  }
-
-  if (Biber::Config->getoption('output_resolve_crossrefs')) {
-    $self->process_interentry; # Process crossrefs/xrefs etc.
-  }
-
-  if (Biber::Config->getoption('output_resolve_xdata')) {
-    $self->resolve_xdata;      # Resolve xdata entries
-  }
+  $self->resolve_alias_refs;   # Resolve xref/crossref/xdata aliases to real keys
+  $self->preprocess_sets;      # Record set information
+  $self->calculate_interentry; # Calculate crossrefs/xrefs etc.
+  $self->process_interentry;   # Process crossrefs/xrefs etc.
+  $self->resolve_xdata;        # Resolve xdata entries
 
   $self->validate_datamodel;   # Check against data model
   $self->process_lists;        # process the output lists (sort and filtering)
@@ -4385,11 +4453,11 @@ sub fetch_data {
     unless ($datasource->{type} eq 'file') {
       push $ds->@*, $datasource;
     }
-    foreach my $gds (glob_data_file($datasource->{name})) {
+    foreach my $gds (glob_data_file($datasource->{name}, $datasource->{glob})) {
       push $ds->@*, { type     => $datasource->{type},
-                  name     => $gds,
-                  datatype => $datasource->{datatype},
-                  encoding => $datasource->{encoding}};
+                      name     => $gds,
+                      datatype => $datasource->{datatype},
+                      encoding => $datasource->{encoding}};
     }
   }
   $section->set_datasources($ds);
@@ -4850,7 +4918,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2019 Philip Kime, all rights reserved.
+Copyright 2012-2020 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

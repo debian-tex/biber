@@ -43,20 +43,22 @@ All functions are exported by default.
 
 =cut
 
-our @EXPORT = qw{ glob_data_file locate_data_file makenamesid makenameid stringify_hash
+our @EXPORT = qw{ check_empty check_exists slurp_switchr slurp_switchw
+  glob_data_file locate_data_file makenamesid makenameid stringify_hash
   normalise_string normalise_string_hash normalise_string_underscore
   normalise_string_sort normalise_string_label reduce_array remove_outer
   has_outer add_outer ucinit strip_nosort strip_noinit is_def is_undef
   is_def_and_notnull is_def_and_null is_undef_or_null is_notnull is_null
   normalise_utf8 inits join_name latex_recode_output filter_entry_options
   biber_error biber_warn ireplace imatch validate_biber_xml
-  process_entry_options escape_label unescape_label
-  biber_decode_utf8 out parse_date_start parse_date_end parse_date_range locale2bcp47
+  process_entry_options escape_label unescape_label biber_decode_utf8 out
+  parse_date_start parse_date_end parse_date_range locale2bcp47
   bcp472locale rangelen match_indices process_comment map_boolean
   parse_range parse_range_alt maploopreplace get_transliterator
   call_transliterator normalise_string_bblxml gen_initials join_name_parts
   split_xsv date_monthday tzformat expand_option_input strip_annotation
-  appendstrict_check merge_entry_options process_backendin xdatarefout xdatarefcheck};
+  appendstrict_check merge_entry_options process_backendin xdatarefout
+  xdatarefcheck};
 
 =head1 FUNCTIONS
 
@@ -69,27 +71,78 @@ our @EXPORT = qw{ glob_data_file locate_data_file makenamesid makenameid stringi
 =cut
 
 sub glob_data_file {
-  my $source = shift;
+  my ($source, $globflag) = @_;
   my @sources;
+
+  # No globbing unless requested. No globbing for remote datasources.
+  if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms or
+      not _bool_norm($globflag)) {
+    push @sources, $source;
+    return @sources;
+  }
 
   $logger->info("Globbing data source '$source'");
 
-  if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms) {
-    $logger->info("Data source '$source' is remote, no globbing to do");
-    push @sources, $source;
-  }
-
-  # Use Windows style globbing on Windows
   if ($^O =~ /Win/) {
     $logger->debug("Enabling Windows-style globbing");
+    require Win32;
     require File::DosGlob;
     File::DosGlob->import('glob');
   }
 
-  push @sources, glob($source =~ s/\s/\\ /r); # quote spaces
+  push @sources, map {biber_decode_utf8($_)} glob NFC(qq("$source"));
 
-  $logger->info("Globbed data source '$source' to " . join(',', @sources));
+  $logger->info("Globbed data source '$source' to '" . join(',', @sources) . "'");
   return @sources;
+}
+
+=head2 slurp_switchr
+
+  Use different read encoding/slurp interfaces for Windows due to its
+  horrible legacy codepage system
+
+=cut
+
+sub slurp_switchr {
+  my ($filename, $encoding) = @_;
+  my $slurp;
+  $encoding //= 'UTF-8';
+  if ($^O =~ /Win/) {
+    $logger->debug("Enabling Windows-compat filesystem encoding reader");
+    require Win32::Unicode::File;
+    my $fh = Win32::Unicode::File->new('<', NFC($filename));
+    $fh->binmode(":encoding($encoding)");
+    $slurp = $fh->slurp;
+    $fh->close;
+  }
+  else {
+    $slurp = File::Slurper::read_text($filename, $encoding);
+  }
+  return \$slurp;
+}
+
+=head2 slurp_switchw
+
+  Use different write encoding/slurp interfaces for Windows due to its
+  horrible legacy codepage system
+
+=cut
+
+sub slurp_switchw {
+  my ($filename, $string) = @_;
+  if ($^O =~ /Win/) {
+    $logger->debug("Enabling Windows-compat filesystem encoding writer");
+    require Win32::Unicode::File;
+    my $fh = Win32::Unicode::File->new('>', NFC($filename));
+    $fh->binmode(':encoding(UTF-8)');
+    $fh->write($string);
+    $fh->flush;
+    $fh->close;
+  }
+  else {
+    File::Slurper::write_text($filename, NFC($string));
+  }
+  return;
 }
 
 =head2 locate_data_file
@@ -275,20 +328,58 @@ sub locate_data_file {
 sub file_exist_check {
   my $filename = shift;
   if ($^O =~ /Win/) {
-    require Win32;
-    my $f = Win32::GetANSIPathName($filename);
-    return $f if -e $f;
-  }
-  else {
-    if (-e NFC($filename)) {
+    require Win32::Unicode::File;
+    if (Win32::Unicode::File::statW(NFC($filename))) {
       return NFC($filename);
     }
-    if (-e NFD($filename)) {
+    if (Win32::Unicode::File::statW(NFD($filename))) {
       return NFD($filename);
+    }
+  }
+  else {
+    if (-e NFC("$filename")) {
+      return NFC("$filename");
+    }
+    if (-e NFD("$filename")) {
+      return NFD("$filename");
     }
   }
 
   return undef;
+}
+
+=head2 check_empty
+
+    Wrapper around empty check to deal with Win32 Unicode filenames
+
+=cut
+
+sub check_empty {
+  my $filename = shift;
+  if ($^O =~ /Win/) {
+    require Win32::Unicode::File;
+    return (Win32::Unicode::File::file_size(NFC($filename))) ? 1 : 0;
+  }
+  else {
+    return (-s $filename) ? 1 : 0;
+  }
+}
+
+=head2 check_exists
+
+    Wrapper around exists check to deal with Win32 Unicode filenames
+
+=cut
+
+sub check_exists {
+  my $filename = shift;
+  if ($^O =~ /Win/) {
+    require Win32::Unicode::File;
+    return Win32::Unicode::File::statW(NFC($filename)) ? 1 : 0;
+  }
+  else {
+    return (-e $filename) ? 1 : 0;
+  }
 }
 
 =head2 biber_warn
@@ -385,6 +476,7 @@ sub strip_noinit {
   }
   # remove latex macros (assuming they have only ASCII letters)
   $string =~ s{\\[A-Za-z]+\s*(\{([^\}]*)?\})?}{defined($2)?$2:q{}}eg;
+  $string =~ s/^\{\}$//; # Special case if only braces are left
   return $string;
 }
 
@@ -1016,7 +1108,7 @@ sub validate_biber_xml {
     }
   }
 
-  if (-e $schema) {
+  if (check_exists($schema)) {
     $xmlschema = XML::LibXML::RelaxNG->new( location => $schema )
   }
   else {
@@ -1198,13 +1290,18 @@ sub expand_option_input {
 =head2 parse_date_range
 
   Parse of ISO8601 date range
-  Returns two-element array ref: [start DT object, end DT object]
 
 =cut
 
 sub parse_date_range {
   my ($bibentry, $datetype, $datestring) = @_;
   my ($sd, $sep, $ed) = $datestring =~ m|^([^/]+)?(/)?([^/]+)?$|;
+
+  # Very bad date format, something like '2006/05/04' catch early
+  unless ($sd or $ed) {
+    return (undef, undef, undef, undef);
+  }
+
   my $unspec;
   if ($sd =~ /X/) {# ISO8601-2 4.3 unspecified format
     ($sd, $sep, $ed, $unspec) = parse_date_unspecified($sd);
@@ -1644,8 +1741,8 @@ sub gen_initials {
       push @strings_out, join('-', gen_initials(split(/\p{Dash}/, $str)));
     }
     else {
-      # remove any leading braces from latex decoding or protection
-      $str =~ s/^\{//;
+      # remove any leading braces and backslash from latex decoding or protection
+      $str =~ s/^\{+//;
       my $chr = Unicode::GCString->new($str)->substr(0, 1)->as_string;
       # Keep diacritics with their following characters
       if ($chr =~ m/^\p{Dia}/) {
@@ -1774,6 +1871,13 @@ sub xdatarefcheck {
   return undef;
 }
 
+sub _bool_norm {
+  my $b = shift;
+  return 0 unless $b;
+  return 1 if $b =~ m/(?:true|1)/i;
+  return 0;
+}
+
 1;
 
 __END__
@@ -1789,7 +1893,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2019 Philip Kime, all rights reserved.
+Copyright 2012-2020 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

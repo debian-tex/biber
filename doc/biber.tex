@@ -26,8 +26,8 @@
 \newcommand*{\biblatex}{Biblatex\xspace}
 \MakeAutoQuote{«}{»}
 
-\gdef\biberversion{2.14}    % BIBER VERSION
-\gdef\biblatexversion{3.14}   % BIBLATEX VERSION
+\gdef\biberversion{2.15}    % BIBER VERSION
+\gdef\biblatexversion{3.15}   % BIBLATEX VERSION
 
 % colour for tables
 \definecolor{Gray}{gray}{0.85}
@@ -96,6 +96,18 @@
 Please see the \verb+Changes+ file which accompanies \biber\ for the
 details on changes in each version. This section is just for important
 things like incompatible changes which users should be aware of.
+
+\minisec{2.15}
+The BBLXML output format is deprected and will be removed in version 4. It
+is rarely used and is not worth the overhead of test complications.
+
+Datamodel override via the user configuration file has been made more
+robust. User datamodel declarations in the user configuration file by
+default only override or modify the default datamodel. To remove elements
+from the default datamodel or to make major changes to the default
+datamodel, use the \biber option \opt{--no-default-datamodel} which will
+not load any default datamodel and assumes that a complete datamodel will
+be provided in the user configuration file.
 
 \minisec{2.13}
 In tool mode (\opt{--tool}), \biber now allows datamodel configuration in
@@ -260,6 +272,7 @@ compatibility matrix for the recent versions.
 \toprule
 \biber\ version & \biblatex\ version\\
 \midrule
+2.15 & 3.15\\
 2.14 & 3.14\\
 2.13 & 3.13\\
 2.12 & 3.12\\
@@ -1779,7 +1792,8 @@ priority:\\[2ex]
 
 \noindent Absolute filename $\rightarrow$\\
 \hspace*{1em}In the \opt{--input-directory}, if specified$\rightarrow$\\
-\hspace*{2em}In the \opt{--output-directory}, if specified$\rightarrow$\\
+\hspace*{2em}In the \opt{--output-directory}, if specified and
+\opt{--input-directory} is not specified$\rightarrow$\\
 \hspace*{3em}Relative to current directory$\rightarrow$\\
 \hspace*{4em}Using \verb+kpsewhich+, if available
 
@@ -1790,12 +1804,13 @@ locations, in decreasing order of priority:\\[2ex]
 
 \noindent Absolute filename $\rightarrow$\\
 \hspace*{1em}In the \opt{--input-directory}, if specified$\rightarrow$\\
-\hspace*{2em}In the \opt{--output-directory}, if specified$\rightarrow$\\
+\hspace*{2em}In the \opt{--output-directory}, if specified and
+\opt{--input-directory} is not specified$\rightarrow$\\
 \hspace*{3em}Relative to current directory$\rightarrow$\\
 \hspace*{4em}In the same directory as the control file$\rightarrow$\\
 \hspace*{5em}Using \verb+kpsewhich+ for supported formats, if available\\[2ex]
 
-\noindent Remote file datasources (beginning with \verb+http://+ or
+\noindent Remote file datasources (beginning with \verb+http://+, \verb+https://+ or
 \verb+ftp://+) are retrieved to a temp file and processed as normal. Users
 do not specify explicitly the bibliography database files; they are passed
 in the \verb+.bcf+ control file, which is constructed from the
@@ -2634,7 +2649,7 @@ and \opt{output-xnamesep} can be used to customise separators on output and
 their default values are the same as their input option counterparts
 \opt{--listsep}, \opt{--namesep} and \opt{--xnamesep}. The option
 \opt{--output-xname} can be used to specify that the extended name format
-(see section \ref{biber::xname}) is to be used to output names.
+(see section \ref{biber:xname}) is to be used to output names.
 \opt{--output-annotation-marker} and \opt{--output-named-annotation-marker} can
 be used to specify the annotation markers to write for annotated fields on
 output. See the Data Annotation feature documentation in the \biblatex

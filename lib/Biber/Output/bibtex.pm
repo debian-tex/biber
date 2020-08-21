@@ -91,26 +91,30 @@ sub set_output_entry {
   my $secnum = $section->number;
   my $key = $be->get_field('citekey');
 
-  # Make the right casing function
-  my $casing;
-
+  # Make the right casing/output mapping function
+  my $outmap;
   if (Biber::Config->getoption('output_fieldcase') eq 'upper') {
-    $casing = sub {uc(shift)};
+    $outmap = sub {my $f = shift; uc($CONFIG_OUTPUT_FIELDREPLACE{$f} // $f)};
   }
   elsif (Biber::Config->getoption('output_fieldcase') eq 'lower') {
-    $casing = sub {lc(shift)};
+    $outmap = sub {my $f = shift; lc($CONFIG_OUTPUT_FIELDREPLACE{$f} // $f)};
   }
   elsif (Biber::Config->getoption('output_fieldcase') eq 'title') {
-    $casing = sub {ucfirst(shift)};
+    $outmap = sub {my $f = shift; ucfirst($CONFIG_OUTPUT_FIELDREPLACE{$f} // $f)};
   }
 
   $acc .= '@';
-  $acc .= $casing->($bee);
+  $acc .= $outmap->($bee);
   $acc .=  "\{$key,\n";
 
   # hash accumulator so we can gather all the data before formatting so that things like
   # $max_field_len can be calculated
   my %acc;
+
+  # IDs
+  if (my $val = $be->get_field('ids')) {
+    $acc{$outmap->('ids')} = join(',', $val->@*);
+  }
 
   # Name fields
   my $tonamesub = 'name_to_bibtex';
@@ -124,7 +128,7 @@ sub set_output_entry {
       # XDATA is special
       unless (Biber::Config->getoption('output_resolve_xdata')) { # already resolved
         if (my $xdata = $names->get_xdata) {
-          $acc{$casing->($namefield)} = xdatarefout($xdata);
+          $acc{$outmap->($namefield)} = xdatarefout($xdata);
           next;
         }
       }
@@ -156,11 +160,11 @@ sub set_output_entry {
         push @namelist, $name->$tonamesub;
       }
 
-      $acc{$casing->($namefield)} = join(" $namesep ", @namelist);
+      $acc{$outmap->($namefield)} = join(" $namesep ", @namelist);
 
       # Deal with morenames
       if ($names->get_morenames) {
-        $acc{$casing->($namefield)} .= " $namesep others";
+        $acc{$outmap->($namefield)} .= " $namesep others";
       }
     }
   }
@@ -177,7 +181,7 @@ sub set_output_entry {
         }
         push @plainlist, $item;
       }
-      $acc{$casing->($listfield)} = join(" $listsep ", @plainlist);
+      $acc{$outmap->($listfield)} = join(" $listsep ", @plainlist);
     }
   }
 
@@ -186,27 +190,31 @@ sub set_output_entry {
   foreach my $opt (Biber::Config->getblxentryoptions($secnum, $key)) {
     push @entryoptions, $opt . '=' . Biber::Config->getblxoption($secnum, $opt, undef, $key);
   }
-  $acc{$casing->('options')} = join(',', @entryoptions) if @entryoptions;
+  $acc{$outmap->('options')} = join(',', @entryoptions) if @entryoptions;
 
   # Date fields
   foreach my $d ($dmh->{datefields}->@*) {
     $d =~ s/date$//;
     next unless $be->get_field("${d}year");
-    $acc{$casing->("${d}date")} = construct_datetime($be, $d);
-  }
 
-  # YEAR and MONTH are legacy - convert these to DATE if possible
-  if (my $val = $be->get_field('year')) {
-    if (looks_like_number($val)) {
-      $acc{$casing->('date')} = $val;
-      $be->del_field('year');
+    # Output legacy dates for YEAR/MONTH if requested
+    if (not $d and Biber::Config->getoption('output_legacy_dates')) {
+      if (my $val = $be->get_field('year')) {
+        if (not $be->get_field('day') and
+            not $be->get_field('endyear')) {
+          $acc{$outmap->('year')} = $val;
+          if (my $mval = $be->get_field('month')) {
+            $acc{$outmap->('month')} = $mval;
+          }
+          next;
+        }
+        else {
+          biber_warn("Date in entry '$key' has DAY or ENDYEAR, cannot be output in legacy format.");
+        }
+      }
     }
-  }
-  if (my $val = $be->get_field('month')) {
-    if (looks_like_number($val)) {
-      $acc{$casing->('date')} .= "-$val";
-      $be->del_field('month');
-    }
+
+    $acc{$outmap->("${d}date")} = construct_datetime($be, $d);
   }
 
   # If CROSSREF and XDATA have been resolved, don't output them
@@ -228,7 +236,7 @@ sub set_output_entry {
         my $xd = xdatarefcheck($val);
         $val = $xd // $val;
       }
-      $acc{$casing->($field)} = $val;
+      $acc{$outmap->($field)} = $val;
     }
   }
 
@@ -243,7 +251,7 @@ sub set_output_entry {
         my $xd = xdatarefcheck($fl);
         $fl = $xd // $fl;
       }
-      $acc{$casing->($field)} .= $fl;
+      $acc{$outmap->($field)} .= $fl;
     }
   }
 
@@ -255,7 +263,7 @@ sub set_output_entry {
         my $xd = xdatarefcheck($rfl);
         $rfl = $xd // $rfl;
       }
-      $acc{$casing->($rfield)} .= $rfl;
+      $acc{$outmap->($rfield)} .= $rfl;
     }
   }
 
@@ -266,7 +274,7 @@ sub set_output_entry {
         my $xd = xdatarefcheck($vf);
         $vf = $xd // $vf;
       }
-      $acc{$casing->($vfield)} = $vf;
+      $acc{$outmap->($vfield)} = $vf;
     }
   }
 
@@ -277,14 +285,14 @@ sub set_output_entry {
       my $xd = xdatarefcheck($kl);
       $kl = $xd // $kl;
     }
-    $acc{$casing->('keywords')} = $kl;
+    $acc{$outmap->('keywords')} = $kl;
   }
 
   # Annotations
   foreach my $f (keys %acc) {
     if (Biber::Annotation->is_annotated_field($key, lc($f))) {
       foreach my $n (Biber::Annotation->get_annotation_names($key, lc($f))) {
-        $acc{$casing->($f) . Biber::Config->getoption('output_annotation_marker') .
+        $acc{$outmap->($f) . Biber::Config->getoption('output_annotation_marker') .
             Biber::Config->getoption('output_named_annotation_marker') . $n} = construct_annotation($key, lc($f), $n);
       }
     }
@@ -314,8 +322,8 @@ sub set_output_entry {
       }
       delete @acc{@donefields};
     }
-    elsif (my $value = delete $acc{$casing->($field)}) {
-      $acc .= bibfield($casing->($field), $value, $max_field_len);
+    elsif (my $value = delete $acc{$outmap->($field)}) {
+      $acc .= bibfield($outmap->($field), $value, $max_field_len);
     }
   }
 
@@ -717,7 +725,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2019 Philip Kime, all rights reserved.
+Copyright 2012-2020 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

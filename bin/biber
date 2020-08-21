@@ -40,6 +40,7 @@ GetOptions(
            'dot_include|dot-include:s@',
            'fastsort|f', # does nothing now
            'fixinits',
+           'glob_datasources|glob-datasources',
            'help|h|?',
            'input_directory|input-directory=s',
            'input_encoding|input-encodinge=s',
@@ -55,6 +56,7 @@ GetOptions(
            'no_bblxml_schema|no-bblxml-schema',
            'no_bltxml_schema|no-bltxml-schema',
            'noconf',
+           'no_default_datamodel|no-default-datamodel',
            'nodieonerror',
            'nolog',
            'nostdmacros',
@@ -68,9 +70,11 @@ GetOptions(
            'output_encoding|output-encoding|E=s',
            'output_fieldcase|output-fieldcase=s',
            'output_field_order|output-field-order=s',
+           'output_field_replace|output-field-replace=s',
            'output_file|output-file|O=s',
            'output_format|output-format=s',
            'output_indent|output-indent=s',
+           'output_legacy_dates|output-legacy-dates',
            'output_listsep|output-listsep=s',
            'output_macro_fields|output-macro-fields=s',
            'output_named_annotation_marker|output-named-annotation-marker=s',
@@ -230,7 +234,11 @@ if (my $of = $opts->{output_format}) {
     say STDERR "Biber: Unknown output format '$of', must be one of 'bbl', 'dot', 'bibtex', 'biblatexml', 'bblxml'";
     exit EXIT_ERROR;
   }
+  if ($opts->{output_format} eq 'bblxml') {
+    say STDERR "Biber: Deprecated output format 'bblxml' - this will be removed in a future version";
+  }
 }
+
 # Auto-detect input-format from extension if not given
 if (exists($opts->{tool}) and
     not exists($opts->{input_format})) {
@@ -375,11 +383,15 @@ my $biberoutput = $biber->get_output_obj;
 $biberoutput->set_output_target_file($outfile);
 
 # Fake some necessary .bcf parts if in tool mode
-if (Biber::Config->getoption('tool')) {
+if (exists($opts->{tool})) {
   $biber->tool_mode_setup;
 }
 else {
-  # parse the .bcf control file
+  # parse the .bcf control file.
+  # This sets the 'tool' option for non-tool
+  # mode bibtex output and so don't use Biber::Config::getoption('tool')
+  # after this when we need to know if --tool was specified on the command
+  # line
   $biber->parse_ctrlfile($bcf);
 }
 
@@ -410,7 +422,7 @@ if (Biber::Config->getoption('trace')) {
 }
 
 # Do all the real work
-Biber::Config->getoption('tool') ? $biber->prepare_tool : $biber->prepare;
+exists($opts->{tool}) ? $biber->prepare_tool : $biber->prepare;
 
 if (Biber::Config->getoption('trace')) {
   $logger->trace("\n###########################################################\n",
@@ -524,7 +536,7 @@ error is found. Default is to warn and continue.
 
 Specifies the element to include in GraphViz DOT output format if the output format is 'dot'.
 You can also choose to display crossref, xref, xdata and/or related entry connections.
-The default if not specified is C<--dot_include=section,xdata,crossref,xref>.
+The default if not specified is C<--dot-include=section,xdata,crossref,xref>.
 
 =item B<--fixinits>
 
@@ -540,7 +552,7 @@ Show this help message.
 
 F<.bcf> and data files will be looked for first in the F<directory>. See the biber
 PDF documentation for the other possibilities and how this interacts with the
-C<--output_directory> option.
+C<--output-directory> option.
 
 =item B<--input-encoding|-e [encoding]>
 
@@ -609,11 +621,29 @@ model.
 
 Don't look for a configfile.
 
+=item B<--no-default-datamodel>
+
+Do not load the default datamodel coming from either the F<.bcf> or, when
+in tool mode, from the default tool mode config file. Use of this option
+implies that you will provide a complete datamodel in a config file. This
+option is useful when you wish to make major modifications to the datamodel
+because the simple add/modify operations to the default datamodel via a user
+config file are not enough. For example, to remove things from the default
+datamodel, you would use this option and supply a complete, reduced
+datamodel in the user config file.
+
 =item B<--nodieonerror>
 
 Don't exit on errors, just log and continue as far as possible.
 This can be useful if the error is something from, for example, the underlying
 BibTeX parsing C library which can complain about parsing errors which can be ignored.
+
+=item B<--glob-datasources>
+
+By default, glob (expand according to pattern) any data source filenames.
+Allows data sources to be specified like B<*.bib> to load all B<.bib> files
+in a directory. Can be overriden on a per-dataource basis with the B<glob>
+option to B<\addbibresource> in biblatex.
 
 =item B<--nolog>
 
@@ -655,7 +685,7 @@ Use F<string> as the final name in a name field which implies "et al". Defaults 
 =item B<--output-align>
 
 Align field values in neat columns in output. Effect depends on the output format. Default is false.
-The legacy option B<--tool_align> is supported as an alias.
+The legacy option B<--tool-align> is supported as an alias.
 
 =item B<--output-annotation-marker=[marker]>
 
@@ -669,7 +699,8 @@ As B<--named-annotation-marker> but for tool mode bibtex output. The default is 
 
 Output files (including log files) are output to F<directory> instead
 of the current directory. Input files are also looked for in F<directory>
-before current directory (but after C<--input_directory> if that is specified).
+before current directory unless C<--input-directory> is also specified in which
+case input files are only looked for in the directory specified by C<--input-directory>.
 
 =item B<--output-encoding|-E [encoding]>
 
@@ -679,15 +710,10 @@ Normally it's not necessary to set this as it's passed via the
 See C<perldoc Encode::Supported> for a list of supported encodings.
 The legacy option B<--bblencoding> is supported as an alias.
 
-=item B<--output-indent=[num]>
-
-Indentation for body of entries in output. Effect depends on the output format. Defaults to 2.
-The legacy option B<--tool_indent> is supported as an alias.
-
 =item B<--output-fieldcase=upper|lower|title>
 
 Case for field names output. Effect depends on the output format. Defaults to 'upper'.
-The legacy option B<--tool_fieldcase> is supported as an alias.
+The legacy option B<--tool-fieldcase> is supported as an alias.
 
 =item B<--output-field-order=[field1, ... fieldn]>
 
@@ -702,11 +728,20 @@ the explicitly specified fields. The classes of fields are:
 
 By default, its value is 'options,abstract,names,lists,dates'.
 
+=item B<--output-field-replace=[field1:replacefield1, ... fieldn:replacefieldn]>
+
+When outputting bibtex format output C<replacefieldn> instead of C<fieldn>.
+This can be used to output legacy formats which undo the default driver
+source map e.g
+B<--output-field-replace=location:address,journaltitle:journal>. See
+B<--output-legacy-dates> if legacy (YEAR/MONTH) date fields are required in
+bibtex format output.
+
 =item B<--output-file|-O [file]>
 
 Output to F<file> instead of F<basename.bbl> F<file> is relative to
-B<--output_directory>, if set (absolute paths in this case are stripped to
-filename only). F<file> can be absolute if B<--output_directory> is not
+B<--output-directory>, if set (absolute paths in this case are stripped to
+filename only). F<file> can be absolute if B<--output-directory> is not
 set. F<file> can be '-' to output directly to STDOUT. The legacy option
 B<--outfile> is supported as an alias.
 
@@ -716,13 +751,27 @@ Biber output format. Default if not specified is of course, F<bbl>. Use F<dot>
 to output a GraphViz DOT file instead of F<.bbl>. This is a directed graph of
 the bibliography data showing entries and, as requested, sections and fields.
 You must process this file with C<dot>, e.g. C<dot -Tsvg test.dot -o test.svg> to
-render the graph. See the B<--dot_include> option to select what is included in
+render the graph. See the B<--dot-include> option to select what is included in
 the DOT output. F<bblxml> is an XML version of the F<bbl> format which you could
 transform using XSLT. By default, when outputting F<bblxml>, a RelaxNG XML schema
 is generated from the active data modeal and saved with a F<rng> extension along
 with the output file name (unless the B<--no-bblxml-schema> option is specified). You
 may validate the F<bblxml> using the schema with the B<--validate-bblxml> option.
 The legacy option B<--outformat> is supported as an alias.
+
+=item B<--output-indent=[num]>
+
+Indentation for body of entries in output. Effect depends on the output format. Defaults to 2.
+The legacy option B<--tool-indent> is supported as an alias.
+
+=item B<--output-legacy-dates>
+
+When outputting bibtex format, output YEAR/MONTH fields instead of DATE.
+This is not possible if the input is not convertible to legacy format,
+meaning that any date to be output with legacy fields can only have a YEAR
+part and perhaps a MONTH part. If a DAY or ENDYEAR part are found, the date
+is not convertible and the legacy output format will be skipped. Default is
+false.
 
 =item B<--output-listsep=[sep]>
 
@@ -733,7 +782,7 @@ As B<--listsep> but for tool mode bibtex output. Defaults to BibTeX's usual
 
 A comma-separated list of field names whose values are, on output, treated as BibTeX macros.
 Effectively this means that they are not wrapped in braces. Effect depends on the output format.
-The legacy option B<--tool_macro_fields> is supported as an alias.
+The legacy option B<--tool-macro-fields> is supported as an alias.
 
 =item B<--output-namesep=[sep]>
 
@@ -747,15 +796,19 @@ Convenience option to set all of the B<--output-resolve-*> options to
 
 =item B<--output-resolve-xdata>
 
-Whether to resolve XDATA inheritance in tool mode. Defaults to 'false'.
+Whether to resolve XDATA inheritance in tool mode or when
+B<--output-format=bibtex> in non tool mode. Defaults to 'false'.
 
 =item B<--output-resolve-crossrefs>
 
-Whether to resolve CROSSREF/XREF inheritance in tool mode. Defaults to 'false'.
+Whether to resolve CROSSREF/XREF inheritance in tool mode or when
+B<--output-format=bibtex> in non tool mode. Defaults to
+'false'.
 
 =item B<--output-resolve-sets>
 
-Whether to resolve data sets in tool mode. Defaults to 'false'.
+Whether to resolve data sets in tool mode or when
+B<--output-format=bibtex> in non tool mode. Defaults to 'false'.
 
 =item B<--output-safechars>
 
@@ -763,13 +816,13 @@ Try to convert UTF-8 chars into LaTeX macros when writing the output.
 This can prevent unknown char errors when using PDFLaTeX and inputenc
 as this doesn't understand all of UTF-8. Note, it is better to switch
 to XeTeX or LuaTeX to avoid this situation. By default uses the
---output_safecharsset "base" set of characters.
+--output-safecharsset "base" set of characters.
 The legacy option B<--bblsafechars> is supported as an alias.
 
 =item B<--output-safecharsset=[recode set name]>
 
 The set of characters included in the conversion routine for
-B<--output_safechars>. Set to "full" to try harder with a much
+B<--output-safechars>. Set to "full" to try harder with a much
 larger set or "base" to use a basic set. Default is "base" which is
 fine for most use cases. You may need to load more macro packages to
 deal with the results of "full" (Dings, Greek characters, special
@@ -802,7 +855,7 @@ Log only errors. If this option is used more than once, don't even log errors.
 =item B<--recodedata=[file]>
 
 The data file to use for the reencoding between UTF-8 and LaTeX macros. It defines
-the sets specified with the B<--output_safecharsset> and B<--decodecharsset> options.
+the sets specified with the B<--output-safecharsset> and B<--decodecharsset> options.
 It defaults to F<recode_data.xml> in the same directory as Biber's F<Recode.pm> module.
 See the PDF documentation for the format of this file. If this option is
 used, then F<file> should be somewhere C<kpsewhich> can find it.
@@ -953,7 +1006,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2019 Philip Kime, all rights reserved.
+Copyright 2012-2020 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

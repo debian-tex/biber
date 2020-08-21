@@ -112,7 +112,7 @@ sub init_sets {
   }
 
   # Read driver config file
-  my $xml = File::Slurper::read_text($mapdata);
+  my $xml = Biber::Utils::slurp_switchr($mapdata)->$*;
   my $doc = XML::LibXML->load_xml(string => $xml);
   my $xpc = XML::LibXML::XPathContext->new($doc);
 
@@ -247,16 +247,22 @@ sub latex_decode {
                         '{' => "\x{1f}",
                         '}' => "\x{1e}"};
 
+        # Hacky - specially protect {\X} which is a simple protection as in
+        # TITLE = {Part {I}}
+        # Can't do this using the seperators above as these are stripping around \X
+        # later to avoid breaking capitliastion/kerning with spurious introduced/retained
+        # braces
+        # Using the VLB method from the link below, this is equivalent to:
+        # $text =~ s/(?<!\\$re)\{(\X)\}/\x{f}$1\x{e}/g;
+        $text =~ s/(?!(?=(?'a'[\s\S]*))(?'b'\\$re(?=\k'a'\z)|(?<=(?=x^|(?&b))[\s\S])))\{(\X)\}/\x{f}$3\x{e}/g;
+
         # Rename protecting braces so that they are not broken by RE manipulations
         $text =~ s/(\{?)\\($re)\s*\{(\pL\pM*)\}(\}?)/$bracemap->{$1} . $3 . $map->{$2} . $bracemap->{$4}/ge;
-        $text =~ s/(\{?)(\pL\pM*)(\}?)/$bracemap->{$1} . $2 . $bracemap->{$3}/ge;
-
-
-#        $text =~ s/\\($re)\s*\{(\pL\pM*)\}/$2 . $map->{$1}/ge;
+        $text =~ s/(\{)(\pL\pM*)(\})/$bracemap->{$1} . $2 . $bracemap->{$3}/ge;
 
         # Conditional regexp with code-block condition
         # non letter macros for diacritics (e.g. \=) can be followed by any letter
-        # but letter diacritic macros (e.g \c) can't (\cS) horribly Broken
+        # but letter diacritic macros (e.g \c) can't (\cS)
         #
         # If the RE for the macro doesn't end with a basic LaTeX macro letter (\=), then
         #   next char can be any letter (\=d)
@@ -288,10 +294,11 @@ sub latex_decode {
       $logger->trace("String in latex_decode() before brace elimination now -> '$text'");
     }
 
-    # Now remove braces around single letters (which the replace above
-    # can result in). Things like '{á}' can break kerning. We can't do this in
-    # the RE above as we can't determine if the braces are wrapping a phrase because this
-    # match is on an entire field string. So we can't in one step tell the difference between:
+    # Now remove braces around single letters (which the replace above can
+    # result in). Things like '{á}' can break kerning/brace protection. We
+    # can't do this in the RE above as we can't determine if the braces are
+    # wrapping a phrase because this match is on an entire field string. So
+    # we can't in one step tell the difference between:
     #
     # author = {Andr\'e}
     # and
@@ -308,12 +315,15 @@ sub latex_decode {
     # http://www.drregex.com/2019/02/variable-length-lookbehinds-actually.html
     # Perl 5.30 has limited (<255 chars) VLB but it doesn't work here as it can't be determined
     # that it's <255 chars by the parser
-    $text =~ s/(?!(?=(?'a'[\s\S]*))(?'b'\\\pL+(?:\{[^{]+\})*(?=\k'a'\z)|(?<=(?=x^|(?&b))[\s\S])))\{(\X)\}/$3/g;
+    $text =~ s/(?!(?=(?'a'[\s\S]*))(?'b'\\\pL+(?:\{[^{]+\})*(?=\k'a'\z)|(?<=(?=x^|(?&b))[\s\S])))[{\x{1f}](\X)[}\x{1e}]/$3/g;
 
-    # Put brace markers back after doing the brace elimination as we only want to eliminate
-    # braces introduced as part of decoding, not explicit braces in the data
+    # Put back any brace markers left after doing the brace elimination as
+    # we only want to eliminate braces introduced as part of decoding, not
+    # explicit braces in the data
     $text =~ s/\x{1f}/{/g;
     $text =~ s/\x{1e}/}/g;
+    $text =~ s/\x{f}/{/g;
+    $text =~ s/\x{e}/}/g;
 
     if ($logger->is_trace()) {# performance tune
       $logger->trace("String in latex_decode() now -> '$text'");
@@ -420,7 +430,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2019 Philip Kime, all rights reserved.
+Copyright 2012-2020 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
