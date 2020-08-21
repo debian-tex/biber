@@ -1,7 +1,7 @@
 # OVERVIEW
 
 Biber is a sophisticated bibliography processing backend for the LaTeX
-biblatex package. It supports a unsurpassed feature set for automated
+biblatex package. It supports an unsurpassed feature set for automated
 conformance to complex bibliography style requirements such as labelling,
 sorting and name handling. It has comprehensive Unicode support.
 
@@ -21,7 +21,7 @@ and also via download from SourceForge.
 You only need a Perl installation to use biber in one of the following
 cases:
 
-- A binary version is not available for your OS/platform
+- A binary version is not available for your OS/platform.
 - You wish to keep up with all of the bleeding-edge git commits before they are packaged into a binary.
 
 For the vast majority of users, using the latest binary for the OS/platform
@@ -52,7 +52,7 @@ There is a section there on how to do this. The PDF documentation is in the
 
 ## LICENCE
 
-Copyright 2009-2019 François Charette and Philip Kime, all rights reserved.
+Copyright 2009-2020 François Charette and Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

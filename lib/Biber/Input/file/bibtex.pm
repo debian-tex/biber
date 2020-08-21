@@ -5,6 +5,7 @@ use warnings;
 use sigtrap qw(handler TBSIG SEGV);
 
 use Carp;
+use Digest::MD5 qw( md5_hex );
 use Text::BibTeX qw(:nameparts :joinmethods :metatypes);
 use Text::BibTeX::Name;
 use Text::BibTeX::NameFormat;
@@ -116,13 +117,16 @@ sub extract_entries {
   }
 
   # Check for empty files because they confuse btparse
-  unless (-s $filename) { # File is empty
+  unless (check_empty($filename)) { # File is empty
     biber_warn("Data source '$filename' is empty, ignoring");
     return @rkeys;
   }
 
   # Check for files with no macros - they also confuse btparse
-  my $tbuf = File::Slurper::read_text($filename, $encoding);
+  my $tbuf;
+  unless (eval {$tbuf = slurp_switchr($filename, $encoding)->$*}) {
+    biber_error("Data file '$filename' cannot be read in encoding '$encoding': $@");
+  }
   unless ($tbuf =~ m/\@/) {
     biber_warn("Data source '$filename' contains no BibTeX entries/macros, ignoring");
     return @rkeys;
@@ -586,8 +590,8 @@ sub create_entry {
               $fieldcontinue = 1;
             }
 
-            # \cite{key}   -> is_cite(key)=true, is_explicitcitekey(key)=true
-            # \nocite{key} -> is_nocite(key)=true, is_explicitcitekey(key)=true
+            # \cite{key}   -> is_cite(key)=true, is_specificcitekey(key)=true
+            # \nocite{key} -> is_nocite(key)=true, is_specificcitekey(key)=true
             # \nocite{*}   -> is_allkeys_nocite=true
             #
             # Check entry cited/nocited verbs
@@ -651,9 +655,9 @@ sub create_entry {
               }
             }
 
-            # \nocite{*}
+            # \nocite{key} or \nocite{*}
             if ($step->{map_entrykey_allnocited}) {
-              if (not $section->is_allkeys_nocite) {  # check if NOT allnoncited
+              if (not $section->is_allkeys_nocite) {  # check if NOT allnocited
                 if ($step->{map_final}) {
                   if ($logger->is_debug()) { # performance tune
                     $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocite{*}'ed and step has 'final' set, skipping rest of map ...");
@@ -664,6 +668,25 @@ sub create_entry {
                   # just ignore this step
                   if ($logger->is_debug()) { # performance tune
                     $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocite{*}'ed, skipping step ...");
+                  }
+                  next;
+                }
+              }
+            }
+
+            # \nocite{*}
+            if ($step->{map_entrykey_starnocited}) {
+              if ($section->is_allkeys_nocite and ($section->is_cite($key) or $section->is_nocite($key))) {  # check if NOT nocited
+                if ($step->{map_final}) {
+                  if ($logger->is_debug()) { # performance tune
+                    $logger->debug("Source mapping (type=$level, key=$key): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited and step has 'final' set, skipping rest of map ...");
+                  }
+                  next MAP;
+                }
+                else {
+                  # just ignore this step
+                  if ($logger->is_debug()) { # performance tune
+                    $logger->debug("Source mapping (type=$level, key=$key): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited, skipping step ...");
                   }
                   next;
                 }
@@ -1515,7 +1538,7 @@ sub cache_data {
       foreach my $id (split(/$S/, $ids)) {
 
         # Skip aliases which are this very key (deep recursion ...)
-        if (fc($id) eq fc($key)) {
+        if ($id eq $key) {
           biber_warn("BAD RECURSION! Entry alias '$id' is identical to the entry key, skipping ...");
           next;
         }
@@ -1599,7 +1622,13 @@ sub preprocess_file {
   # .bib file
   my $td = $Biber::MASTER->biber_tempdir;
   (undef, undef, my $fn) = File::Spec->splitpath($filename);
-  my $ufilename = File::Spec->catfile($td->dirname, "${fn}_$$.utf8");
+
+  # The filename that Text::BibTeX actually opens cannot be UTF-8 on Windows as there is no
+  # way to do this with the correct Win32::Unicode:File calls and so we normalise to a hash
+  # of the name so that it will work cross-platform.
+  my $fnh = md5_hex(encode_utf8(NFC($fn)));
+  my $ufilename = File::Spec->catfile($td->dirname, "${fnh}_$$.utf8");
+  $logger->debug("File '$fn' is converted to UTF8 as '$ufilename'");
 
   # We read the file in the bib encoding and then output to UTF-8, even if it was already UTF-8,
   # just in case there was a BOM so we can delete it as it makes T::B complain
@@ -1609,7 +1638,7 @@ sub preprocess_file {
     $benc = 'UTF-8';
   }
   my $buf;
-  unless (eval{$buf = NFD(File::Slurper::read_text($filename, $benc))}) {# Unicode NFD boundary
+  unless (eval{$buf = NFD(slurp_switchr($filename, $benc)->$*)}) {# Unicode NFD boundary
     biber_error("Data file '$filename' cannot be read in encoding '$benc': $@");
   }
 
@@ -1620,7 +1649,7 @@ sub preprocess_file {
   # in some circumstances
   $buf =~ s/\R/\n/g;
 
-  File::Slurper::write_text($ufilename, NFC($buf));# Unicode NFC boundary
+  slurp_switchw($ufilename, $buf);# Unicode NFC boundary
 
   my $lbuf = parse_decode($ufilename);
 
@@ -1628,7 +1657,7 @@ sub preprocess_file {
     $logger->trace("Buffer after decoding -> '$lbuf'");
   }
 
-  File::Slurper::write_text($ufilename, NFC($lbuf));# Unicode NFC boundary
+  slurp_switchw($ufilename, $lbuf);# Unicode NFC boundary
 
   return $ufilename;
 }
@@ -1653,7 +1682,7 @@ sub parse_decode {
   $logger->info("LaTeX decoding ...");
 
   while ( my $entry = Text::BibTeX::Entry->new($bib) ) {
-    if ( $entry->metatype == BTE_REGULAR ) {
+  if ( $entry->metatype == BTE_REGULAR ) {
       $lbuf .= '@' . $entry->type . '{' . $entry->key . ',' . "\n";
       foreach my $f ($entry->fieldlist) {
         my $fv = $entry->get(encode('UTF-8', NFC($f))); # NFC boundary: $f is "output" to Text::BibTeX
@@ -1690,6 +1719,8 @@ sub parse_decode {
       Text::BibTeX::add_macro_text($mon, $MONTHS{$mon});
     }
   }
+
+  $bib->close;
 
   return $lbuf;
 }
@@ -1988,7 +2019,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2019 Philip Kime, all rights reserved.
+Copyright 2012-2020 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

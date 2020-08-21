@@ -1,5 +1,16 @@
 Revision history for Biber
 
+2.15   (2020-08)
+       * Added --output-legacy-dates and --output-field-replace options to
+         aid in outputting legacy bibtex format in tool and non-tool mode
+       * UTF-8 filenames supported on Windows
+       * INCOMPATIBLE CHANGE - datasource globbing now has to be turned on
+         explicitly with the --glob-datasources option. Globbing causes
+         some issues with UTF8 encoding detection on some OSes and since it
+         is a niche requirement, it is turned off by default.
+       * DEPRECATION WARNING - The BBLXML output format will be removed in
+         version 4. It is rarely used and complicates test suite maintenance
+         considerably.
 2.14   (2019-12)
        * XDATA now supports granular references so that specific
          fields/items in a list field may be used and inserted into

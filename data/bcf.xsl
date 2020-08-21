@@ -474,7 +474,10 @@
                         <span>Entry must be CITED or NOCITED via \cite{key} or \nocite{key}</span>
                       </xsl:if>
                       <xsl:if test="./@map_entrykey_allnocited">
-                        <span>Entry must be NOCITED via \nocite{*}</span>
+                        <span>Entry must be NOCITED via \nocite{}</span>
+                      </xsl:if>
+                      <xsl:if test="./@map_entrykey_starnocited">
+                        <span>Entry must only be NOCITED via \nocite{*}</span>
                       </xsl:if>
                       <xsl:if test="./@map_entry_null">
                         <span><xsl:attribute name="class">map_null</xsl:attribute>entry</span>
@@ -1294,7 +1297,7 @@
   </xsl:template>
 </xsl:stylesheet>
 <!--
-    Copyright 2012-2019 Philip Kime, all rights reserved.
+    Copyright 2012-2020 Philip Kime, all rights reserved.
     
     This code is free software.  You can redistribute it and/or
     modify it under the terms of the Artistic License 2.0.

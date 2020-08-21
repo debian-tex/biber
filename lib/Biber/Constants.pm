@@ -27,6 +27,7 @@ our @EXPORT = qw{
                   %CONFIG_BIBLATEX_OPTIONS
                   %CONFIG_META_MARKERS
                   %CONFIG_DATE_PARSERS
+                  %CONFIG_OUTPUT_FIELDREPLACE
                   %DATAFIELD_SETS
                   %DM_DATATYPES
                   %LOCALE_MAP
@@ -118,6 +119,7 @@ our $CONFIG_DEFAULT_BIBER = {
   decodecharsset                              => { content => 'base' },
   dot_include                                 => { option => {section => 1, xdata => 1, crossref => 1, xref => 1 }},
   fixinits                                    => { content => 0 },
+  glob_datasources                            => { content => 0 },
   input_encoding                              => { content => 'UTF-8' },
   input_format                                => { content => 'bibtex' },
   isbn10                                      => { content => 0 },
@@ -130,6 +132,7 @@ our $CONFIG_DEFAULT_BIBER = {
   namesep                                     => { content => 'and' },
   no_bblxml_schema                            => { content => 0 },
   no_bltxml_schema                            => { content => 0 },
+  no_default_datamodel                        => { content => 0 },
   nodieonerror                                => { content => 0 },
   noinit                                      => { option => [ {value => q/\b\p{Ll}{2}\p{Pd}(?=\S)/},
                                                                {value => q/[\x{2bf}\x{2018}]/} ] },
@@ -150,6 +153,7 @@ our $CONFIG_DEFAULT_BIBER = {
   output_format                               => { content => 'bbl' },
   output_indent                               => { content => '2' },
   output_fieldcase                            => { content => 'upper' },
+  output_legacy_dates                         => { content => 0 },
   output_listsep                              => { content => 'and' },
   output_namesep                              => { content => 'and' },
   output_resolve_xdata                        => { content => 0 },
@@ -551,7 +555,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2019 Philip Kime, all rights reserved.
+Copyright 2012-2020 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

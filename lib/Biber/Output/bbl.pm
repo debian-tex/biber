@@ -196,7 +196,7 @@ sub set_output_undefkey {
 sub set_output_entry {
   my ($self, $be, $section, $dm) = @_;
   my $bee = $be->get_field('entrytype');
-  my $outtype = $dm->get_outcase($bee);
+  my $outtype = $dm->get_outcase($bee) // $bee;
   my $secnum = $section->number;
   my $key = $be->get_field('citekey');
   my $acc = '';
@@ -430,7 +430,6 @@ sub set_output_entry {
           $be->field_exists($field)) ) {
 
       # we skip outputting the crossref or xref when the parent is not cited
-      # (biblatex manual, section 2.2.3)
       # sets are a special case so always output crossref/xref for them since their
       # children will always be in the .bbl otherwise they make no sense.
       unless ($bee eq 'set') {
@@ -773,7 +772,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2019 Philip Kime, all rights reserved.
+Copyright 2012-2020 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

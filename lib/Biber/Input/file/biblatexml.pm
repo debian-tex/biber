@@ -90,7 +90,7 @@ sub extract_entries {
   $logger->trace("Entering extract_entries() in driver 'biblatexml'");
 
   # Check for empty files because they confuse btparse
-  unless (-s $filename) { # File is empty
+  unless (check_empty($filename)) { # File is empty
     biber_warn("Data source '$filename' is empty, ignoring");
     return @rkeys;
   }
@@ -118,7 +118,7 @@ sub extract_entries {
   $logger->info("Found BibLaTeXML data file '$filename'");
 
   # Set up XML parser and namespace
-  my $xml = File::Slurper::read_text($filename);
+  my $xml = slurp_switchr($filename)->$*;
   $xml = NFD($xml);# Unicode NFD boundary
   my $bltxml = XML::LibXML->load_xml(string => $xml);
   my $xpc = XML::LibXML::XPathContext->new($bltxml);
@@ -482,8 +482,8 @@ sub create_entry {
             $fieldcontinue = 1;
           }
 
-          # \cite{key}   -> is_cite(key)=true, is_explicitcitekey(key)=true
-          # \nocite{key} -> is_nocite(key)=true, is_explicitcitekey(key)=true
+          # \cite{key}   -> is_cite(key)=true, is_specificcitekey(key)=true
+          # \nocite{key} -> is_nocite(key)=true, is_specificcitekey(key)=true
           # \nocite{*}   -> is_allkeys_nocite=true
           # Check entry cited/nocited verbs
 
@@ -546,7 +546,7 @@ sub create_entry {
             }
           }
 
-          # \nocite{*}
+          # \nocite{key} or \nocite{*}
           if ($step->{map_entrykey_allnocited}) {
             if (not $section->is_allkeys_nocite) { # check if NOT allnoncited
               if ($step->{map_final}) {
@@ -559,6 +559,25 @@ sub create_entry {
                 # just ignore this step
                 if ($logger->is_debug()) { # performance tune
                   $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocite{*}'ed, skipping step ...");
+                }
+                next;
+              }
+            }
+          }
+
+          # \nocite{*}
+          if ($step->{map_entrykey_starnocited}) {
+            if ($section->is_allkeys_nocite and ($section->is_cite($key) or $section->is_nocite($key))) { # check if NOT nocited
+              if ($step->{map_final}) {
+                if ($logger->is_debug()) { # performance tune
+                  $logger->debug("Source mapping (type=$level, key=$key): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited and step has 'final' set, skipping rest of map ...");
+                }
+                next MAP;
+              }
+              else {
+                # just ignore this step
+                if ($logger->is_debug()) { # performance tune
+                  $logger->debug("Source mapping (type=$level, key=$key): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited, skipping step ...");
                 }
                 next;
               }
@@ -1526,7 +1545,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2019 Philip Kime, all rights reserved.
+Copyright 2012-2020 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

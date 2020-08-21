@@ -22,7 +22,7 @@ use Unicode::Normalize;
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
-our $VERSION = '2.14';
+our $VERSION = '2.15';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -217,6 +217,14 @@ sub _initopts {
     $biberlog = File::Spec->catfile($outdir, $biberlog);
   }
 
+  # Parse output-field-replace into something easier to use
+  if (my $ofrs = Biber::Config->getoption('output_field_replace')) {
+    foreach my $ofr (split(/\s*,\s*/, $ofrs)) {
+      my ($f, $fr) = $ofr =~ m/^([^:]+):([^:]+)$/;
+      $CONFIG_OUTPUT_FIELDREPLACE{$f} = $fr;
+    }
+  }
+
   # cache meta markers since they are referenced in the oft-called _get_handler
   $CONFIG_META_MARKERS{annotation} = quotemeta(Biber::Config->getoption('annotation_marker'));
 
@@ -322,7 +330,7 @@ sub _config_file_set {
   if (defined($conf)) {
     require XML::LibXML::Simple;
 
-    my $buf = NFD(File::Slurper::read_text($conf));# Unicode NFD boundary
+    my $buf = NFD(Biber::Utils::slurp_switchr($conf)->$*);# Unicode NFD boundary
 
     $userconf = XML::LibXML::Simple::XMLin($buf,
                                            'ForceContent' => 1,
@@ -356,6 +364,7 @@ sub _config_file_set {
                                                             qr/\Asortexclusion\z/,
                                                             qr/\Aexclusion\z/,
                                                             qr/\Asortingtemplate\z/,
+                                                            qr/\Aconstant\z/,
                                                             qr/\Asort\z/,
                                                             qr/\Alabelalpha(?:name)?template\z/,
                                                             qr/\Asortitem\z/,
@@ -1322,7 +1331,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2019 Philip Kime, all rights reserved.
+Copyright 2012-2020 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

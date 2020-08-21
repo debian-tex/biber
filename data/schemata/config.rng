@@ -312,6 +312,11 @@
           </element>
         </optional>
         <optional>
+          <element name="output_field_replace">
+            <text/>
+          </element>
+        </optional>
+        <optional>
           <element name="output_file">
             <text/>
           </element>
@@ -1117,6 +1122,11 @@
                 </attribute>
               </optional>
               <optional>
+                <attribute name="map_entrykey_starnocited">
+                  <value>1</value>
+                </attribute>
+              </optional>
+              <optional>
                 <attribute name="map_type_source">
                   <data type="string">
                     <param name="minLength">1</param>
@@ -1630,7 +1640,7 @@
     </choice>
   </define>
 </grammar>
-<!-- Copyright 2012-2019 Philip Kime, all rights reserved. -->
+<!-- Copyright 2012-2020 Philip Kime, all rights reserved. -->
 <!--
   This code is free software.  You can redistribute it and/or
   modify it under the terms of the Artistic License 2.0.
