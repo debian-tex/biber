@@ -1,3 +1,11 @@
+biber (2.15-1) unstable; urgency=medium
+
+  * New upstream version 2.15
+  * update patches
+  * bump standards version, no changes necessary
+
+ -- Norbert Preining <norbert@preining.info>  Fri, 21 Aug 2020 17:08:40 +0900
+
 biber (2.14+1-1) unstable; urgency=medium
 
   [ Debian Janitor ]
