@@ -67,6 +67,7 @@ Build-Depends: debhelper-compat (= 12),
 		tipa,
 		fonts-cmu
 Standards-Version: 4.5.0
+Rules-Requires-Root: no
 Vcs-Git: https://github.com/debian-tex/biber.git
 Vcs-Browser: https://github.com/debian-tex/biber
 Homepage: http://biblatex-biber.sourceforge.net/
