@@ -66,7 +66,7 @@ Build-Depends: debhelper-compat (= 12),
 		texlive-xetex,
 		tipa,
 		fonts-cmu
-Standards-Version: 4.5.0
+Standards-Version: 4.5.1
 Rules-Requires-Root: no
 Vcs-Git: https://github.com/debian-tex/biber.git
 Vcs-Browser: https://github.com/debian-tex/biber
