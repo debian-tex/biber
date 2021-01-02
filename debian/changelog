@@ -4,6 +4,7 @@ biber (2.16-1) UNRELEASED; urgency=medium
 
   * Lintian:
     - E: malformed-override: Unknown tag versioned-dependency-satisfied-by-perl
+    - W: bad-whatis-entry (not all)
     - I: debian-watch-contains-dh_make-template
     - P: silent-on-rules-requiring-root
     - P: duplicate-in-relation-field

@@ -16,8 +16,8 @@ Last-Update: 2013-08-29
 
 Index: biber/lib/Biber/Entries.pm
 ===================================================================
---- biber.orig/lib/Biber/Entries.pm	2021-01-02 22:09:49.926007607 +0100
-+++ biber/lib/Biber/Entries.pm	2021-01-02 22:09:49.918007602 +0100
+--- biber.orig/lib/Biber/Entries.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/Entries.pm	2021-01-02 23:02:27.099110166 +0100
 @@ -7,7 +7,7 @@
  
  =head1 NAME
@@ -29,8 +29,8 @@ Index: biber/lib/Biber/Entries.pm
  
 Index: biber/lib/Biber/Entry.pm
 ===================================================================
---- biber.orig/lib/Biber/Entry.pm	2021-01-02 22:09:49.926007607 +0100
-+++ biber/lib/Biber/Entry.pm	2021-01-02 22:09:49.918007602 +0100
+--- biber.orig/lib/Biber/Entry.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/Entry.pm	2021-01-02 23:02:27.099110166 +0100
 @@ -18,7 +18,7 @@
  
  =head1 NAME
@@ -42,8 +42,8 @@ Index: biber/lib/Biber/Entry.pm
  
 Index: biber/lib/Biber/Entry/Name.pm
 ===================================================================
---- biber.orig/lib/Biber/Entry/Name.pm	2021-01-02 22:09:49.926007607 +0100
-+++ biber/lib/Biber/Entry/Name.pm	2021-01-02 22:09:49.918007602 +0100
+--- biber.orig/lib/Biber/Entry/Name.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/Entry/Name.pm	2021-01-02 23:02:27.099110166 +0100
 @@ -32,7 +32,7 @@
  
  =head1 NAME
@@ -55,8 +55,8 @@ Index: biber/lib/Biber/Entry/Name.pm
  
 Index: biber/lib/Biber/Entry/Names.pm
 ===================================================================
---- biber.orig/lib/Biber/Entry/Names.pm	2021-01-02 22:09:49.926007607 +0100
-+++ biber/lib/Biber/Entry/Names.pm	2021-01-02 22:09:49.918007602 +0100
+--- biber.orig/lib/Biber/Entry/Names.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/Entry/Names.pm	2021-01-02 23:02:27.099110166 +0100
 @@ -22,7 +22,7 @@
  
  =head1 NAME
@@ -68,8 +68,8 @@ Index: biber/lib/Biber/Entry/Names.pm
  
 Index: biber/lib/Biber/Section.pm
 ===================================================================
---- biber.orig/lib/Biber/Section.pm	2021-01-02 22:09:49.926007607 +0100
-+++ biber/lib/Biber/Section.pm	2021-01-02 22:09:49.918007602 +0100
+--- biber.orig/lib/Biber/Section.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/Section.pm	2021-01-02 23:02:27.099110166 +0100
 @@ -11,7 +11,7 @@
  
  =head1 NAME
@@ -81,8 +81,8 @@ Index: biber/lib/Biber/Section.pm
  
 Index: biber/lib/Biber/Sections.pm
 ===================================================================
---- biber.orig/lib/Biber/Sections.pm	2021-01-02 22:09:49.926007607 +0100
-+++ biber/lib/Biber/Sections.pm	2021-01-02 22:09:49.918007602 +0100
+--- biber.orig/lib/Biber/Sections.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/Sections.pm	2021-01-02 23:02:27.099110166 +0100
 @@ -7,7 +7,7 @@
  
  =head1 NAME
@@ -94,8 +94,8 @@ Index: biber/lib/Biber/Sections.pm
  
 Index: biber/lib/Biber/DataModel.pm
 ===================================================================
---- biber.orig/lib/Biber/DataModel.pm	2021-01-02 22:09:49.926007607 +0100
-+++ biber/lib/Biber/DataModel.pm	2021-01-02 22:09:49.922007604 +0100
+--- biber.orig/lib/Biber/DataModel.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/DataModel.pm	2021-01-02 23:02:27.099110166 +0100
 @@ -19,7 +19,7 @@
  
  =head1 NAME
@@ -105,3 +105,94 @@ Index: biber/lib/Biber/DataModel.pm
  
  
  =cut
+Index: biber/lib/Biber/Annotation.pm
+===================================================================
+--- biber.orig/lib/Biber/Annotation.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/Annotation.pm	2021-01-02 23:02:44.091151469 +0100
+@@ -20,7 +20,7 @@
+ 
+ =head1 ANNOTATION
+ 
+-Biber::Entry::Annotation
++Biber::Annotation - Biber::Annotation objects
+ 
+ =head2 set_annotation
+ 
+Index: biber/lib/Biber/DataList.pm
+===================================================================
+--- biber.orig/lib/Biber/DataList.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/DataList.pm	2021-01-02 23:02:27.099110166 +0100
+@@ -13,7 +13,7 @@
+ 
+ =head1 NAME
+ 
+-Biber::DataList
++Biber::DataList - Biber::DataList objects
+ 
+ =head2 new
+ 
+Index: biber/lib/Biber/DataLists.pm
+===================================================================
+--- biber.orig/lib/Biber/DataLists.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/DataLists.pm	2021-01-02 23:02:27.099110166 +0100
+@@ -7,7 +7,7 @@
+ 
+ =head1 NAME
+ 
+-Biber::DataLists
++Biber::DataLists - Biber::DataLists objects
+ 
+ =head2 new
+ 
+Index: biber/lib/Biber/Date/Format.pm
+===================================================================
+--- biber.orig/lib/Biber/Date/Format.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/Date/Format.pm	2021-01-02 23:02:27.099110166 +0100
+@@ -13,7 +13,7 @@
+ 
+ =head1 NAME
+ 
+-Biber::Date::Format
++Biber::Date::Format - Biber::Date::Format objects
+ 
+ =head2 Description
+ 
+Index: biber/lib/Biber/LangTag.pm
+===================================================================
+--- biber.orig/lib/Biber/LangTag.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/LangTag.pm	2021-01-02 23:02:27.099110166 +0100
+@@ -25,7 +25,7 @@
+ 
+ =head1 NAME
+ 
+-Biber::LangTag
++Biber::LangTag - Biber::LangTag objects
+ 
+ =head2 new
+ 
+Index: biber/lib/Biber/LangTags.pm
+===================================================================
+--- biber.orig/lib/Biber/LangTags.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/LangTags.pm	2021-01-02 23:02:27.099110166 +0100
+@@ -62,7 +62,7 @@
+ 
+ =head1 NAME
+ 
+-Biber::LangTags
++Biber::LangTags - Biber::LangTags objects
+ 
+ =head2 new
+ 
+Index: biber/lib/Biber/UCollate.pm
+===================================================================
+--- biber.orig/lib/Biber/UCollate.pm	2021-01-02 23:02:27.115110205 +0100
++++ biber/lib/Biber/UCollate.pm	2021-01-02 23:02:27.099110166 +0100
+@@ -12,7 +12,7 @@
+ 
+ =head1 NAME
+ 
+-Biber::UCollate
++Biber::UCollate - Biber::UCollate objects
+ 
+ =head2 new
+ 
