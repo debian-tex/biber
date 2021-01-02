@@ -9,6 +9,8 @@ use Encode::Alias;
 use parent qw(Exporter);
 use Biber::Date::Format;
 use Text::CSV;
+use Scalar::Util qw (blessed looks_like_number);
+use Unicode::UCD qw(num);
 
 our @EXPORT = qw{
                   $CONFIG_DEFAULT_BIBER
@@ -37,6 +39,8 @@ our @EXPORT = qw{
                   %UNIQUENAME_CONTEXTS
                   %UNIQUENAME_VALUES
                   %MONTHS
+                  %RSTRINGS
+                  %USEDSTRINGS
               };
 
 # Version of biblatex control file which this release expects. Matched against version
@@ -66,26 +70,116 @@ unless ($locale) {
   }
 }
 
+# Reverse record of macros so we can reverse these for tool mode output
+our %RSTRINGS = ();
+# Record of macros which are actually used in output in tool mode, so that we don't
+# output unused strings.
+our %USEDSTRINGS = ();
+
 our %MONTHS = ('jan' => '1',
-              'feb' => '2',
-              'mar' => '3',
-              'apr' => '4',
-              'may' => '5',
-              'jun' => '6',
-              'jul' => '7',
-              'aug' => '8',
-              'sep' => '9',
-              'oct' => '10',
-              'nov' => '11',
-              'dec' => '12');
+               'feb' => '2',
+               'mar' => '3',
+               'apr' => '4',
+               'may' => '5',
+               'jun' => '6',
+               'jul' => '7',
+               'aug' => '8',
+               'sep' => '9',
+               'oct' => '10',
+               'nov' => '11',
+               'dec' => '12');
 
 # datafieldsets
 our %DATAFIELD_SETS = ();
 
 # datatypes for data model validation
 our %DM_DATATYPES = (
-                     integer  => qr/\A\d+\z/xms,
-                     datepart => qr/\A\d+\z/xms
+                     integer => sub {
+                       my $v = shift;
+                       return 1 if looks_like_number(num($v =~ s/^-//r));
+                       return 0;
+                     },
+                     name => sub {
+                       my $v = shift;
+                       return 1 if (blessed($v) and $v->isa('Biber::Entry::Names'));
+                       return 0;
+                     },
+                     range => sub {
+                       my $v = shift;
+                       return 1 if ref($v) eq 'ARRAY';
+                       return 0;
+                     },
+                     list => sub {
+                       my $v = shift;
+                       return 1 if ref($v) eq 'ARRAY';
+                       return 0;
+                     },
+                     datepart => sub {
+                       my $v = shift;
+                       my $f = shift;
+                       if ($f =~ /timezone$/) {
+                         # ISO 8601
+                         # <time>Z
+                         # <time>±hh:mm
+                         # <time>±hhmm
+                         # <time>±hh
+                         unless ($v eq 'Z' or
+                                 $v =~ m|^[+-]\d\d(?:\\bibtzminsep\s)?(?:\d\d)?$|) {
+                           return 0;
+                         }
+                       }
+                       elsif ($f =~ /season$/) {
+                         return 0 unless $v =~ m/(?:winter|spring|summer|autumn)/
+                       }
+                       else {
+                         # num() doesn't like negatives
+                         return 0 unless looks_like_number(num($v =~ s/^-//r));
+                       }
+                       return 1;
+                     },
+                     isbn => sub {
+                       my $v = shift;
+                       my $f = shift;
+                       require Business::ISBN;
+
+                       my ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
+                       $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
+                       # Just in case it is already set. We also need to fake this in tests or it will
+                       # look for it in the blib dir
+                       unless (exists($ENV{ISBN_RANGE_MESSAGE})) {
+                         $ENV{ISBN_RANGE_MESSAGE} = File::Spec->catpath($vol, "$dir/ISBN/", 'RangeMessage.xml');
+                       }
+
+                       my $isbn = Business::ISBN->new($v);
+                       if (not $isbn) {
+                         return 0;
+                       }
+                       return 1;
+                     },
+                     issn => sub {
+                       my $v = shift;
+                       require Business::ISSN;
+
+                       my $issn = Business::ISSN->new($_);
+                       unless ($issn and $issn->is_valid) {
+                         return 0;
+                       }
+                       return 1;
+                     },
+                     ismn => sub {
+                       my $v = shift;
+                       require Business::ISMN;
+                       my $ismn = Business::ISMN->new($_);
+                       unless ($ismn and $ismn->is_valid) {
+                         return 0;
+                       }
+                       return 1;
+                     },
+                     default => sub {
+                       my $v = shift;
+                       return 0 if ref($v);
+                       return 1;
+                     }
                     );
 
 # Mapping of data source and output types to extensions
@@ -146,6 +240,7 @@ our $CONFIG_DEFAULT_BIBER = {
   onlylog                                     => { content => 0 },
   others_string                               => { content => 'others' },
   output_align                                => { content => 0 },
+  output_all_macrodefs                        => { content => 0 },
   output_annotation_marker                    => { content => '+an' },
   output_named_annotation_marker              => { content => ':' },
   output_encoding                             => { content => 'UTF-8' },
@@ -156,6 +251,7 @@ our $CONFIG_DEFAULT_BIBER = {
   output_legacy_dates                         => { content => 0 },
   output_listsep                              => { content => 'and' },
   output_namesep                              => { content => 'and' },
+  output_no_macrodefs                         => { content => 0 },
   output_resolve_xdata                        => { content => 0 },
   output_resolve_crossrefs                    => { content => 0 },
   output_resolve_sets                         => { content => 0 },
@@ -179,6 +275,7 @@ our $CONFIG_DEFAULT_BIBER = {
   validate_config                             => { content => 0 },
   validate_control                            => { content => 0 },
   validate_datamodel                          => { content => 0 },
+  winunicode                                  => { content => 0 },
   wraplines                                   => { content => 0 },
   xdatamarker                                 => { content => 'xdata' },
   xdatasep                                    => { content => '-' },

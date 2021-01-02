@@ -107,12 +107,13 @@ sub slurp_switchr {
   my ($filename, $encoding) = @_;
   my $slurp;
   $encoding //= 'UTF-8';
-  if ($^O =~ /Win/) {
-    $logger->debug("Enabling Windows-compat filesystem encoding reader");
+  if ($^O =~ /Win/ and not Biber::Config->getoption('winunicode')) {
     require Win32::Unicode::File;
     my $fh = Win32::Unicode::File->new('<', NFC($filename));
     $fh->binmode(":encoding($encoding)");
-    $slurp = $fh->slurp;
+    # 100MB block size as the loop over the default 1MB block size seems to fail for
+    # files > 1Mb
+    $slurp = $fh->slurp({blk_size => 1024*1024*100});
     $fh->close;
   }
   else {
@@ -130,8 +131,7 @@ sub slurp_switchr {
 
 sub slurp_switchw {
   my ($filename, $string) = @_;
-  if ($^O =~ /Win/) {
-    $logger->debug("Enabling Windows-compat filesystem encoding writer");
+  if ($^O =~ /Win/ and not Biber::Config->getoption('winunicode')) {
     require Win32::Unicode::File;
     my $fh = Win32::Unicode::File->new('>', NFC($filename));
     $fh->binmode(':encoding(UTF-8)');
@@ -327,7 +327,7 @@ sub locate_data_file {
 
 sub file_exist_check {
   my $filename = shift;
-  if ($^O =~ /Win/) {
+  if ($^O =~ /Win/ and not Biber::Config->getoption('winunicode')) {
     require Win32::Unicode::File;
     if (Win32::Unicode::File::statW(NFC($filename))) {
       return NFC($filename);
@@ -356,7 +356,7 @@ sub file_exist_check {
 
 sub check_empty {
   my $filename = shift;
-  if ($^O =~ /Win/) {
+  if ($^O =~ /Win/ and not Biber::Config->getoption('winunicode')) {
     require Win32::Unicode::File;
     return (Win32::Unicode::File::file_size(NFC($filename))) ? 1 : 0;
   }
@@ -373,7 +373,7 @@ sub check_empty {
 
 sub check_exists {
   my $filename = shift;
-  if ($^O =~ /Win/) {
+  if ($^O =~ /Win/ and not Biber::Config->getoption('winunicode')) {
     require Win32::Unicode::File;
     return Win32::Unicode::File::statW(NFC($filename)) ? 1 : 0;
   }
@@ -1402,7 +1402,6 @@ sub parse_date {
   return 0 if $string eq '..';    # ISO8601-2 4.4 (open date)
 
   my $dt = eval {$obj->parse_datetime($string)};
-
   return $dt unless $dt; # bad parse, don't do anything else
 
   # Check if this datetime is before the Gregorian start date. If so, return Julian date
@@ -1737,7 +1736,9 @@ sub gen_initials {
     # Deal with hyphenated name parts and normalise to a '-' character for easy
     # replacement with macro later
     # Dont' split a name part if it's brace-wrapped
-    if ($str !~ m/^\{.+\}$/ and $str =~ m/\p{Dash}/) {
+    # Dont' split a name part if the hyphen in a hyphenated name is protected like:
+    # Hans{-}Peter as this is an old BibTeX way of suppressing hyphenated names
+    if ($str !~ m/^\{.+\}$/ and $str =~ m/[^{]\p{Dash}[^}]/) {
       push @strings_out, join('-', gen_initials(split(/\p{Dash}/, $str)));
     }
     else {

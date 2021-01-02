@@ -1676,6 +1676,12 @@ sub validate_datamodel {
         $dmwe->($warning, $be);
       }
 
+      # Datamodel datatypes
+      # This is a check on the datatypes of all fields in the datamodel
+      foreach my $warning ($dm->check_datatypes($be)) {
+        $dmwe->($warning, $be);
+      }
+
       # Data constraints
       foreach my $warning ($dm->check_data_constraints($be)) {
         $dmwe->($warning, $be);
@@ -4367,6 +4373,8 @@ sub prepare {
 sub prepare_tool {
   my $self = shift;
   my $out = $self->get_output_obj;          # Biber::Output object
+  $out->clear_output_macros;                # Mostly for tool mode tests
+  $out->clear_output_comments;              # Mostly for tool mode tests
 
   # Place to put global pre-processing things
   $self->process_setup_tool;
