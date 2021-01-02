@@ -1,11 +1,12 @@
 biber (2.16-1) UNRELEASED; urgency=medium
 
-  * New upstream release
-    Refrehs patches.
+  * New upstream releasem refresh patches.
 
   * Lintian:
+    - E: malformed-override: Unknown tag versioned-dependency-satisfied-by-perl
     - I: debian-watch-contains-dh_make-template
     - P: silent-on-rules-requiring-root
+    - P: duplicate-in-relation-field
 
  -- Hilmar Preusse <hille42@web.de>  Sat, 02 Jan 2021 20:35:36 +0100
 
@@ -34,7 +35,7 @@ biber (2.14+1-1) unstable; urgency=medium
   * Clean up some files created during build.
 
   [ Norbert Preining ]
-  * Import release 2.14+1 which comes from github and has 
+  * Import release 2.14+1 which comes from github and has
     lib/Biber/Output/bblxml.pm included (Closes: #968200).
 
  -- Norbert Preining <norbert@preining.info>  Wed, 12 Aug 2020 09:42:03 +0900

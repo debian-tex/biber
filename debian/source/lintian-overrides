@@ -1,1 +1,0 @@
-biber source: versioned-dependency-satisfied-by-perl build-depends: libunicode-collate-perl (>= 1.04)
