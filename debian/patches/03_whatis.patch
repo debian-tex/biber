@@ -14,9 +14,11 @@ Last-Update: 2013-08-29
  lib/Biber/Sections.pm    |    2 +-
  7 files changed, 7 insertions(+), 7 deletions(-)
 
---- a/lib/Biber/Entries.pm
-+++ b/lib/Biber/Entries.pm
-@@ -7,7 +7,7 @@ use warnings;
+Index: biber/lib/Biber/Entries.pm
+===================================================================
+--- biber.orig/lib/Biber/Entries.pm	2021-01-02 22:09:49.926007607 +0100
++++ biber/lib/Biber/Entries.pm	2021-01-02 22:09:49.918007602 +0100
+@@ -7,7 +7,7 @@
  
  =head1 NAME
  
@@ -25,9 +27,11 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- a/lib/Biber/Entry.pm
-+++ b/lib/Biber/Entry.pm
-@@ -18,7 +18,7 @@ my $logger = Log::Log4perl::get_logger('
+Index: biber/lib/Biber/Entry.pm
+===================================================================
+--- biber.orig/lib/Biber/Entry.pm	2021-01-02 22:09:49.926007607 +0100
++++ biber/lib/Biber/Entry.pm	2021-01-02 22:09:49.918007602 +0100
+@@ -18,7 +18,7 @@
  
  =head1 NAME
  
@@ -36,9 +40,11 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- a/lib/Biber/Entry/Name.pm
-+++ b/lib/Biber/Entry/Name.pm
-@@ -32,7 +32,7 @@ __PACKAGE__->mk_accessors(qw (
+Index: biber/lib/Biber/Entry/Name.pm
+===================================================================
+--- biber.orig/lib/Biber/Entry/Name.pm	2021-01-02 22:09:49.926007607 +0100
++++ biber/lib/Biber/Entry/Name.pm	2021-01-02 22:09:49.918007602 +0100
+@@ -32,7 +32,7 @@
  
  =head1 NAME
  
@@ -47,9 +53,11 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- a/lib/Biber/Entry/Names.pm
-+++ b/lib/Biber/Entry/Names.pm
-@@ -22,7 +22,7 @@ __PACKAGE__->mk_accessors(qw (
+Index: biber/lib/Biber/Entry/Names.pm
+===================================================================
+--- biber.orig/lib/Biber/Entry/Names.pm	2021-01-02 22:09:49.926007607 +0100
++++ biber/lib/Biber/Entry/Names.pm	2021-01-02 22:09:49.918007602 +0100
+@@ -22,7 +22,7 @@
  
  =head1 NAME
  
@@ -58,9 +66,11 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- a/lib/Biber/Section.pm
-+++ b/lib/Biber/Section.pm
-@@ -11,7 +11,7 @@ use List::Util qw( first );
+Index: biber/lib/Biber/Section.pm
+===================================================================
+--- biber.orig/lib/Biber/Section.pm	2021-01-02 22:09:49.926007607 +0100
++++ biber/lib/Biber/Section.pm	2021-01-02 22:09:49.918007602 +0100
+@@ -11,7 +11,7 @@
  
  =head1 NAME
  
@@ -69,9 +79,11 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- a/lib/Biber/Sections.pm
-+++ b/lib/Biber/Sections.pm
-@@ -7,7 +7,7 @@ use warnings;
+Index: biber/lib/Biber/Sections.pm
+===================================================================
+--- biber.orig/lib/Biber/Sections.pm	2021-01-02 22:09:49.926007607 +0100
++++ biber/lib/Biber/Sections.pm	2021-01-02 22:09:49.918007602 +0100
+@@ -7,7 +7,7 @@
  
  =head1 NAME
  
@@ -80,9 +92,11 @@ Last-Update: 2013-08-29
  
  =head2 new
  
---- a/lib/Biber/DataModel.pm
-+++ b/lib/Biber/DataModel.pm
-@@ -17,7 +17,7 @@ use Log::Log4perl qw( :no_extra_logdie_m
+Index: biber/lib/Biber/DataModel.pm
+===================================================================
+--- biber.orig/lib/Biber/DataModel.pm	2021-01-02 22:09:49.926007607 +0100
++++ biber/lib/Biber/DataModel.pm	2021-01-02 22:09:49.922007604 +0100
+@@ -19,7 +19,7 @@
  
  =head1 NAME
  

@@ -8,9 +8,11 @@ Last-Update: 2013-08-29
  lib/Biber.pm |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
---- a/lib/Biber.pm
-+++ b/lib/Biber.pm
-@@ -3710,7 +3710,7 @@ sub create_uniquelist_info {
+Index: biber/lib/Biber.pm
+===================================================================
+--- biber.orig/lib/Biber.pm	2021-01-02 22:09:41.410001476 +0100
++++ biber/lib/Biber.pm	2021-01-02 22:09:41.398001467 +0100
+@@ -3716,7 +3716,7 @@
  
        $dlist->add_uniquelistcount($namelist);
      }
