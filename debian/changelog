@@ -1,11 +1,12 @@
 biber (2.16-1) UNRELEASED; urgency=medium
 
-  * New upstream releasem refresh patches.
+  * New upstream release: refresh patches.
 
   * Lintian:
     - E: malformed-override: Unknown tag versioned-dependency-satisfied-by-perl
     - W: bad-whatis-entry (not all)
     - I: debian-watch-contains-dh_make-template
+    - I: typo-in-manual-page
     - P: silent-on-rules-requiring-root
     - P: duplicate-in-relation-field
 

@@ -1,8 +1,8 @@
 Description: add (dummy) whatis entries to POD
 Origin: vendor
 Forwarded: no
-Author: gregor herrmann <gregoa@debian.org>
-Last-Update: 2013-08-29
+Author: gregor herrmann <gregoa@debian.org>, Hilmar Preusse <hille42@web.de>
+Last-Update: 2021-01-02
 
 ---
  lib/Biber/DataModel.pm   |    2 +-
