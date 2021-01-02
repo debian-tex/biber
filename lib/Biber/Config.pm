@@ -22,7 +22,7 @@ use Unicode::Normalize;
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
-our $VERSION = '2.15';
+our $VERSION = '2.16';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -281,7 +281,6 @@ sub _initopts {
   my $l4pconf = qq|
     log4perl.category.main                             = $LOGLEVEL, $LOG_MAIN
     log4perl.category.screen                           = $LOGLEVEL_S, Screen
-
     log4perl.appender.Screen                           = Log::Log4perl::Appender::Screen
     log4perl.appender.Screen.utf8                      = 1
     log4perl.appender.Screen.Threshold                 = $LOGLEVEL_S
@@ -615,6 +614,8 @@ If returns the first file found among:
 
 =item * C<$ENV{XDG_CONFIG_HOME}/biber/biber.conf>
 
+=item * C<$HOME/.config/biber/biber.conf>
+
 =item * C<$HOME/Library/biber/biber.conf> (Mac OSX only)
 
 =item * C<$ENV{APPDATA}/biber.conf> (Windows only)
@@ -639,6 +640,10 @@ sub config_file {
   elsif ( defined $ENV{XDG_CONFIG_HOME} and
     -f File::Spec->catfile($ENV{XDG_CONFIG_HOME}, "biber", $BIBER_CONF_NAME) ) {
     $biberconf = File::Spec->catfile($ENV{XDG_CONFIG_HOME}, "biber", $BIBER_CONF_NAME);
+  }
+ # See https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+  elsif ( -f File::Spec->catfile($ENV{HOME}, ".config", "biber", $BIBER_CONF_NAME) ) {
+    $biberconf = File::Spec->catfile($ENV{HOME}, ".config", "biber", $BIBER_CONF_NAME);
   }
   elsif ( $^O =~ /(?:Mac|darwin)/ and
     -f File::Spec->catfile($ENV{HOME}, "Library", "biber", $BIBER_CONF_NAME) ) {

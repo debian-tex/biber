@@ -288,6 +288,14 @@
           </element>
         </optional>
         <optional>
+          <element name="output_all_macrodefs">
+            <choice>
+              <value>0</value>
+              <value>1</value>
+            </choice>
+          </element>
+        </optional>
+        <optional>
           <element name="output_annotation_marker">
             <text/>
           </element>
@@ -342,13 +350,16 @@
           </element>
         </optional>
         <optional>
-          <element name="output_macro_fields">
+          <element name="output_namesep">
             <text/>
           </element>
         </optional>
         <optional>
-          <element name="output_namesep">
-            <text/>
+          <element name="output_no_macrodefs">
+            <choice>
+              <value>0</value>
+              <value>1</value>
+            </choice>
           </element>
         </optional>
         <optional>

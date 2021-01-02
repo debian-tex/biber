@@ -16,6 +16,7 @@ use Log::Log4perl::Level;
 use POSIX qw(strftime);
 use Biber;
 use Biber::Utils;
+use Encode;
 use File::Spec;
 use Pod::Usage;
 use List::AllUtils qw( first );
@@ -65,6 +66,7 @@ GetOptions(
            'outfile=s',           # legacy alias for output_file
            'outformat=s',         # legacy alias for output_format
            'output_align|output-align',
+           'output_all_macrodefs|output-all-macrodefs',
            'output_annotation_marker|output-annotation-marker=s',
            'output_directory|output-directory=s',
            'output_encoding|output-encoding|E=s',
@@ -79,6 +81,7 @@ GetOptions(
            'output_macro_fields|output-macro-fields=s',
            'output_named_annotation_marker|output-named-annotation-marker=s',
            'output_namesep|output-namesep=s',
+           'output_no_macrodefs|output-no-macrodefs',
            'output_resolve|output-resolve',
            'output_resolve_xdata|output-resolve-xdata',
            'output_resolve_crossrefs|output-resolve-crossrefs',
@@ -108,7 +111,6 @@ GetOptions(
            'tool_fieldcase|tool-fieldcase=s',       # legacy alias for output_fieldcase
            'tool_noremove_missing_dependants|tool-noremove-missing-dependants',
            'tool_indent|tool-indent=s',             # legacy alias for output_indent
-           'tool_macro_fields|tool-macro-fields=s', # legacy alias for output_macro_fields
            'tool_resolve|tool-resolve',             # legacy alias for output_resolve
            'trace|T',
            'u',                   # alias for input_encoding=UTF-8
@@ -119,6 +121,7 @@ GetOptions(
            'validate_control|validate-control',
            'validate_datamodel|validate-datamodel|V',
            'version|v',
+           'winunicode|W',
            'wraplines|w',
            'xdatamarker=s',
            'xdatasep=s',
@@ -166,6 +169,12 @@ unless (@ARGV) {
             -exitval => EXIT_ERROR);
 }
 
+# Make sure ARGV is decoded UTF8 as this is important on Windows when using
+# the Windows 10 1803+ UTF8 system locale option
+if ($opts->{winunicode}) {
+  @ARGV = map {decode('UTF-8', $_)} @ARGV;
+}
+
 # Resolve some option shortcuts and legacy aliases
 if (my $o = $opts->{tool_align}) {
   $opts->{output_align} = $o;
@@ -178,10 +187,6 @@ if (my $o = $opts->{tool_fieldcase}) {
 if (my $o = $opts->{tool_indent}) {
   $opts->{output_indent} = $o;
   delete $opts->{tool_indent};
-}
-if (my $o = $opts->{tool_macro_fields}) {
-  $opts->{output_macro_fields} = $o;
-  delete $opts->{tool_macro_fields};
 }
 if (my $o = $opts->{tool_resolve}) {
   $opts->{output_resolve} = $o;
@@ -226,6 +231,11 @@ if (exists($opts->{output_resolve})) {
   $opts->{output_resolve_crossrefs} = 1;
   $opts->{output_resolve_sets} = 1;
   delete $opts->{output_resolve};
+}
+
+# Legacy warnings
+if ($opts->{output_macro_fields}) {
+  say STDERR "Biber: Deprecated option 'output-macro-fields' - no longer needed as macros are auto-detected on output";
 }
 
 # Check the output_format option
@@ -496,15 +506,13 @@ See C<perldoc Unicode::Collate> for details.
 
 =item B<--configfile|-g [file]>
 
-Use F<file> as configuration file for C<biber>. The default is the first
-file found among F<biber.conf> in the current directory,
-C<$HOME/.biber.conf>, or else the output of C<kpsewhich biber.conf>. In
-tool mode, (B<--tool>) the F<biber-tool.conf> installed with Biber is
-always used to set default options if a user-defined config file is not
-specified. Use the B<--tool-config> option to view the location of the
-default tool mode config file, copy this file and edit it to your
-requirements for use with this option. The options in the default config
-file reflect the options set by biblatex by default.
+Use F<file> as the configuration file for C<biber> instead of looking in
+the default locations (see C<biber> PDF manual). In tool mode, (B<--tool>)
+the F<biber-tool.conf> installed with Biber is always used to set default
+options if a user-defined config file is not specified. Use the
+B<--tool-config> option to view the location of the default tool mode
+config file--copy this file and edit it to your requirements for use with
+this option in tool mode.
 
 =item B<--convert-control>
 
@@ -687,6 +695,12 @@ Use F<string> as the final name in a name field which implies "et al". Defaults 
 Align field values in neat columns in output. Effect depends on the output format. Default is false.
 The legacy option B<--tool-align> is supported as an alias.
 
+=item B<--output-all-macrodefs>
+
+When outputting bibtex format, whether to output all found macro (@STRING
+entries) definitions rather than just definitions for macros which are
+actually used in the output entries. Default is false.
+
 =item B<--output-annotation-marker=[marker]>
 
 As B<--annotation-marker> but for tool mode bibtex output. The default is C<+an>.
@@ -754,7 +768,7 @@ You must process this file with C<dot>, e.g. C<dot -Tsvg test.dot -o test.svg> t
 render the graph. See the B<--dot-include> option to select what is included in
 the DOT output. F<bblxml> is an XML version of the F<bbl> format which you could
 transform using XSLT. By default, when outputting F<bblxml>, a RelaxNG XML schema
-is generated from the active data modeal and saved with a F<rng> extension along
+is generated from the active data model and saved with a F<rng> extension along
 with the output file name (unless the B<--no-bblxml-schema> option is specified). You
 may validate the F<bblxml> using the schema with the B<--validate-bblxml> option.
 The legacy option B<--outformat> is supported as an alias.
@@ -778,16 +792,16 @@ false.
 As B<--listsep> but for tool mode bibtex output. Defaults to BibTeX's usual
 'and'.
 
-=item B<--output-macro-fields=[field1, ... fieldn]>
-
-A comma-separated list of field names whose values are, on output, treated as BibTeX macros.
-Effectively this means that they are not wrapped in braces. Effect depends on the output format.
-The legacy option B<--tool-macro-fields> is supported as an alias.
-
 =item B<--output-namesep=[sep]>
 
 As B<--namesep> but for tool mode bibtex output. Defaults to BibTeX's usual
 'and'.
+
+=item B<--output-no-macrodefs>
+
+When outputting BibTeX format, don't output macro definitions (@STRING entries).
+You might not want to output macro definitions if you keep them in a
+separate file.
 
 =item B<--output-resolve>
 
@@ -863,7 +877,7 @@ used, then F<file> should be somewhere C<kpsewhich> can find it.
 =item B<--show-tmp-dir>
 
 Prints the location of the temporary directory used for various intermediate
-files and data. Only useful if B<--remove-tmp-dir> is set to true.
+files and data. Only useful if B<--noremove-tmp-dir> is set to true.
 
 =item B<--sortdebug>
 
@@ -961,6 +975,14 @@ Validate the data against a data model.
 =item B<--version|-v>
 
 Display version number.
+
+=item B<--winunicode|-W>
+
+In Windows 10 1803+, turning on the 'Use Unicode UTF8 for worldwide
+language support' option makes Windows use UTF-8 instead of UTF-16 for many
+system APIs. If that option is enabled, use this option to turn off biber's
+UTF-16 filename support on Windows. This will result in much improved
+handling of Unicode filenames.
 
 =item B<--wraplines|-w>
 
