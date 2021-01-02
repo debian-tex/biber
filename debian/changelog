@@ -1,6 +1,11 @@
 biber (2.16-1) UNRELEASED; urgency=medium
 
-  * Typo in d/watch file.
+  * New upstream release
+    Refrehs patches.
+
+  * Lintian:
+    - I: debian-watch-contains-dh_make-template
+    - P: silent-on-rules-requiring-root
 
  -- Hilmar Preusse <hille42@web.de>  Sat, 02 Jan 2021 20:35:36 +0100
 
