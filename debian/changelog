@@ -10,6 +10,7 @@ biber (2.16-1) UNRELEASED; urgency=medium
     - I: typo-in-manual-page
     - P: silent-on-rules-requiring-root
     - P: duplicate-in-relation-field
+    - P: package-uses-old-debhelper-compat-version
 
  -- Hilmar Preusse <hille42@web.de>  Sat, 02 Jan 2021 20:35:36 +0100
 
