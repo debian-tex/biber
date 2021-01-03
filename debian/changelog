@@ -2,6 +2,8 @@ biber (2.16-1) UNRELEASED; urgency=medium
 
   * New upstream release: refresh patches.
   * Standards version 4.5.1, no changes needed.
+  * Tighten BD libunicode-collate-perl (>= 1.29).
+  * Add libio-string-perl to BD.
 
   * Lintian:
     - E: malformed-override: Unknown tag versioned-dependency-satisfied-by-perl
