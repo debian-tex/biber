@@ -1,6 +1,6 @@
 Description: add (dummy) whatis entries to POD
 Origin: vendor
-Forwarded: no
+Forwarded: https://github.com/plk/biblatex/issues/1089
 Author: gregor herrmann <gregoa@debian.org>, Hilmar Preusse <hille42@web.de>
 Last-Update: 2021-01-02
 
