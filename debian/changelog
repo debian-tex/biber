@@ -1,4 +1,4 @@
-biber (2.16-1) UNRELEASED; urgency=medium
+biber (2.16-1) unstable; urgency=medium
 
   * New upstream release: refresh patches.
   * Standards version 4.5.1, no changes needed.
@@ -10,11 +10,12 @@ biber (2.16-1) UNRELEASED; urgency=medium
     - W: bad-whatis-entry
     - I: debian-watch-contains-dh_make-template
     - I: typo-in-manual-page
+    - I: patch-not-forwarded-upstream
     - P: silent-on-rules-requiring-root
     - P: duplicate-in-relation-field
     - P: package-uses-old-debhelper-compat-version
 
- -- Hilmar Preusse <hille42@web.de>  Sat, 02 Jan 2021 20:35:36 +0100
+ -- Hilmar Preusse <hille42@web.de>  Sat, 09 Jan 2021 17:57:45 +0100
 
 biber (2.15-1) unstable; urgency=medium
 
