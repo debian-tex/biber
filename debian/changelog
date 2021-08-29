@@ -1,6 +1,15 @@
 biber (2.16-2) UNRELEASED; urgency=medium
 
+  [ Hilmar Preusse ]
   * Move links/install overrides from d/rules into separate files.
+
+  [ Debian Janitor ]
+  * Remove constraints unnecessary since buster:
+    + Build-Depends: Drop versioned constraint on libconfig-autoconf-perl,
+      libextutils-libbuilder-perl, liblingua-translit-perl,
+      libtest-pod-coverage-perl and libtest-pod-perl.
+    + biber: Drop versioned constraint on liblingua-translit-perl and
+      libunicode-collate-perl in Depends.
 
  -- Hilmar Preusse <hille42@web.de>  Tue, 09 Feb 2021 23:40:25 +0100
 
