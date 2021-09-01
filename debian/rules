@@ -10,8 +10,8 @@ export TEXMFVAR
 
 override_dh_auto_build:
 	dh_auto_build
-	# does not work at the moment
-	cd doc && lualatex biber.tex && lualatex biber.tex && lualatex biber.tex
-	
+	# Build biber.pdf using utc timezone
+	lualatex --utc --output-directory=doc doc/biber.tex
+
 override_dh_auto_test:
 	dh_auto_test -- test_files="$(TEST_FILES)"
