@@ -3,6 +3,8 @@ biber (2.16-2) UNRELEASED; urgency=medium
   [ Hilmar Preusse ]
   * Move links/install overrides from d/rules into separate files.
   * Call lualatex w/ option --utc when building doc (see #990999).
+  * Add patch "reproducible builds: timezone-specific timestamps in PDF".
+    (Closes: #990999)
 
   [ Debian Janitor ]
   * Remove constraints unnecessary since buster:
