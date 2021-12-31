@@ -1,4 +1,4 @@
-biber (2.16-2) UNRELEASED; urgency=medium
+biber (2.16-2) unstable; urgency=medium
 
   [ Hilmar Preusse ]
   * Move links/install overrides from d/rules into separate files.
@@ -14,7 +14,7 @@ biber (2.16-2) UNRELEASED; urgency=medium
     + biber: Drop versioned constraint on liblingua-translit-perl and
       libunicode-collate-perl in Depends.
 
- -- Hilmar Preusse <hille42@web.de>  Tue, 09 Feb 2021 23:40:25 +0100
+ -- Hilmar Preusse <hille42@web.de>  Fri, 31 Dec 2021 13:51:21 +0100
 
 biber (2.16-1) unstable; urgency=medium
 
