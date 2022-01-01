@@ -3,7 +3,7 @@ Maintainer: Debian TeX Task Force <debian-tex-maint@lists.debian.org>
 Uploaders: Danai SAE-HAN (韓達耐) <danai@debian.org>,
            Norbert Preining <norbert@preining.info>,
            Hilmar Preusse <hille42@web.de>
-Section: perl
+Section: tex
 Priority: optional
 Build-Depends: debhelper-compat (= 13),
 		perl (>= 5.30),
