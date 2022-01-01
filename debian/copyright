@@ -8,7 +8,9 @@ Copyright: François Charette <firmicus@ankabut.net>, Philip Kime <Philip@kime.o
 License: GPL-1+ or Artistic-2.0
 
 Files: debian/*
-Copyright: 2012, Danai SAE-HAN (韓達耐) <danai@debian.org>
+Copyright: 2012-2013, Danai SAE-HAN (韓達耐) <danai@debian.org>
+           2013-2021, Norbert Preining <preining@debian.org>
+           2015-2022, Hilmar Preuße <hille42@web.de>
 License: GPL-1+
 
 License: Artistic-2.0
@@ -204,4 +206,3 @@ License: GPL-1+
  .
  On Debian systems, the complete text of version 1 of the GNU General
  Public License can be found in `/usr/share/common-licenses/GPL-1'.
-

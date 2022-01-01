@@ -1,3 +1,9 @@
+biber (2.16-3) UNRELEASED; urgency=medium
+
+  * Lintian fixes.
+
+ -- Hilmar Preusse <hille42@web.de>  Sat, 01 Jan 2022 23:37:50 +0100
+
 biber (2.16-2) unstable; urgency=medium
 
   [ Hilmar Preusse ]
