@@ -55,18 +55,11 @@ Build-Depends: debhelper-compat (= 13),
 		libtext-roman-perl,
 		tex-common,
 		lmodern,
-		texlive-base,
 		texlive-fonts-extra,
-		texlive-fonts-recommended,
 		texlive-lang-english,
 		texlive-latex-base,
 		texlive-latex-extra,
-		texlive-latex-recommended,
-		texlive-luatex,
-		texlive-pictures,
-		texlive-xetex,
-		tipa,
-		fonts-cmu
+		texlive-luatex
 Standards-Version: 4.5.1
 Rules-Requires-Root: no
 Vcs-Git: https://github.com/debian-tex/biber.git
