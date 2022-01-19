@@ -1,6 +1,7 @@
 biber (2.16-3) UNRELEASED; urgency=medium
 
   * Lintian fixes & overrides.
+  * Do not execute test suite during build, turn it into autopkg test.
 
  -- Hilmar Preusse <hille42@web.de>  Sat, 01 Jan 2022 23:37:50 +0100
 
