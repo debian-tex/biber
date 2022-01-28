@@ -60,7 +60,7 @@ Build-Depends: debhelper-compat (= 13),
 		texlive-latex-base,
 		texlive-latex-extra,
 		texlive-luatex
-Standards-Version: 4.5.1
+Standards-Version: 4.6.0
 Rules-Requires-Root: no
 Vcs-Git: https://github.com/debian-tex/biber.git
 Vcs-Browser: https://github.com/debian-tex/biber
