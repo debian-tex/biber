@@ -1,11 +1,11 @@
-biber (2.17-1) UNRELEASED; urgency=medium
+biber (2.17-1) unstable; urgency=medium
 
   * New upstream release, disable / update applied patches.
   * Lintian fixes & overrides.
   * Standards Version 4.6.0, no changes needed.
   * Do not execute test suite during build, turn it into autopkg test.
 
- -- Hilmar Preusse <hille42@web.de>  Sat, 01 Jan 2022 23:37:50 +0100
+ -- Hilmar Preusse <hille42@web.de>  Fri, 28 Jan 2022 22:55:58 +0100
 
 biber (2.16-2) unstable; urgency=medium
 

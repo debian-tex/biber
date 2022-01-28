@@ -1,23 +1,18 @@
 Description: add (dummy) whatis entries to POD
 Origin: vendor
-Forwarded: https://github.com/plk/biblatex/issues/1089
+Forwarded: Needs to be re-done.
 Author: gregor herrmann <gregoa@debian.org>, Hilmar Preusse <hille42@web.de>
-Last-Update: 2021-01-02
+Last-Update: 2022-01-28
 
 ---
- lib/Biber/DataModel.pm   |    2 +-
- lib/Biber/Entries.pm     |    2 +-
- lib/Biber/Entry.pm       |    2 +-
- lib/Biber/Entry/Name.pm  |    2 +-
- lib/Biber/Entry/Names.pm |    2 +-
- lib/Biber/Section.pm     |    2 +-
- lib/Biber/Sections.pm    |    2 +-
- 7 files changed, 7 insertions(+), 7 deletions(-)
+ lib/Biber/DataLists.pm         |    2 +-
+ lib/Biber/LangTags.pm          |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
 Index: biber/lib/Biber/DataLists.pm
 ===================================================================
---- biber.orig/lib/Biber/DataLists.pm	2021-01-03 22:09:55.680931247 +0100
-+++ biber/lib/Biber/DataLists.pm	2021-01-03 22:09:55.664932135 +0100
+--- biber.orig/lib/Biber/DataLists.pm	2022-01-28 23:02:53.213767171 +0100
++++ biber/lib/Biber/DataLists.pm	2022-01-28 23:02:53.209767155 +0100
 @@ -7,7 +7,7 @@
  
  =head1 NAME
@@ -29,8 +24,8 @@ Index: biber/lib/Biber/DataLists.pm
  
 Index: biber/lib/Biber/LangTags.pm
 ===================================================================
---- biber.orig/lib/Biber/LangTags.pm	2021-01-03 22:09:55.680931247 +0100
-+++ biber/lib/Biber/LangTags.pm	2021-01-03 22:09:55.672931690 +0100
+--- biber.orig/lib/Biber/LangTags.pm	2022-01-28 23:02:53.213767171 +0100
++++ biber/lib/Biber/LangTags.pm	2022-01-28 23:02:53.209767155 +0100
 @@ -62,7 +62,7 @@
  
  =head1 NAME
