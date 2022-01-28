@@ -47,14 +47,14 @@ our @EXPORT = qw{ check_empty check_exists slurp_switchr slurp_switchw
   glob_data_file locate_data_file makenamesid makenameid stringify_hash
   normalise_string normalise_string_hash normalise_string_underscore
   normalise_string_sort normalise_string_label reduce_array remove_outer
-  has_outer add_outer ucinit strip_nosort strip_noinit is_def is_undef
-  is_def_and_notnull is_def_and_null is_undef_or_null is_notnull is_null
-  normalise_utf8 inits join_name latex_recode_output filter_entry_options
-  biber_error biber_warn ireplace imatch validate_biber_xml
-  process_entry_options escape_label unescape_label biber_decode_utf8 out
-  parse_date_start parse_date_end parse_date_range locale2bcp47
-  bcp472locale rangelen match_indices process_comment map_boolean
-  parse_range parse_range_alt maploopreplace get_transliterator
+  has_outer add_outer ucinit strip_nosort strip_nonamestring strip_noinit
+  is_def is_undef is_def_and_notnull is_def_and_null is_undef_or_null
+  is_notnull is_null normalise_utf8 inits join_name latex_recode_output
+  filter_entry_options biber_error biber_warn ireplace imatch
+  validate_biber_xml process_entry_options escape_label unescape_label
+  biber_decode_utf8 out parse_date_start parse_date_end parse_date_range
+  locale2bcp47 bcp472locale rangelen match_indices process_comment
+  map_boolean parse_range parse_range_alt maploopreplace get_transliterator
   call_transliterator normalise_string_bblxml gen_initials join_name_parts
   split_xsv date_monthday tzformat expand_option_input strip_annotation
   appendstrict_check merge_entry_options process_backendin xdatarefout
@@ -384,17 +384,15 @@ sub check_exists {
 
 =head2 biber_warn
 
-    Wrapper around various warnings bits and pieces
-    Logs a warning, add warning to the list of .bbl warnings and optionally
-    increments warning count in Biber object, if present
+    Wrapper around various warnings bits and pieces.
+    Add warning to the list of .bbl warnings and the master list of warnings
 
 =cut
 
 sub biber_warn {
   my ($warning, $entry) = @_;
-  $logger->warn($warning);
   $entry->add_warning($warning) if $entry;
-  $Biber::MASTER->{warnings}++;
+  push $Biber::MASTER->{warnings}->@*, $warning;
   return;
 }
 
@@ -508,6 +506,46 @@ sub strip_nosort {
   }
 
   # If no nosort to do, just return string
+  return $string unless $restrings;
+
+  foreach my $re ($restrings->@*) {
+    $string =~ s/$re//gxms;
+  }
+  return $string;
+}
+
+=head2 strip_nonamestring
+
+  Removes elements which are not to be used in certain name-related operations like:
+
+  * fullhash generation
+  * uniquename generation
+
+ from a name
+
+=cut
+
+sub strip_nonamestring {
+  no autovivification;
+  my ($string, $fieldname) = @_;
+  return '' unless $string; # Sanitise missing data
+  return $string unless my $nonamestring = Biber::Config->getoption('nonamestring');
+
+  my $restrings;
+
+  foreach my $nnopt ($nonamestring->@*) {
+    # Specific fieldnames override sets
+    if (fc($nnopt->{name}) eq fc($fieldname)) {
+      push $restrings->@*, $nnopt->{value};
+    }
+        elsif (my $set = $DATAFIELD_SETS{lc($nnopt->{name})} ) {
+      if (first {fc($_) eq fc($fieldname)} $set->@*) {
+        push $restrings->@*, $nnopt->{value};
+      }
+    }
+  }
+
+  # If no nonamestring to do, just return string
   return $string unless $restrings;
 
   foreach my $re ($restrings->@*) {
@@ -767,7 +805,7 @@ sub ucinit {
 
     defined($thing->method($arg)->method)
 
-    wheras:
+    whereas:
 
     is_undef($thing->method($arg)->method)
 
@@ -1894,7 +1932,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2020 Philip Kime, all rights reserved.
+Copyright 2012-2022 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

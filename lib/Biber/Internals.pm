@@ -45,7 +45,7 @@ sub _getnamehash {
   my $bee = $be->get_field('entrytype');
 
   my $hashkey = '';
-  my $count = $names->count_names;
+  my $count = $names->count;
   my $visible = $bib ? $dlist->get_visible_bib($names->get_id) : $dlist->get_visible_cite($names->get_id);
   my $dm = Biber::Config->get_dm;
   my @nps = $dm->get_constant_value('nameparts');
@@ -86,7 +86,7 @@ sub _getfullhash {
   foreach my $n ($names->names->@*) {
     foreach my $nt (@nps) {# list type so returns list
       if (my $np = $n->get_namepart($nt)) {
-        $hashkey .= $np;
+        $hashkey .= strip_nonamestring($np, $names->get_type);
       }
     }
   }
@@ -110,7 +110,7 @@ sub _getnamehash_u {
   my $bee = $be->get_field('entrytype');
 
   my $hashkey = '';
-  my $count = $names->count_names;
+  my $count = $names->count;
   my $nlid = $names->get_id;
   my $visible = $dlist->get_visible_cite($nlid);
   my $dm = Biber::Config->get_dm;
@@ -284,7 +284,7 @@ sub _labelpart {
       }
       if ( first {$f eq $_} $dm->get_fields_of_type('list', 'name')->@*) {
         my $name = $be->get_field($f) || next; # just in case there is no labelname etc.
-        my $total_names = $name->count_names;
+        my $total_names = $name->count;
         my $visible_names;
         if ($total_names > $maxan) {
           $visible_names = $minan;
@@ -446,7 +446,7 @@ sub _label_name {
       $useprefix = $names->get_useprefix;
     }
 
-    my $numnames  = $names->count_names;
+    my $numnames  = $names->count;
     my $visibility = $dlist->get_visible_alpha($names->get_id);
 
     # Use name range override, if any
@@ -1009,6 +1009,7 @@ my %internal_dispatch_sorting = (
                                  'editorbtype'     =>  [\&_sort_editort,       ['editorbtype']],
                                  'editorctype'     =>  [\&_sort_editort,       ['editorctype']],
                                  'citeorder'       =>  [\&_sort_citeorder,     []],
+                                 'citecount'       =>  [\&_sort_citecount,     []],
                                  'labelalpha'      =>  [\&_sort_labelalpha,    []],
                                  'labelname'       =>  [\&_sort_labelname,     []],
                                  'labeltitle'      =>  [\&_sort_labeltitle,    []],
@@ -1222,6 +1223,11 @@ sub _sort_citeorder {
   }
 }
 
+sub _sort_citecount {
+  my ($self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) = @_;
+  return $section->get_citecount($citekey) // '';
+}
+
 sub _sort_integer {
   my ($self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) = @_;
   my $dmtype = $args->[0]; # get int field type
@@ -1235,7 +1241,7 @@ sub _sort_integer {
     }
 
     # Use Unicode::UCD::num() to map Unicode numbers to integers if possible
-    $field = num($field) //$field;
+    $field = num($field) // $field;
 
     return _process_sort_attributes($field, $sortelementattributes);
   }
@@ -1476,7 +1482,7 @@ sub _namestring {
   my $bee = $be->get_field('entrytype');
   my $names = $be->get_field($field);
   my $str = '';
-  my $count = $names->count_names;
+  my $count = $names->count;
   # get visibility for sorting
   my $visible = $dlist->get_visible_sort($names->get_id);
   my $useprefix = Biber::Config->getblxoption($secnum, 'useprefix', $bee, $citekey);
@@ -1671,7 +1677,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2020 Philip Kime, all rights reserved.
+Copyright 2012-2022 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

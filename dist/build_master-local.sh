@@ -35,7 +35,6 @@ function vmoff {
 
 BASE="/usr/local/data/code/biblatex-biber"
 DOCDIR=$BASE/doc
-DRIVERDIR=$BASE/lib/Biber/Input/
 BINDIR=$BASE/dist
 XSLDIR=$BASE/data
 DIR=${1:-"/tmp/b"}
@@ -94,11 +93,12 @@ if [ ! -e $DIR/biber-darwin_x86_64.tar.gz ]; then
     # Special - copy biber back to local OSX to codesign and then back again
     # codesign in Xcode for osx10.12 does not have the runtime hardening options
     # --------------------------------------------------------------------------
-    scp $DIR/biber-darwin_x86_64 philkime@grass:/tmp/
-    ssh philkime@grass "cd /tmp;security unlock-keychain -p \$(</Users/philkime/.pw) login.keychain;codesign --sign 45MA3H23TG --force --timestamp --options runtime biber-darwin_x86_64"
+    scp $DIR/biber-darwin_x86_64 philkime@tree:/tmp/
+    ssh philkime@tree
+    "cd /tmp;security unlock-keychain -p \$(</Users/philkime/.pw) login.keychain;codesign --verbose  --sign 45MA3H23TG --force --timestamp --options runtime biber-darwin_x86_64"
     \rm $DIR/biber-darwin_x86_64
-    scp philkime@grass:/tmp/biber-darwin_x86_64 $DIR/
-    ssh philkime@grass "\\rm -f /tmp/biber-darwin_x86_64"
+    scp philkime@tree:/tmp/biber-darwin_x86_64 $DIR/
+    ssh philkime@tree "\\rm -f /tmp/biber-darwin_x86_64"
     # --------------------------------------------------------------------------
   fi
   mv biber-darwin_x86_64 biber

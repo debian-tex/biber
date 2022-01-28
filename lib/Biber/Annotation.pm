@@ -18,9 +18,9 @@ my $ANN = {};
 
 =encoding utf-8
 
-=head1 ANNOTATION
+=head1 NAME
 
-Biber::Entry::Annotation
+Biber::Entry::Annotation - Biber::Annotation objects
 
 =head2 set_annotation
 
@@ -226,7 +226,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2020 Philip Kime, all rights reserved.
+Copyright 2012-2022 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

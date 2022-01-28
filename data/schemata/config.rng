@@ -259,6 +259,19 @@
           </element>
         </optional>
         <optional>
+          <!-- nonamestring specification -->
+          <element name="nonamestring">
+            <oneOrMore>
+              <element name="option">
+                <interleave>
+                  <attribute name="name"/>
+                  <attribute name="value"/>
+                </interleave>
+              </element>
+            </oneOrMore>
+          </element>
+        </optional>
+        <optional>
           <element name="nostdmacros">
             <choice>
               <value>0</value>
@@ -1221,6 +1234,20 @@
                 </attribute>
               </optional>
               <optional>
+                <attribute name="map_matches">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+              </optional>
+              <optional>
+                <attribute name="map_matchesi">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+              </optional>
+              <optional>
                 <attribute name="map_notmatch">
                   <data type="string">
                     <param name="minLength">1</param>
@@ -1651,7 +1678,7 @@
     </choice>
   </define>
 </grammar>
-<!-- Copyright 2012-2020 Philip Kime, all rights reserved. -->
+<!-- Copyright 2012-2022 Philip Kime, all rights reserved. -->
 <!--
   This code is free software.  You can redistribute it and/or
   modify it under the terms of the Artistic License 2.0.

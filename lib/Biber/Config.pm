@@ -22,7 +22,7 @@ use Unicode::Normalize;
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
-our $VERSION = '2.16';
+our $VERSION = '2.17';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -69,9 +69,6 @@ $CONFIG->{state}{xdata} = [];
 # Used for generating inheritance trees
 $CONFIG->{state}{graph} = {};
 
-$CONFIG->{state}{seenkeys} = {};
-$CONFIG->{globalstate}{seenkeys} = {};
-
 # Track the order of keys as cited. Keys cited in the same \cite*{} get the same order
 # Used for sorting schemes which use \citeorder
 $CONFIG->{state}{keyorder} = {};
@@ -93,7 +90,6 @@ sub _init {
   $CONFIG->{state}{control_file_location} = '';
   $CONFIG->{state}{crossrefkeys} = {};
   $CONFIG->{state}{xrefkeys} = {};
-  $CONFIG->{state}{seenkeys} = {};
   $CONFIG->{state}{datafiles} = [];
   $CONFIG->{state}{crossref} = [];
   $CONFIG->{state}{xdata} = [];
@@ -604,11 +600,11 @@ sub _config_file_set {
 =head2 config_file
 
 Returns the full path of the B<Biber> configuration file.
-If returns the first file found among:
+It returns the first file found among:
 
 =over 4
 
-=item * C<biber.conf> in the current directory
+=item * C<biber.conf> or C<.biber.conf> in the current directory
 
 =item * C<$HOME/.biber.conf>
 
@@ -633,6 +629,9 @@ sub config_file {
 
   if ( -f $BIBER_CONF_NAME ) {
     $biberconf = abs_path($BIBER_CONF_NAME);
+  }
+  elsif ( -f ".$BIBER_CONF_NAME" ) {
+    $biberconf = abs_path(".$BIBER_CONF_NAME");
   }
   elsif ( -f File::Spec->catfile($ENV{HOME}, ".$BIBER_CONF_NAME" ) ) {
     $biberconf = File::Spec->catfile($ENV{HOME}, ".$BIBER_CONF_NAME" );
@@ -1165,42 +1164,6 @@ sub reset_keyorder {
 }
 
 
-=head1 seenkey
-
-=head2 get_seenkey
-
-    Get the count of a key
-
-=cut
-
-sub get_seenkey {
-  shift; # class method so don't care about class name
-  my $key = shift;
-  my $section = shift; # If passed, return count for just this section
-  if (defined($section)) {
-    return $CONFIG->{state}{seenkeys}{$section}{$key};
-  }
-  else {
-    return $CONFIG->{globalstate}{seenkeys}{$key};
-  }
-}
-
-
-=head2 incr_seenkey
-
-    Increment the seen count of a key
-
-=cut
-
-sub incr_seenkey {
-  shift; # class method so don't care about class name
-  my $key = shift;
-  my $section = shift;
-  $CONFIG->{state}{seenkeys}{$section}{$key}++;
-  $CONFIG->{globalstate}{seenkeys}{$key}++;
-  return;
-}
-
 =head1 crossrefkeys
 
 =head2 get_crossrefkeys
@@ -1336,7 +1299,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2020 Philip Kime, all rights reserved.
+Copyright 2012-2022 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

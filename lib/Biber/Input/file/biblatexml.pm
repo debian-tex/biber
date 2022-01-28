@@ -620,6 +620,37 @@ sub create_entry {
               $negmatch = 1;
             }
 
+            my $caseinsensitive = 0;
+            my $mi;
+            # Case insensitive matches are a normal match with a special flag
+            if ($mi = $step->{map_matchi} or $mi = $step->{map_notmatchi}) {
+              $step->{map_match} = $mi;
+              $caseinsensitive = 1;
+            }
+
+            my $caseinsensitives = 0;
+            my $mis;
+            # Case insensitive matches are normal matches with a special flag
+            if ($mis = $step->{map_matchesi}) {
+              $step->{map_matches} = $mis;
+              $caseinsensitives = 1;
+            }
+
+            if (my $ms = $step->{map_matches}) {
+              my @ms = split(/\s*,\s*/,$ms);
+              my @rs = split(/\s*,\s*/,$step->{map_replace});
+              unless (scalar(@ms) == scalar(@rs)) {
+                $logger->debug("Source mapping (type=$level, key=$etargetkey): Different number of fixed matches vs replaces, skipping ...");
+                next;
+              }
+              for (my $i = 0; $i <= $#ms; $i++) {
+                if (($caseinsensitives and fc($last_fieldval) eq fc($ms[$i]))
+                    or ($last_fieldval eq $ms[$i])) {
+                  $etarget->set(encode('UTF-8', NFC($xp_fieldsource_s)), $rs[$i]);
+                }
+              }
+            }
+
             # map fields to targets
             if (my $m = maploopreplace($step->{map_match}, $maploop)) {
               if (defined($step->{map_replace})) { # replace can be null
@@ -637,7 +668,7 @@ sub create_entry {
                   $logger->debug("Source mapping (type=$level, key=$etargetkey): Doing match/replace '$m' -> '$r' on field xpath '$xp_fieldsource_s'");
                 }
 
-                unless (_changenode($etarget, $xp_fieldsource_s, ireplace($last_fieldval, $m, $r)), \$cnerror) {
+                unless (_changenode($etarget, $xp_fieldsource_s, ireplace($last_fieldval, $m, $r, $caseinsensitive)), \$cnerror) {
                   biber_warn("Source mapping (type=$level, key=$etargetkey): $cnerror");
                 }
               }
@@ -1037,9 +1068,9 @@ sub _datetime {
         $bibentry->set_datafield($datetype . 'day', $sdate->day)
           unless $CONFIG_DATE_PARSERS{start}->missing('day');
 
-        # Save start season date information
-        if (my $season = $CONFIG_DATE_PARSERS{start}->season) {
-          $bibentry->set_field($datetype . 'season', $season);
+        # Save start yeardivision date information
+        if (my $yeardivision = $CONFIG_DATE_PARSERS{start}->yeardivision) {
+          $bibentry->set_field($datetype . 'yeardivision', $yeardivision);
         }
 
         # must be an hour if there is a time but could be 00 so use defined()
@@ -1082,9 +1113,9 @@ sub _datetime {
           $bibentry->set_datafield($datetype . 'endday', $edate->day)
             unless $CONFIG_DATE_PARSERS{end}->missing('day');
 
-          # Save end season date information
-          if (my $season = $CONFIG_DATE_PARSERS{end}->season) {
-            $bibentry->set_field($datetype . 'endseason', $season);
+          # Save end yeardivision date information
+          if (my $yeardivision = $CONFIG_DATE_PARSERS{end}->yeardivision) {
+            $bibentry->set_field($datetype . 'endyeardivision', $yeardivision);
           }
 
           # must be an hour if there is a time but could be 00 so use defined()
@@ -1138,9 +1169,9 @@ sub _datetime {
         $bibentry->set_datafield($datetype . 'day', $sdate->day)
           unless $CONFIG_DATE_PARSERS{start}->missing('day');
 
-        # Save start season date information
-        if (my $season = $CONFIG_DATE_PARSERS{start}->season) {
-          $bibentry->set_field($datetype . 'season', $season);
+        # Save start yeardivision date information
+        if (my $yeardivision = $CONFIG_DATE_PARSERS{start}->yeardivision) {
+          $bibentry->set_field($datetype . 'yeardivision', $yeardivision);
         }
 
         # must be an hour if there is a time but could be 00 so use defined()
@@ -1171,7 +1202,7 @@ sub _name {
   my $xdmi = Biber::Config->getoption('xdatamarker');
   my $xnsi = Biber::Config->getoption('xnamesep');
 
-  my $names = new Biber::Entry::Names;
+  my $names = Biber::Entry::Names->new('type' => $f);
 
   # per-namelist options
   foreach my $nlo (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
@@ -1545,7 +1576,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2020 Philip Kime, all rights reserved.
+Copyright 2012-2022 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

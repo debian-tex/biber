@@ -382,10 +382,27 @@ sub set_output_entry {
         $sf = 'unknown';
       }
 
-      my %seasons = ( 'spring' => 21,
-                      'summer' => 22,
-                      'autumn' => 23,
-                      'winter' => 24 );
+      my %yeardivisions = ( 'spring'  => 21,
+                            'summer'  => 22,
+                            'autumn'  => 23,
+                            'winter'  => 24,
+                            'springN' => 25,
+                            'summerN' => 26,
+                            'autumnN' => 27,
+                            'winterN' => 28,
+                            'springS' => 29,
+                            'summerS' => 30,
+                            'autumnS' => 31,
+                            'WinterS' => 32,
+                            'Q1'      => 33,
+                            'Q2'      => 34,
+                            'Q3'      => 35,
+                            'Q4'      => 36,
+                            'QD1'     => 37,
+                            'QD2'     => 38,
+                            'QD3'     => 39,
+                            'S1'      => 40,
+                            'S2'      => 41 );
 
       # Did the date fields come from interpreting an EDTF 5.2.2 unspecified date?
       # If so, do the reverse of Biber::Utils::parse_date_unspecified()
@@ -427,11 +444,11 @@ sub set_output_entry {
       }
 
       # Seasons derived from EDTF dates
-      if (my $s = $be->get_field("${d}season")) {
-        $overridem = $seasons{$s};
+      if (my $s = $be->get_field("${d}yeardivision")) {
+        $overridem = $yeardivisions{$s};
       }
-      if (my $s = $be->get_field("${d}endseason")) {
-        $overrideem = $seasons{$s};
+      if (my $s = $be->get_field("${d}endyeardivision")) {
+        $overrideem = $yeardivisions{$s};
       }
       $sf = $overridey || $sf;
 
@@ -632,7 +649,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2020 Philip Kime, all rights reserved.
+Copyright 2012-2022 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
