@@ -1,5 +1,6 @@
-biber (2.16-3) UNRELEASED; urgency=medium
+biber (2.17-1) UNRELEASED; urgency=medium
 
+  * New upstream release, disable / update applied patches.
   * Lintian fixes & overrides.
   * Do not execute test suite during build, turn it into autopkg test.
 
