@@ -4,7 +4,8 @@ Upstream-Contact: Philip Kime <Philip@kime.org.uk>
 Source: http://biblatex-biber.sourceforge.net/
 
 Files: *
-Copyright: François Charette <firmicus@ankabut.net>, Philip Kime <Philip@kime.org.uk>
+Copyright: 2009-2020, François Charette <firmicus@ankabut.net>
+           2009-2020, Philip Kime <Philip@kime.org.uk>
 License: GPL-1+ or Artistic-2.0
 
 Files: debian/*
