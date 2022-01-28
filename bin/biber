@@ -285,7 +285,7 @@ if (exists($opts->{isbn10}) and exists($opts->{isbn13})) {
 }
 
 # Check the tool_* options
-if (exists($opts->{output_indent}) and $opts->{output_indent} !~ /^\d+$/) {
+if (exists($opts->{output_indent}) and $opts->{output_indent} !~ /^\d+t?$/) {
   say STDERR "Biber: Invalid non-numeric argument for 'output_indent' option!";
   exit EXIT_ERROR;
 }
@@ -507,12 +507,27 @@ See C<perldoc Unicode::Collate> for details.
 =item B<--configfile|-g [file]>
 
 Use F<file> as the configuration file for C<biber> instead of looking in
-the default locations (see C<biber> PDF manual). In tool mode, (B<--tool>)
-the F<biber-tool.conf> installed with Biber is always used to set default
-options if a user-defined config file is not specified. Use the
-B<--tool-config> option to view the location of the default tool mode
-config file--copy this file and edit it to your requirements for use with
-this option in tool mode.
+the default locations which are, in order:
+
+* C<biber.conf> or C<.biber.conf> in the current directory
+
+* C<$HOME/.biber.conf>
+
+* C<$ENV{XDG_CONFIG_HOME}/biber/biber.conf>
+
+* C<$HOME/.config/biber/biber.conf>
+
+* C<$HOME/Library/biber/biber.conf> (Mac OSX only)
+
+* C<$ENV{APPDATA}/biber.conf> (Windows only)
+
+* The output of C<kpsewhich biber.conf> (if available on the system).
+
+In tool mode, (B<--tool>) the F<biber-tool.conf> installed with Biber is
+always used to set default options if a user-defined config file is not
+specified. Use the B<--tool-config> option to view the location of the
+default tool mode config file which may be useful as a source for writing
+your own.
 
 =item B<--convert-control>
 
@@ -650,7 +665,7 @@ BibTeX parsing C library which can complain about parsing errors which can be ig
 
 By default, glob (expand according to pattern) any data source filenames.
 Allows data sources to be specified like B<*.bib> to load all B<.bib> files
-in a directory. Can be overriden on a per-dataource basis with the B<glob>
+in a directory. Can be overridden on a per-dataource basis with the B<glob>
 option to B<\addbibresource> in biblatex.
 
 =item B<--nolog>
@@ -773,10 +788,12 @@ with the output file name (unless the B<--no-bblxml-schema> option is specified)
 may validate the F<bblxml> using the schema with the B<--validate-bblxml> option.
 The legacy option B<--outformat> is supported as an alias.
 
-=item B<--output-indent=[num]>
+=item B<--output-indent=[num][t]>
 
-Indentation for body of entries in output. Effect depends on the output format. Defaults to 2.
-The legacy option B<--tool-indent> is supported as an alias.
+Indentation for body of entries in output. Effect depends on the output
+format. Defaults to 2. The C<num> can be followed by C<'t'> to specify tabs
+instead of spaces. The legacy option B<--tool-indent> is supported as an
+alias.
 
 =item B<--output-legacy-dates>
 
@@ -1028,7 +1045,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2020 Philip Kime, all rights reserved.
+Copyright 2012-2022 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

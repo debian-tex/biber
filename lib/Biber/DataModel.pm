@@ -19,7 +19,7 @@ use Unicode::UCD qw(num);
 
 =head1 NAME
 
-Biber::DataModel
+Biber::DataModel - Biber::DataModel objects
 
 
 =cut
@@ -332,7 +332,7 @@ sub new {
   # Mapping of sorting fields to Sort::Key sort data types which are not 'str'
   $self->{sortdataschema} = sub {
     my $f = shift;
-    if (first {$f eq $_} ('citeorder', $self->{helpers}{integers}->@*)) {
+    if (first {$f eq $_} ('citeorder', 'citecount', $self->{helpers}{integers}->@*)) {
       return 'int';
     }
     else {
@@ -2021,7 +2021,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2020 Philip Kime, all rights reserved.
+Copyright 2012-2022 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

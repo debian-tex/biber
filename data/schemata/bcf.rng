@@ -638,6 +638,22 @@
           </oneOrMore>
         </element>
       </optional>
+      <optional>
+        <!-- nonamestring specification -->
+        <element name="bcf:nonamestrings">
+          <oneOrMore>
+            <element name="bcf:nonamestring">
+              <attribute name="field">
+                <data type="string"/>
+              </attribute>
+              <attribute name="value">
+                <data type="string"/>
+              </attribute>
+              <empty/>
+            </element>
+          </oneOrMore>
+        </element>
+      </optional>
       <zeroOrMore>
         <!-- Transliteration specification(s) -->
         <ref name="translit"/>
@@ -1284,6 +1300,16 @@
               </data>
             </group>
           </choice>
+        </element>
+      </zeroOrMore>
+      <zeroOrMore>
+        <element name="bcf:citekeycount">
+          <attribute name="count">
+            <data type="integer"/>
+          </attribute>
+          <data type="string">
+            <param name="minLength">1</param>
+          </data>
         </element>
       </zeroOrMore>
     </element>
@@ -2166,6 +2192,20 @@
                 </attribute>
               </optional>
               <optional>
+                <attribute name="map_matches">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+              </optional>
+              <optional>
+                <attribute name="map_matchesi">
+                  <data type="string">
+                    <param name="minLength">1</param>
+                  </data>
+                </attribute>
+              </optional>
+              <optional>
                 <attribute name="map_matchi">
                   <data type="string">
                     <param name="minLength">1</param>
@@ -2245,7 +2285,7 @@
 </grammar>
 <!--
   Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-  Copyright 2012-2020 Philip Kime, all rights reserved.
+  Copyright 2012-2022 Philip Kime, all rights reserved.
 -->
 <!--
   This code is free software.  You can redistribute it and/or
