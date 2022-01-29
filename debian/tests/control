@@ -46,3 +46,4 @@ Depends: debhelper,
 	libtest-pod-coverage-perl,
 	libtest-differences-perl,
 	libtext-roman-perl
+Restrictions: build-needed
