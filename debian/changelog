@@ -1,7 +1,8 @@
 biber (2.17-2) unstable; urgency=medium
 
   * Add "Restrictions: build-needed" for test suite.
-  * Breaks to older texlive-bibtex-extra.
+  * Breaks to older texlive-bibtex-extra, make sure new biblatex
+    is installed (Closes: #1004671).
 
  -- Hilmar Preusse <hille42@web.de>  Fri, 04 Feb 2022 22:56:25 +0100
 
