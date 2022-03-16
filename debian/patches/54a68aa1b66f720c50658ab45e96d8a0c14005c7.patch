@@ -1,0 +1,35 @@
+From 54a68aa1b66f720c50658ab45e96d8a0c14005c7 Mon Sep 17 00:00:00 2001
+From: plk <Philip@kime.org.uk>
+Date: Wed, 16 Mar 2022 18:52:00 +0100
+Subject: [PATCH] Fix for #403
+
+---
+ lib/Biber/Config.pm | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/lib/Biber/Config.pm b/lib/Biber/Config.pm
+index 67edc4b21..fc1975808 100644
+--- a/lib/Biber/Config.pm
++++ b/lib/Biber/Config.pm
+@@ -223,9 +223,7 @@ sub _initopts {
+ 
+   # cache meta markers since they are referenced in the oft-called _get_handler
+   $CONFIG_META_MARKERS{annotation} = quotemeta(Biber::Config->getoption('annotation_marker'));
+-
+   $CONFIG_META_MARKERS{namedannotation} = quotemeta(Biber::Config->getoption('named_annotation_marker'));
+-  $CONFIG_META_MARKERS{xname} = quotemeta(Biber::Config->getoption('xname_marker'));
+ 
+   # Setting up Log::Log4perl
+   my $LOGLEVEL;
+@@ -965,6 +963,11 @@ sub getblxoption {
+   no autovivification;
+   shift; # class method so don't care about class name
+   my ($secnum, $opt, $entrytype, $citekey) = @_;
++  # Set impossible defaults
++  $secnum //= "\x{10FFFD}";
++  $opt //= "\x{10FFFD}";
++  $entrytype //= "\x{10FFFD}";
++  $citekey //= "\x{10FFFD}";
+   if ( defined($citekey) and
+        $CONFIG_OPTSCOPE_BIBLATEX{$opt}{ENTRY} and
+        defined $CONFIG->{options}{biblatex}{ENTRY}{$citekey}{$secnum}{$opt}) {
