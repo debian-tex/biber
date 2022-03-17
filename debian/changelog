@@ -1,7 +1,7 @@
 biber (2.17-3) UNRELEASED; urgency=medium
 
-  * Copy commit from upstream 54a68aa1b66f720c50658ab45e96d8a0c14005c7
-    (Closes: #1006626)
+  * Copy commit 54a68aa and partial ccd7a44 from upstream. This
+    solves most of #1006626.
 
  -- Hilmar Preusse <hille42@web.de>  Wed, 16 Mar 2022 19:06:11 +0100
 
