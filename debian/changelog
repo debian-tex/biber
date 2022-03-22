@@ -1,9 +1,11 @@
-biber (2.17-3) UNRELEASED; urgency=medium
+biber (2.17-3) unstable; urgency=medium
 
-  * Copy commit 54a68aa and partial ccd7a44 from upstream. This
-    solves most of #1006626.
+  * Copy commit 54a68aa and (partial) ccd7a44 from upstream. This
+    solves many warnings during run time (Closes: #1006626).
+  * Add the new package libencode-eucjpascii-perl to BD & Dep
+    to get rid of a build warning.
 
- -- Hilmar Preusse <hille42@web.de>  Wed, 16 Mar 2022 19:06:11 +0100
+ -- Hilmar Preusse <hille42@web.de>  Tue, 22 Mar 2022 23:26:22 +0100
 
 biber (2.17-2) unstable; urgency=medium
 
