@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="../../data/bcf.xsl"?>
 <?xml-model href="../../data/schemata/bcf.rnc" type="application/relax-ng-compact-syntax"?>
-<bcf:controlfile version="3.8" bltxversion="3.17" xmlns:bcf="https://sourceforge.net/projects/biblatex">
+<bcf:controlfile version="3.9" bltxversion="3.18" xmlns:bcf="https://sourceforge.net/projects/biblatex">
   <!-- OPTIONS -->
   <bcf:options component="biber" type="global">
     <bcf:option type="singlevalued">
@@ -125,6 +125,10 @@
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>nosortothers</bcf:key>
+      <bcf:value>0</bcf:value>
+    </bcf:option>
+    <bcf:option type="singlevalued">
+      <bcf:key>pluralothers</bcf:key>
       <bcf:value>0</bcf:value>
     </bcf:option>
     <bcf:option type="singlevalued">
@@ -286,6 +290,7 @@
     <bcf:option datatype="boolean">noroman</bcf:option>
     <bcf:option datatype="boolean">nohashothers</bcf:option>
     <bcf:option datatype="boolean">nosortothers</bcf:option>
+    <bcf:option datatype="boolean">pluralothers</bcf:option>
     <bcf:option datatype="boolean">singletitle</bcf:option>
     <bcf:option datatype="boolean">uniquebaretitle</bcf:option>
     <bcf:option datatype="boolean">uniqueprimaryauthor</bcf:option>
@@ -707,7 +712,7 @@
     <bcf:namepart order="3">given</bcf:namepart>
   </bcf:uniquenametemplate>
   <!-- SORTING NAME KEY TEMPLATE -->
-  <bcf:sortingnamekeytemplate name="global">
+  <bcf:sortingnamekeytemplate name="global" visibility="sort">
     <bcf:keypart order="1">
       <bcf:part type="namepart" order="1" use="1">prefix</bcf:part>
       <bcf:part type="namepart" order="2">family</bcf:part>
@@ -1232,16 +1237,16 @@
     <bcf:datasource type="file" datatype="bibtex">dm-constraints.bib</bcf:datasource>
   </bcf:bibdata>
   <bcf:section number="0">
-    <bcf:citekey order="1">c1</bcf:citekey>
-    <bcf:citekey order="2">c2</bcf:citekey>
-    <bcf:citekey order="3">c3</bcf:citekey>
-    <bcf:citekey order="4">c4</bcf:citekey>
-    <bcf:citekey order="5">c5</bcf:citekey>
-    <bcf:citekey order="6">c6</bcf:citekey>
-    <bcf:citekey order="7">c7</bcf:citekey>
-    <bcf:citekey order="8">c8</bcf:citekey>
-    <bcf:citekey order="9">c9</bcf:citekey>
-    <bcf:citekey order="10">c10</bcf:citekey>
+    <bcf:citekey order="1" intorder="1">c1</bcf:citekey>
+    <bcf:citekey order="2" intorder="1">c2</bcf:citekey>
+    <bcf:citekey order="3" intorder="1">c3</bcf:citekey>
+    <bcf:citekey order="4" intorder="1">c4</bcf:citekey>
+    <bcf:citekey order="5" intorder="1">c5</bcf:citekey>
+    <bcf:citekey order="6" intorder="1">c6</bcf:citekey>
+    <bcf:citekey order="7" intorder="1">c7</bcf:citekey>
+    <bcf:citekey order="8" intorder="1">c8</bcf:citekey>
+    <bcf:citekey order="9" intorder="1">c9</bcf:citekey>
+    <bcf:citekey order="10" intorder="1">c10</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nty">

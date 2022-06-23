@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="../../data/bcf.xsl"?>
 <?xml-model href="../../data/schemata/bcf.rnc" type="application/relax-ng-compact-syntax"?>
-<bcf:controlfile version="3.8" bltxversion="3.17" xmlns:bcf="https://sourceforge.net/projects/biblatex">
+<bcf:controlfile version="3.9" bltxversion="3.18" xmlns:bcf="https://sourceforge.net/projects/biblatex">
   <!-- OPTIONS -->
   <bcf:options component="biber" type="global">
     <bcf:option type="singlevalued">
@@ -129,6 +129,10 @@
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>nosortothers</bcf:key>
+      <bcf:value>0</bcf:value>
+    </bcf:option>
+    <bcf:option type="singlevalued">
+      <bcf:key>pluralothers</bcf:key>
       <bcf:value>0</bcf:value>
     </bcf:option>
     <bcf:option type="singlevalued">
@@ -302,6 +306,7 @@
     <bcf:option datatype="boolean">noroman</bcf:option>
     <bcf:option datatype="boolean">nohashothers</bcf:option>
     <bcf:option datatype="boolean">nosortothers</bcf:option>
+    <bcf:option datatype="boolean">pluralothers</bcf:option>
     <bcf:option datatype="boolean">singletitle</bcf:option>
     <bcf:option datatype="boolean">uniquebaretitle</bcf:option>
     <bcf:option datatype="boolean">uniqueprimaryauthor</bcf:option>
@@ -723,7 +728,7 @@
     <bcf:namepart order="3">given</bcf:namepart>
   </bcf:uniquenametemplate>
   <!-- SORTING NAME KEY TEMPLATE -->
-  <bcf:sortingnamekeytemplate name="global">
+  <bcf:sortingnamekeytemplate name="global" visibility="sort">
     <bcf:keypart order="1">
       <bcf:part type="namepart" order="1" use="1">prefix</bcf:part>
       <bcf:part type="namepart" order="2">family</bcf:part>
@@ -2024,17 +2029,17 @@
     <bcf:datasource type="file" datatype="bibtex">sections2.bib</bcf:datasource>
   </bcf:bibdata>
   <bcf:section number="0">
-    <bcf:citekey order="1">sect1</bcf:citekey>
-    <bcf:citekey order="2">sect2</bcf:citekey>
-    <bcf:citekey order="3">sect3</bcf:citekey>
+    <bcf:citekey order="1" intorder="1">sect1</bcf:citekey>
+    <bcf:citekey order="2" intorder="1">sect2</bcf:citekey>
+    <bcf:citekey order="3" intorder="1">sect3</bcf:citekey>
   </bcf:section>
   <!-- SECTION 1 -->
   <bcf:bibdata section="1">
     <bcf:datasource type="file" datatype="bibtex">sections3.bib</bcf:datasource>
   </bcf:bibdata>
   <bcf:section number="1">
-    <bcf:citekey order="1">sect4</bcf:citekey>
-    <bcf:citekey order="2">sect5</bcf:citekey>
+    <bcf:citekey order="1" intorder="1">sect4</bcf:citekey>
+    <bcf:citekey order="2" intorder="1">sect5</bcf:citekey>
   </bcf:section>
   <!-- SECTION 2 -->
   <bcf:bibdata section="2">
@@ -2042,22 +2047,22 @@
     <bcf:datasource type="file" datatype="bibtex">sections1.bib</bcf:datasource>
   </bcf:bibdata>
   <bcf:section number="2">
-    <bcf:citekey order="1">sect1</bcf:citekey>
-    <bcf:citekey order="2">sect6</bcf:citekey>
-    <bcf:citekey order="3">sect7</bcf:citekey>
-    <bcf:citekey order="4">sect3</bcf:citekey> <!-- Bad key for section 2, should be dropped in tests -->
-    <bcf:citekey order="5">sectx</bcf:citekey> <!-- Bad key for section 2, should be dropped in tests -->
+    <bcf:citekey order="1" intorder="1">sect1</bcf:citekey>
+    <bcf:citekey order="2" intorder="1">sect6</bcf:citekey>
+    <bcf:citekey order="3" intorder="1">sect7</bcf:citekey>
+    <bcf:citekey order="4" intorder="1">sect3</bcf:citekey> <!-- Bad key for section 2, should be dropped in tests -->
+    <bcf:citekey order="5" intorder="1">sectx</bcf:citekey> <!-- Bad key for section 2, should be dropped in tests -->
   </bcf:section>
   <!-- SECTION 3 -->
   <bcf:bibdata section="3">
     <bcf:datasource type="file" datatype="bibtex">sections1.bib</bcf:datasource>
   </bcf:bibdata>
   <bcf:section number="3">
-    <bcf:citekey order="0">*</bcf:citekey>
+    <bcf:citekey order="0" intorder="1">*</bcf:citekey>
   </bcf:section>
   <!-- SECTION 0 -->
   <bcf:section number="0">
-    <bcf:citekey order="4">sect8</bcf:citekey>
+    <bcf:citekey order="4" intorder="1">sect8</bcf:citekey>
   </bcf:section>
   <!-- SORTING -->
   <bcf:sortingtemplate name="nty">

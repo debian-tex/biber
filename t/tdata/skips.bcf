@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="../../data/bcf.xsl"?>
 <?xml-model href="../../data/schemata/bcf.rnc" type="application/relax-ng-compact-syntax"?>
-<bcf:controlfile version="3.8" bltxversion="3.17" xmlns:bcf="https://sourceforge.net/projects/biblatex">
+<bcf:controlfile version="3.9" bltxversion="3.18" xmlns:bcf="https://sourceforge.net/projects/biblatex">
   <!-- OPTIONS -->
   <bcf:options component="biber" type="global">
     <bcf:option type="singlevalued">
@@ -130,6 +130,10 @@
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>nosortothers</bcf:key>
+      <bcf:value>0</bcf:value>
+    </bcf:option>
+    <bcf:option type="singlevalued">
+      <bcf:key>pluralothers</bcf:key>
       <bcf:value>0</bcf:value>
     </bcf:option>
     <bcf:option type="singlevalued">
@@ -303,6 +307,7 @@
     <bcf:option datatype="boolean">noroman</bcf:option>
     <bcf:option datatype="boolean">nohashothers</bcf:option>
     <bcf:option datatype="boolean">nosortothers</bcf:option>
+    <bcf:option datatype="boolean">pluralothers</bcf:option>
     <bcf:option datatype="boolean">singletitle</bcf:option>
     <bcf:option datatype="boolean">uniquebaretitle</bcf:option>
     <bcf:option datatype="boolean">uniqueprimaryauthor</bcf:option>
@@ -724,7 +729,7 @@
     <bcf:namepart order="3">given</bcf:namepart>
   </bcf:uniquenametemplate>
   <!-- SORTING NAME KEY TEMPLATE -->
-  <bcf:sortingnamekeytemplate name="global">
+  <bcf:sortingnamekeytemplate name="global" visibility="sort">
     <bcf:keypart order="1">
       <bcf:part type="namepart" order="1" use="1">prefix</bcf:part>
       <bcf:part type="namepart" order="2">family</bcf:part>
@@ -2024,14 +2029,14 @@
     <bcf:datasource type="file" datatype="bibtex">skips.bib</bcf:datasource>
   </bcf:bibdata>
   <bcf:section number="0">
-    <bcf:citekey order="1">skip1</bcf:citekey>
-    <bcf:citekey order="2">skip2</bcf:citekey>
-    <bcf:citekey order="3">skip3</bcf:citekey>
-    <bcf:citekey order="4">skip4</bcf:citekey>
-    <bcf:citekey order="5">seta</bcf:citekey>
-    <bcf:citekey order="6">noseta</bcf:citekey>
-    <bcf:citekey order="7">nosetb</bcf:citekey>
-    <bcf:citekey order="8">nosetc</bcf:citekey>
+    <bcf:citekey order="1" intorder="1">skip1</bcf:citekey>
+    <bcf:citekey order="2" intorder="1">skip2</bcf:citekey>
+    <bcf:citekey order="3" intorder="1">skip3</bcf:citekey>
+    <bcf:citekey order="4" intorder="1">skip4</bcf:citekey>
+    <bcf:citekey order="5" intorder="1">seta</bcf:citekey>
+    <bcf:citekey order="6" intorder="1">noseta</bcf:citekey>
+    <bcf:citekey order="7" intorder="1">nosetb</bcf:citekey>
+    <bcf:citekey order="8" intorder="1">nosetc</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nty">

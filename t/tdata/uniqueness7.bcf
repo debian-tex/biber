@@ -40,7 +40,7 @@
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>labelalpha</bcf:key>
-      <bcf:value>0</bcf:value>
+      <bcf:value>1</bcf:value>
     </bcf:option>
     <bcf:option type="multivalued">
       <bcf:key>labelnamespec</bcf:key>
@@ -110,7 +110,7 @@
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>mincitenames</bcf:key>
-      <bcf:value>1</bcf:value>
+      <bcf:value>3</bcf:value>
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>minsortnames</bcf:key>
@@ -170,11 +170,11 @@
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>uniquelist</bcf:key>
-      <bcf:value>false</bcf:value>
+      <bcf:value>true</bcf:value>
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>uniquename</bcf:key>
-      <bcf:value>false</bcf:value>
+      <bcf:value>full</bcf:value>
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>uniqueprimaryauthor</bcf:key>
@@ -194,7 +194,7 @@
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>useprefix</bcf:key>
-      <bcf:value>0</bcf:value>
+      <bcf:value>1</bcf:value>
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>useauthor</bcf:key>
@@ -202,11 +202,11 @@
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>useeditor</bcf:key>
-      <bcf:value>0</bcf:value>
+      <bcf:value>1</bcf:value>
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>usetranslator</bcf:key>
-      <bcf:value>0</bcf:value>
+      <bcf:value>1</bcf:value>
     </bcf:option>
   </bcf:options>
   <!-- BIBLATEX OPTION SCOPE -->
@@ -2014,10 +2014,10 @@
   </bcf:datamodel>
   <!-- SECTION 0 -->
   <bcf:bibdata section="0">
-    <bcf:datasource type="file" datatype="bibtex">sets.bib</bcf:datasource>
+    <bcf:datasource type="file" datatype="bibtex">uniqueness7.bib</bcf:datasource>
   </bcf:bibdata>
   <bcf:section number="0">
-    <bcf:citekey order="1" intorder="1">Elias1955</bcf:citekey>
+    <bcf:citekey order="0" intorder="1">*</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nty">
@@ -2048,19 +2048,13 @@
       <bcf:sortitem literal="1" order="2">0</bcf:sortitem>
     </bcf:sort>
   </bcf:sortingtemplate>
-  <bcf:sortingtemplate name="none">
-    <bcf:sort order="1">
-      <bcf:sortitem order="1">citeorder</bcf:sortitem>
-    </bcf:sort>
-  </bcf:sortingtemplate>
   <!-- DATA LISTS -->
   <bcf:datalist sortingnamekeytemplatename="global"
                 section="0"
-                name="none/global//global/global"
-                sortingtemplatename="none"
+                name="nty/global//global/global"
+                sortingtemplatename="nty"
                 type="entry"
                 labelprefix=""
                 uniquenametemplatename="global"
                 labelalphanametemplatename="global"/>
 </bcf:controlfile>
-
