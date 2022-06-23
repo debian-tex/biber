@@ -49,6 +49,7 @@ start =
       nohashothers,
       noroman,
       nosortothers,
+      pluralothers,
       singletitle,
       skipbib,
       skipbiblist,
@@ -100,6 +101,7 @@ start =
       sortalphaothers?,
       uniquelist?,
       uniquename?,
+      uniqueprimaryauthor?,
       uniquetitle?,
       uniquebaretitle?,
       uniquework?,
@@ -442,6 +444,7 @@ uniquenametemplate =
 sortingnamekeytemplate = 
   element bcf:sortingnamekeytemplate {
     attribute name { text },
+    attribute visibility { text },
     element bcf:keypart {
      attribute order { xsd:integer },
      element bcf:part {
@@ -504,6 +507,8 @@ secspec =
     element bcf:datasource {
       attribute type { "file" },
       attribute datatype { "bibtex" | "biblatexml" }?,
+      attribute encoding { text }?,
+      attribute glob { "true" | "false" }?,
       xsd:anyURI
     }*
   }?,
@@ -515,6 +520,7 @@ secspec =
         attribute members { xsd:string {minLength="1"}},
         xsd:string {minLength="1"}) |
       ( attribute order { xsd:integer },
+        attribute intorder { xsd:integer }?,
         attribute nocite { xsd:boolean }?,
         xsd:string {minLength="1"} )
     }*,
@@ -656,6 +662,12 @@ nosortothers =
 # allfull = disambiguate with full name or initials, ignore maxcitenames/uniquelist
 # mininit = disambiguate with initials, only between identical lists in different entries
 # minfull = disambiguate with full name or initials, only between identical lists in different entries
+pluralothers =
+  element bcf:option {
+    attribute type { "singlevalued" },
+    element bcf:key { "pluralothers" },
+    element bcf:value { xsd:boolean }
+  }
 uniquename =
   element bcf:option {
     attribute type { "singlevalued" },

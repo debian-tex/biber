@@ -778,7 +778,8 @@ sub parse_ctrlfile {
       }
       push $snkps->@*, $snps;
     }
-    $snss->{$sns->{name}} = $snkps;
+    $snss->{$sns->{name}}{visibility} = $sns->{visibility};
+    $snss->{$sns->{name}}{template} = $snkps;
   }
   Biber::Config->setblxoption(undef, 'sortingnamekeytemplate', $snss);
 
@@ -924,6 +925,7 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
       # "all keys"
       if ($key eq '*') {
         $bib_section->set_allkeys(1);
+        Biber::Config->set_keyorder($secnum, $key, $keyc->{order});
         if ($keyc->{nocite}) {
           $bib_section->set_allkeys_nocite(1);
         }
@@ -949,6 +951,10 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
           # Set order information - there is no order on dynamic key defs above
           # as they are a definition, not a cite
           Biber::Config->set_keyorder($secnum, $key, $keyc->{order});
+          # order of keys which have the same order so we can track order in \cite{a,b,c}
+          if ($keyc->{intorder}) {
+            Biber::Config->set_internal_keyorder($secnum, $key, $keyc->{intorder});
+          }
           push @keys, $key;
           $key_flag = 1; # There is at least one key, used for error reporting below
         }
@@ -2887,6 +2893,16 @@ sub process_visible_names {
         $visible_names_cite = $count;
       }
 
+      # If biblatex option "pluralothers" is true, then "et al" must replace more than one element
+      # in a name list. This means that the visibility must be increased to the list length if
+      # the visibility is one less than the list count. If we don't do this, extra* will be incremented
+      # to disambiguate the list and this will be incorrect as biblatex.sty will detect "pluralothers"
+      # and print an unambiguous list which will be disambiguated by extra* unnecessarily.
+      if (Biber::Config->getblxoption(undef, 'pluralothers')  and
+          $count-$visible_names_cite==1) {
+        $visible_names_cite = $count;
+      }
+
       # max/minbibnames
       if ($count > $maxbn) {
         # Visibility to the uniquelist point if uniquelist is requested
@@ -2916,6 +2932,7 @@ sub process_visible_names {
       if ($logger->is_trace()) { # performance shortcut
         $logger->trace("Setting visible names (cite) for key '$citekey' to '$visible_names_cite'");
         $logger->trace("Setting visible names (bib) for key '$citekey' to '$visible_names_bib'");
+        $logger->trace("Setting visible names (sort) for key '$citekey' to '$visible_names_sort'");
         $logger->trace("Setting visible names (alpha) for key '$citekey' to '$visible_names_alpha'");
       }
 
@@ -3853,6 +3870,7 @@ sub generate_uniquelist {
     if ($logger->is_trace()) {  # performance tune
       $logger->trace("Setting uniquelist for '$citekey' using " . join(',', $namelist->@*));
     }
+
     $dlist->set_uniquelist($nl, $namelist, $labelyear, $ul, $maxcn, $mincn);
   }
   return;

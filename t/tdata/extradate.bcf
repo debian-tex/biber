@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="../../data/bcf.xsl"?>
 <?xml-model href="../../data/schemata/bcf.rnc" type="application/relax-ng-compact-syntax"?>
-<bcf:controlfile version="3.8" bltxversion="3.17" xmlns:bcf="https://sourceforge.net/projects/biblatex">
+<bcf:controlfile version="3.9" bltxversion="3.18" xmlns:bcf="https://sourceforge.net/projects/biblatex">
   <!-- OPTIONS -->
   <bcf:options component="biber" type="global">
     <bcf:option type="singlevalued">
@@ -130,6 +130,10 @@
     </bcf:option>
     <bcf:option type="singlevalued">
       <bcf:key>nosortothers</bcf:key>
+      <bcf:value>0</bcf:value>
+    </bcf:option>
+    <bcf:option type="singlevalued">
+      <bcf:key>pluralothers</bcf:key>
       <bcf:value>0</bcf:value>
     </bcf:option>
     <bcf:option type="singlevalued">
@@ -303,6 +307,7 @@
     <bcf:option datatype="boolean">noroman</bcf:option>
     <bcf:option datatype="boolean">nohashothers</bcf:option>
     <bcf:option datatype="boolean">nosortothers</bcf:option>
+    <bcf:option datatype="boolean">pluralothers</bcf:option>
     <bcf:option datatype="boolean">singletitle</bcf:option>
     <bcf:option datatype="boolean">uniquebaretitle</bcf:option>
     <bcf:option datatype="boolean">uniqueprimaryauthor</bcf:option>
@@ -724,7 +729,7 @@
     <bcf:namepart order="3">given</bcf:namepart>
   </bcf:uniquenametemplate>
   <!-- SORTING NAME KEY TEMPLATE -->
-  <bcf:sortingnamekeytemplate name="global">
+  <bcf:sortingnamekeytemplate name="global" visibility="sort">
     <bcf:keypart order="1">
       <bcf:part type="namepart" order="1" use="1">prefix</bcf:part>
       <bcf:part type="namepart" order="2">family</bcf:part>
@@ -2024,34 +2029,34 @@
     <bcf:datasource type="file" datatype="bibtex">extradate.bib</bcf:datasource>
   </bcf:bibdata>
   <bcf:section number="0">
-    <bcf:citekey order="1">L1</bcf:citekey>
-    <bcf:citekey order="2">L2</bcf:citekey>
-    <bcf:citekey order="3">L3</bcf:citekey>
-    <bcf:citekey order="4">L4</bcf:citekey>
-    <bcf:citekey order="5">L5</bcf:citekey>
-    <bcf:citekey order="6">L6</bcf:citekey>
-    <bcf:citekey order="7">L7</bcf:citekey>
-    <bcf:citekey order="8">L8</bcf:citekey>
-    <bcf:citekey order="9">L9</bcf:citekey>
-    <bcf:citekey order="10">L10</bcf:citekey>
-    <bcf:citekey order="11">LY1</bcf:citekey>
-    <bcf:citekey order="12">LY2</bcf:citekey>
-    <bcf:citekey order="13">LY3</bcf:citekey>
-    <bcf:citekey order="14">companion1</bcf:citekey>
-    <bcf:citekey order="15">companion2</bcf:citekey>
-    <bcf:citekey order="16">companion3</bcf:citekey>
-    <bcf:citekey order="17">vangennep</bcf:citekey>
-    <bcf:citekey order="18">gennep</bcf:citekey>
-    <bcf:citekey order="19">nodate1</bcf:citekey>
-    <bcf:citekey order="20">nodate2</bcf:citekey>
-    <bcf:citekey order="21">ed1</bcf:citekey>
-    <bcf:citekey order="22">ed2</bcf:citekey>
-    <bcf:citekey order="23">ed3</bcf:citekey>
-    <bcf:citekey order="24">ed4</bcf:citekey>
-    <bcf:citekey order="25">ed5</bcf:citekey>
-    <bcf:citekey order="26">ed6</bcf:citekey>
-    <bcf:citekey order="27">ed7</bcf:citekey>
-    <bcf:citekey order="28">ed8</bcf:citekey>
+    <bcf:citekey order="1" intorder="1">L1</bcf:citekey>
+    <bcf:citekey order="2" intorder="1">L2</bcf:citekey>
+    <bcf:citekey order="3" intorder="1">L3</bcf:citekey>
+    <bcf:citekey order="4" intorder="1">L4</bcf:citekey>
+    <bcf:citekey order="5" intorder="1">L5</bcf:citekey>
+    <bcf:citekey order="6" intorder="1">L6</bcf:citekey>
+    <bcf:citekey order="7" intorder="1">L7</bcf:citekey>
+    <bcf:citekey order="8" intorder="1">L8</bcf:citekey>
+    <bcf:citekey order="9" intorder="1">L9</bcf:citekey>
+    <bcf:citekey order="10" intorder="1">L10</bcf:citekey>
+    <bcf:citekey order="11" intorder="1">LY1</bcf:citekey>
+    <bcf:citekey order="12" intorder="1">LY2</bcf:citekey>
+    <bcf:citekey order="13" intorder="1">LY3</bcf:citekey>
+    <bcf:citekey order="14" intorder="1">companion1</bcf:citekey>
+    <bcf:citekey order="15" intorder="1">companion2</bcf:citekey>
+    <bcf:citekey order="16" intorder="1">companion3</bcf:citekey>
+    <bcf:citekey order="17" intorder="1">vangennep</bcf:citekey>
+    <bcf:citekey order="18" intorder="1">gennep</bcf:citekey>
+    <bcf:citekey order="19" intorder="1">nodate1</bcf:citekey>
+    <bcf:citekey order="20" intorder="1">nodate2</bcf:citekey>
+    <bcf:citekey order="21" intorder="1">ed1</bcf:citekey>
+    <bcf:citekey order="22" intorder="1">ed2</bcf:citekey>
+    <bcf:citekey order="23" intorder="1">ed3</bcf:citekey>
+    <bcf:citekey order="24" intorder="1">ed4</bcf:citekey>
+    <bcf:citekey order="25" intorder="1">ed5</bcf:citekey>
+    <bcf:citekey order="26" intorder="1">ed6</bcf:citekey>
+    <bcf:citekey order="27" intorder="1">ed7</bcf:citekey>
+    <bcf:citekey order="28" intorder="1">ed8</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nty">

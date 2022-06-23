@@ -46,7 +46,7 @@ our @EXPORT = qw{
 
 # Version of biblatex control file which this release expects. Matched against version
 # passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '3.8';
+our $BCF_VERSION = '3.9';
 # Format version of the .bbl. Used when writing the .bbl
 our $BBL_VERSION = '3.2';
 
@@ -157,7 +157,6 @@ our %DM_DATATYPES = (
                        }
                        elsif ($f =~ /yeardivision$/) {
                          return 0 unless grep {$v eq $_} values %YEARDIVISIONS;
-#                         return 0 unless $v =~ m/(?:winter[NS]?|spring[NS]?|summer[NS]?|autumn[NS]?|Q[1234]|QD[123]|S[12])/
                        }
                        else {
                          # num() doesn't like negatives

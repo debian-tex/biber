@@ -1,13 +1,16 @@
 #!/bin/bash
 
-# This version of the build script can be run on the server hosting the VMs instead of a remote
-# client
+# This version of the build script should be run on the server hosting the VMs
+# It does not build the OSX ARM release as there is no VM for that currently
 
-# build_master.sh <dir> <release> <branch> <justbuild> <deletescancache> <codesign>
+# build.sh <dir> <release> <branch> <binaryname> <justbuild> <deletescancache> <codesign>
+
+# Example: build.sh ~/Desktop/b development dev 1
 
 # <dir> is where the binaries are
 # <release> is a SF subdir of /home/frs/project/biblatex-biber/biblatex-biber/
 # <branch> is a git branch to checkout on the build farm servers
+# <binaryname> is the name of the biber binary to use for the release.
 # <justbuild> is a boolean which says to just build and stop without uploading
 # <deletescancache> is a boolean which says to delete the scancache
 # <codesign> is a boolean which says to not codesign OSX binary
@@ -31,8 +34,6 @@ function vmoff {
   VBoxManage controlvm bbf-$1 savestate
 }
 
-# Example: build_master.sh ~/Desktop/b development dev 1
-
 BASE="/usr/local/data/code/biblatex-biber"
 DOCDIR=$BASE/doc
 BINDIR=$BASE/dist
@@ -40,9 +41,10 @@ XSLDIR=$BASE/data
 DIR=${1:-"/tmp/b"}
 RELEASE=${2:-"development"}
 BRANCH=${3:-"dev"}
-JUSTBUILD=${4:-"0"}
-DSCANCACHE=${5:-"0"}
-CODESIGN=${6:-"1"}
+BINARYNAME=${4:-"biber"}
+JUSTBUILD=${5:-"0"}
+DSCANCACHE=${6:-"0"}
+CODESIGN=${7:-"1"}
 
 echo "** Checking out branch '$BRANCH' on farm servers **"
 echo "** If this is not correct, Ctrl-C now **"
@@ -61,7 +63,7 @@ fi
 
 # Create the binaries from the build farm if they don't exist
 
-# Build farm OSX 64-bit intel LECAGY (10.5<version<10.13)
+# Build farm OSX 64-bit intel LEGACY (10.5<version<10.13)
 # ntpdate is because Vbox doesn't timesync OSX and ntp never works because the
 # time difference is too great between boots
 if [ ! -e $DIR/biber-darwinlegacy_x86_64.tar.gz ]; then
@@ -72,11 +74,11 @@ if [ ! -e $DIR/biber-darwinlegacy_x86_64.tar.gz ]; then
   ssh philkime@bbf-osx10.6 "\\rm -f biblatex-biber/dist/darwinlegacy_x86_64/biber-darwinlegacy_x86_64"
   vmoff osx10.6
   cd $DIR
-  mv biber-darwinlegacy_x86_64 biber
-  chmod +x biber
-  tar cf biber-darwinlegacy_x86_64.tar biber
+  mv biber-darwinlegacy_x86_64 $BINARYNAME
+  chmod +x $BINARYNAME
+  tar cf biber-darwinlegacy_x86_64.tar $BINARYNAME
   gzip biber-darwinlegacy_x86_64.tar
-  \rm biber
+  \rm $BINARYNAME
   cd $BASE
 fi
 
@@ -94,18 +96,17 @@ if [ ! -e $DIR/biber-darwin_x86_64.tar.gz ]; then
     # codesign in Xcode for osx10.12 does not have the runtime hardening options
     # --------------------------------------------------------------------------
     scp $DIR/biber-darwin_x86_64 philkime@tree:/tmp/
-    ssh philkime@tree
-    "cd /tmp;security unlock-keychain -p \$(</Users/philkime/.pw) login.keychain;codesign --verbose  --sign 45MA3H23TG --force --timestamp --options runtime biber-darwin_x86_64"
+    ssh philkime@tree "cd /tmp;security unlock-keychain -p \$(</Users/philkime/.pw) login.keychain;codesign --verbose  --sign 45MA3H23TG --force --timestamp --options runtime biber-darwin_x86_64"
     \rm $DIR/biber-darwin_x86_64
     scp philkime@tree:/tmp/biber-darwin_x86_64 $DIR/
     ssh philkime@tree "\\rm -f /tmp/biber-darwin_x86_64"
     # --------------------------------------------------------------------------
   fi
-  mv biber-darwin_x86_64 biber
-  chmod +x biber
-  tar cf biber-darwin_x86_64.tar biber
+  mv biber-darwin_x86_64 $BINARYNAME
+  chmod +x $BINARYNAME
+  tar cf biber-darwin_x86_64.tar $BINARYNAME
   gzip biber-darwin_x86_64.tar
-  \rm biber
+  \rm $BINARYNAME
   cd $BASE
 fi
 
@@ -120,10 +121,10 @@ if [ ! -e $DIR/biber-MSWIN32.zip ]; then
   ssh philkime@bbf-wxp32 "\\rm -f biblatex-biber/dist/MSWIN32/biber-MSWIN32.exe"
   vmoff wxp32
   cd $DIR
-  mv biber-MSWIN32.exe biber.exe
-  chmod +x biber.exe
-  /usr/bin/zip biber-MSWIN32.zip biber.exe
-  \rm -f biber.exe
+  mv biber-MSWIN32.exe $BINARYNAME.exe
+  chmod +x $BINARYNAME.exe
+  /usr/bin/zip biber-MSWIN32.zip $BINARYNAME.exe
+  \rm -f $BINARYNAME.exe
   cd $BASE
 fi
 
@@ -138,10 +139,10 @@ if [ ! -e $DIR/biber-MSWIN64.zip ]; then
   ssh phili@bbf-w1064 "\\rm -f biblatex-biber/dist/MSWIN64/biber-MSWIN64.exe"
   vmoff w1064
   cd $DIR
-  mv biber-MSWIN64.exe biber.exe
-  chmod +x biber.exe
-  /usr/bin/zip biber-MSWIN64.zip biber.exe
-  \rm -f biber.exe
+  mv biber-MSWIN64.exe $BINARYNAME.exe
+  chmod +x $BINARYNAME.exe
+  /usr/bin/zip biber-MSWIN64.zip $BINARYNAME.exe
+  \rm -f $BINARYNAME.exe
   cd $BASE
 fi
 
@@ -154,11 +155,11 @@ if [ ! -e $DIR/biber-linux_x86_64.tar.gz ]; then
   ssh philkime@bbf-l64 "\\rm -f biblatex-biber/dist/linux_x86_64/biber-linux_x86_64"
   vmoff l64
   cd $DIR
-  mv biber-linux_x86_64 biber
-  chmod +x biber
-  tar cf biber-linux_x86_64.tar biber
+  mv biber-linux_x86_64 $BINARYNAME
+  chmod +x $BINARYNAME
+  tar cf biber-linux_x86_64.tar $BINARYNAME
   gzip biber-linux_x86_64.tar
-  \rm biber
+  \rm $BINARYNAME
   cd $BASE
 fi
 
@@ -171,12 +172,12 @@ fi
 cd $DIR
 # OSX 64-bit legacy
 if [ -e $DIR/biber-darwinlegacy_x86_64.tar.gz ]; then
-  scp biber-darwinlegacy_x86_64.tar.gz philkime,biblatex-biber@frs.sourceforge.net:/home/frs/project/biblatex-biber/biblatex-biber/$RELEASE/binaries/OSX_Intel/biber-darwinlegacy_x86_64.tar.gz
+  scp biber-darwinlegacy_x86_64.tar.gz philkime,biblatex-biber@frs.sourceforge.net:/home/frs/project/biblatex-biber/biblatex-biber/$RELEASE/binaries/MacOS/biber-darwinlegacy_x86_64.tar.gz
 fi
 
 # OSX 64-bit
 if [ -e $DIR/biber-darwin_x86_64.tar.gz ]; then
-  scp biber-darwin_x86_64.tar.gz philkime,biblatex-biber@frs.sourceforge.net:/home/frs/project/biblatex-biber/biblatex-biber/$RELEASE/binaries/OSX_Intel/biber-darwin_x86_64.tar.gz
+  scp biber-darwin_x86_64.tar.gz philkime,biblatex-biber@frs.sourceforge.net:/home/frs/project/biblatex-biber/biblatex-biber/$RELEASE/binaries/MacOS/biber-darwin_x86_64.tar.gz
 fi
 
 # Windows 32-bit
