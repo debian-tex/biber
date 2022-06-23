@@ -1,3 +1,10 @@
+biber (2.18-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+  * Refresh patches, disable patches applied in upstream.
+
+ -- Hilmar Preusse <hille42@web.de>  Thu, 23 Jun 2022 23:56:48 +0200
+
 biber (2.17-3) unstable; urgency=medium
 
   * Copy commit 54a68aa and (partial) ccd7a44 from upstream. This

@@ -4,9 +4,9 @@ Remove Mozilla::CA dependency
  lib/Biber/Utils.pm |   11 -----------
  1 file changed, 11 deletions(-)
 
---- a/lib/Biber/Utils.pm
-+++ b/lib/Biber/Utils.pm
-@@ -174,17 +174,6 @@ sub locate_data_file {
+--- biber.orig/lib/Biber/Utils.pm
++++ biber/lib/Biber/Utils.pm
+@@ -175,17 +175,6 @@
          # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
          # We have to explicitly set the cert path because otherwise the https module
          # can't find the .pem when PAR::Packer'ed
