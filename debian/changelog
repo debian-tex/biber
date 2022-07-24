@@ -1,9 +1,9 @@
-biber (2.18-1) UNRELEASED; urgency=medium
+biber (2.18-1) unstable; urgency=medium
 
-  * New upstream release.
+  * New upstream release, bump Breaks version of texlive-bibtex-extra.
   * Refresh patches, disable patches applied in upstream.
 
- -- Hilmar Preusse <hille42@web.de>  Thu, 23 Jun 2022 23:56:48 +0200
+ -- Hilmar Preusse <hille42@web.de>  Sun, 24 Jul 2022 13:53:19 +0200
 
 biber (2.17-3) unstable; urgency=medium
 
