@@ -46,7 +46,7 @@ our @EXPORT = qw{
 
 # Version of biblatex control file which this release expects. Matched against version
 # passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '3.9';
+our $BCF_VERSION = '3.10';
 # Format version of the .bbl. Used when writing the .bbl
 our $BBL_VERSION = '3.2';
 
@@ -680,7 +680,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2022 Philip Kime, all rights reserved.
+Copyright 2012-2023 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

@@ -20,7 +20,7 @@ my $logger = Log::Log4perl::get_logger('main');
 
 =head1 NAME
 
-Biber::Output::biblatexml - class for biblatexml output of tool mode
+Biber::Output::biblatexml - class for biblatexml output
 
 =cut
 
@@ -111,7 +111,7 @@ sub set_output_entry {
 
   $xml->startTag([$xml_prefix, 'entry'], id => NFC($key), entrytype => NFC($bee));
 
-  # Filter aliases which point to this key an insert them
+  # Filter aliases which point to this key and insert them
   if (my @ids = sort grep {$section->get_citekey_alias($_) eq $key} $section->get_citekey_aliases) {
     $xml->startTag([$xml_prefix, 'ids']);
     $xml->startTag([$xml_prefix, 'list']);
@@ -239,7 +239,6 @@ sub set_output_entry {
 
       for (my $i = 0; $i <= $lf->$#*; $i++) {
         my $f = $lf->[$i];
-        my @lattrs;
 
         # XDATA is special
         if (not Biber::Config->getoption('output_resolve_xdata') or
@@ -250,7 +249,7 @@ sub set_output_entry {
           }
         }
 
-        $xml->dataElement([$xml_prefix, 'item'], NFC($f), @lattrs);
+        $xml->dataElement([$xml_prefix, 'item'], NFC($f));
       }
       $xml->endTag();           # list
       $xml->endTag();           # listfield
@@ -404,7 +403,7 @@ sub set_output_entry {
                             'S1'      => 40,
                             'S2'      => 41 );
 
-      # Did the date fields come from interpreting an EDTF 5.2.2 unspecified date?
+      # Did the date fields come from interpreting an iso8601-2 unspecified date?
       # If so, do the reverse of Biber::Utils::parse_date_unspecified()
       if (my $unspec = $be->get_field("${d}dateunspecified")) {
 
@@ -443,7 +442,7 @@ sub set_output_entry {
         }
       }
 
-      # Seasons derived from EDTF dates
+      # Seasons derived from iso8601 dates
       if (my $s = $be->get_field("${d}yeardivision")) {
         $overridem = $yeardivisions{$s};
       }
@@ -619,7 +618,7 @@ sub create_output_section {
   my $secnum = $Biber::MASTER->get_current_section;
   my $section = $Biber::MASTER->sections->get_section($secnum);
 
-  # We rely on the order of this array for the order of the .bbl
+  # We rely on the order of this array for the order of the output
   foreach my $k ($section->get_citekeys) {
     # Regular entry
     my $be = $section->bibentry($k) or biber_error("Cannot find entry with key '$k' to output");
@@ -649,7 +648,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2022 Philip Kime, all rights reserved.
+Copyright 2012-2023 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

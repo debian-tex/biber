@@ -240,12 +240,12 @@ if ($opts->{output_macro_fields}) {
 
 # Check the output_format option
 if (my $of = $opts->{output_format}) {
-  unless ($opts->{output_format} =~ /\A(?:bbl|dot|bibtex|biblatexml|bblxml)\z/xms) {
-    say STDERR "Biber: Unknown output format '$of', must be one of 'bbl', 'dot', 'bibtex', 'biblatexml', 'bblxml'";
+  unless ($opts->{output_format} =~ /\A(?:bbl|dot|bibtex|biblatexml|bblxml|bibjson)\z/xms) {
+    say STDERR "Biber: Unknown output format '$of', must be one of 'bbl', 'dot', 'bibtex', 'biblatexml', 'bblxml', 'bibjson'";
     exit EXIT_ERROR;
   }
-  if ($opts->{output_format} eq 'bblxml') {
-    say STDERR "Biber: Deprecated output format 'bblxml' - this will be removed in a future version";
+  if ($opts->{output_format} eq 'bblxml' or $opts->{output_format} eq 'dot') {
+    say STDERR "Biber: Deprecated output format '" . $opts->{output_format} . "' - this will be removed in a future version";
   }
 }
 
@@ -263,8 +263,8 @@ if (exists($opts->{tool}) and
 # Check output-format value
 if (exists($opts->{tool}) and
     exists($opts->{output_format}) and
-    $opts->{output_format} !~ /\A(?:bibtex|biblatexml)\z/xms) {
-    say STDERR "Biber: Output format in tool mode must be one of 'bibtex' or 'biblatexml'";
+    $opts->{output_format} !~ /\A(?:bibtex|biblatexml|bibjson)\z/xms) {
+    say STDERR "Biber: Output format in tool mode must be one of 'bibtex', 'biblatexml' or 'bibjson'";
     exit EXIT_ERROR;
 }
 
@@ -347,10 +347,13 @@ if (Biber::Config->getoption('output_file')) {
 else {
   if (Biber::Config->getoption('tool')) {
     if (Biber::Config->getoption('output_format') eq 'bibtex') { # tool .bib output
-      $outfile = $ARGV[0] =~ s/\..+$/_bibertool.bib/r;
+      $outfile = $ARGV[0] =~ s/\.[^.]+$/_bibertool.bib/r;
     }
     elsif (Biber::Config->getoption('output_format') eq 'biblatexml') { # tool .blxtxml output
-      $outfile = $ARGV[0] =~ s/\..+$/_bibertool.bltxml/r;
+      $outfile = $ARGV[0] =~ s/\.[^.]+$/_bibertool.bltxml/r;
+    }
+    elsif (Biber::Config->getoption('output_format') eq 'bibjson') { # bibjson output
+      $outfile = $ARGV[0] =~ s/\.[^.]+$/_bibertool.json/r;
     }
   }
   else {
@@ -774,7 +777,7 @@ filename only). F<file> can be absolute if B<--output-directory> is not
 set. F<file> can be '-' to output directly to STDOUT. The legacy option
 B<--outfile> is supported as an alias.
 
-=item B<--output-format=dot|bibtex|biblatexml|bbl|bblxml>
+=item B<--output-format=dot|bibtex|biblatexml|bbl|bblxml|bibjson>
 
 Biber output format. Default if not specified is of course, F<bbl>. Use F<dot>
 to output a GraphViz DOT file instead of F<.bbl>. This is a directed graph of
@@ -987,7 +990,12 @@ Schema validate the F<.bcf> biblatex control file.
 
 =item B<--validate-datamodel|-V>
 
-Validate the data against a data model.
+Validate the data against a data model. By default, the data model used is
+the one in the F<.bcf> file (normal mode) or in the default config file
+whose path can be shown with the C<--tool-config> option (tool mode). Use
+C<--no-default-datamodel> to ignore the default data model completely if
+you are using a complete data model via your own config file
+(with C<--configfile>).
 
 =item B<--version|-v>
 
@@ -1045,7 +1053,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2022 Philip Kime, all rights reserved.
+Copyright 2012-2023 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

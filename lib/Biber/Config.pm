@@ -22,7 +22,7 @@ use Unicode::Normalize;
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
-our $VERSION = '2.18';
+our $VERSION = '2.19';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -211,7 +211,8 @@ sub _initopts {
 
   # prepend output directory for log, if specified
   if (my $outdir = Biber::Config->getoption('output_directory')) {
-    $biberlog = File::Spec->catfile($outdir, $biberlog);
+    my (undef, undef, $biberlogfile) = File::Spec->splitpath($biberlog);
+    $biberlog = File::Spec->catfile($outdir, $biberlogfile);
   }
 
   # Parse output-field-replace into something easier to use
@@ -1333,7 +1334,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2022 Philip Kime, all rights reserved.
+Copyright 2012-2023 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

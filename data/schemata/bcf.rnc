@@ -27,6 +27,7 @@ start =
       attribute component { "biblatex" },
       attribute type { "global" },
       alphaothers,
+      extradatecontext,
       labelalpha,
       labelnamespec,
       labeltitle,
@@ -73,6 +74,7 @@ start =
       attribute component { "biblatex" },
       attribute type { text },
       alphaothers?,
+      extradatecontext?,
       labelalpha?,
       labelnamespec?,
       labeltitle?,
@@ -395,7 +397,7 @@ start =
                 )+
               )
             )
-          }*
+          }+
         }+
       }?,
       # Section specifications
@@ -542,6 +544,15 @@ filter = element bcf:filter {
 
 # option definitions
 # use<name> options are dynamically determined from data model
+extradatecontext =
+  element bcf:option {
+    attribute type { "multivalued" },
+    element bcf:key { "extradatecontext" },
+    element bcf:value {
+      attribute order { xsd:integer },
+      text
+    }+
+  }
 usenames =
   element bcf:option {
     attribute type { "singlevalued" },
@@ -572,7 +583,6 @@ labeltitlespec =
     element bcf:key { "labeltitlespec" },
     element bcf:value {
       attribute order { xsd:integer },
-      attribute lang { text }?,
       text
     }+
   }
@@ -794,7 +804,6 @@ labelnamespec =
     element bcf:key { "labelnamespec" },
     element bcf:value {
       attribute order { xsd:integer },
-      attribute lang { text }?,
       text
     }+
   }
@@ -916,7 +925,7 @@ dmfieldtype =  "field" | "list"
 dmdatatype =  "literal" | "name" | "key" | "entrykey" | "date" | "verbatim" | "integer" | "range" | "code" | "uri" | "datepart" | "keyword" | "option"
 
 # Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-# Copyright 2012-2022 Philip Kime, all rights reserved.
+# Copyright 2012-2023 Philip Kime, all rights reserved.
 
 # This code is free software.  You can redistribute it and/or
 # modify it under the terms of the Artistic License 2.0.
