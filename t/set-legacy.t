@@ -64,7 +64,7 @@ my $string2 = q|    \entry{Elias1955a}{article}{skipbib=true,skipbiblist=true,sk
       \strng{authorbibnamehash}{68f587f427e068e26043d54745351d58}
       \strng{authornamehash}{68f587f427e068e26043d54745351d58}
       \strng{authorfullhash}{68f587f427e068e26043d54745351d58}
-      \field{labeldatesource}{year}
+      \field{labeldatesource}{}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{issn}{0096-1000}
@@ -98,7 +98,7 @@ my $string3 = q|    \entry{Elias1955b}{article}{skipbib=true,skipbiblist=true,sk
       \strng{authorbibnamehash}{68f587f427e068e26043d54745351d58}
       \strng{authornamehash}{68f587f427e068e26043d54745351d58}
       \strng{authorfullhash}{68f587f427e068e26043d54745351d58}
-      \field{labeldatesource}{year}
+      \field{labeldatesource}{}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{issn}{0096-1000}
