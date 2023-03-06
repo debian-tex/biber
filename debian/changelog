@@ -1,3 +1,11 @@
+biber (2.19-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+  * Breaks to older texlive-bibtex-extra, make sure new biblatex
+    is installed.
+
+ -- Hilmar Preusse <hille42@web.de>  Mon, 06 Mar 2023 07:46:04 +0100
+
 biber (2.18-1) unstable; urgency=medium
 
   * New upstream release, bump Breaks version of texlive-bibtex-extra.

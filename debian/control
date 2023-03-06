@@ -111,7 +111,7 @@ Depends: ${misc:Depends},
 	libunicode-linebreak-perl,
 	libencode-eucjpascii-perl
 Recommends: texlive-bibtex-extra
-Breaks: biblatex (<< 2), texlive-bibtex-extra (<< 2022.20220722)
+Breaks: biblatex (<< 2), texlive-bibtex-extra (<< 2022.2023XXXX)
 Description: Much-augmented BibTeX replacement for BibLaTeX users
  The biblatex package by Philipp Lehman is becoming the definitive
  citation management tool for LaTeX users. Biblatex has relied on the
