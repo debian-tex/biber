@@ -12,6 +12,7 @@ override_dh_auto_build:
 	dh_auto_build
 	# Build biber.pdf using utc timezone
 	lualatex --utc --output-directory=doc doc/biber.tex
+	lualatex --utc --output-directory=doc doc/biber.tex
 
 override_dh_auto_test:
 	: do nothing here, otherwise test suite is run.

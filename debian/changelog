@@ -3,6 +3,7 @@ biber (2.19-1) UNRELEASED; urgency=medium
   * New upstream release.
   * Breaks to older texlive-bibtex-extra, make sure new biblatex
     is installed.
+  * Run luatex twice when building the documentation (Closes: #1034383).
 
  -- Hilmar Preusse <hille42@web.de>  Mon, 06 Mar 2023 07:46:04 +0100
 
