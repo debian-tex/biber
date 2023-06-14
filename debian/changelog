@@ -1,11 +1,11 @@
-biber (2.19-1) UNRELEASED; urgency=medium
+biber (2.19-1) unstable; urgency=medium
 
   * New upstream release.
   * Breaks to older texlive-bibtex-extra, make sure new biblatex
     is installed.
   * Run luatex twice when building the documentation (Closes: #1034383).
 
- -- Hilmar Preusse <hille42@web.de>  Mon, 06 Mar 2023 07:46:04 +0100
+ -- Hilmar Preusse <hille42@web.de>  Wed, 14 Jun 2023 18:25:49 +0200
 
 biber (2.18-1) unstable; urgency=medium
 
