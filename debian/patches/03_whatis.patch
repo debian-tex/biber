@@ -1,6 +1,6 @@
 Description: add (dummy) whatis entries to POD
 Origin: vendor
-Forwarded: Needs to be re-done.
+Forwarded: https://github.com/plk/biber/issues/455
 Author: gregor herrmann <gregoa@debian.org>, Hilmar Preusse <hille42@web.de>
 Last-Update: 2022-01-28
 
