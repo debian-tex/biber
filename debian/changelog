@@ -1,4 +1,4 @@
-biber (2.19-1) unstable; urgency=medium
+biber (2.19-1) experimental; urgency=medium
 
   * New upstream release.
   * Breaks to older texlive-bibtex-extra, make sure new biblatex
