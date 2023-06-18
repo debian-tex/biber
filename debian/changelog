@@ -4,6 +4,8 @@ biber (2.19-1) experimental; urgency=medium
   * Breaks to older texlive-bibtex-extra, make sure new biblatex
     is installed.
   * Run luatex twice when building the documentation (Closes: #1034383).
+  * Mark Debian-specific patches as "Forwarded: not-needed" in metadata.
+  * Remove obsolete patches.
 
  -- Hilmar Preusse <hille42@web.de>  Wed, 14 Jun 2023 18:25:49 +0200
 

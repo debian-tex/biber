@@ -1,6 +1,6 @@
 Description: Fix shebang for new perl policy
 Origin: Hilmar Preuße <hille42@web.de>
-Forwarded: No. Patch is specific to Debian.
+Forwarded: not-needed
 Author: Hilmar Preuße <hille42@web.de>
 Last-Update: 20220101
 
