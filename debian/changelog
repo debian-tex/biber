@@ -7,7 +7,7 @@ biber (2.19-1) experimental; urgency=medium
   * Mark Debian-specific patches as "Forwarded: not-needed" in metadata.
   * Remove obsolete patches.
 
- -- Hilmar Preusse <hille42@web.de>  Wed, 14 Jun 2023 18:25:49 +0200
+ -- Hilmar Preusse <hille42@web.de>  Wed, 21 Jun 2023 10:23:24 +0200
 
 biber (2.18-1) unstable; urgency=medium
 
