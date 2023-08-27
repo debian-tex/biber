@@ -1,3 +1,9 @@
+biber (2.19-2) unstable; urgency=medium
+
+  * Upload to unstable.
+
+ -- Hilmar Preusse <hille42@web.de>  Sun, 27 Aug 2023 23:42:30 +0200
+
 biber (2.19-1) experimental; urgency=medium
 
   * New upstream release.
