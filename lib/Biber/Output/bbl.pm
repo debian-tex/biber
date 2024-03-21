@@ -17,7 +17,7 @@ use Scalar::Util qw(looks_like_number);
 use Text::Wrap;
 use Unicode::Normalize;
 use URI;
-$Text::Wrap::columns = 80;
+
 my $logger = Log::Log4perl::get_logger('main');
 
 =encoding utf-8
@@ -132,7 +132,7 @@ sub _printfield {
     $str =~ s/(?<!\\)(\#|\&|\%)/\\$1/gxms;
   }
 
-  if (Biber::Config->getoption('wraplines')) {
+  if ($Text::Wrap::columns = Biber::Config->getoption('wraplines')) {
     ## 16 is the length of '      \field{}{}' or '      \strng{}{}'
     if ( 16 + Unicode::GCString->new($outfield)->length + Unicode::GCString->new($str)->length > 2*$Text::Wrap::columns ) {
       return "      \\${field_type}{$outfield}{%\n" . wrap('      ', '      ', $str) . "%\n      }\n";
@@ -218,7 +218,9 @@ sub set_output_entry {
 
   # Skip entrytypes we don't want to output according to datamodel
   return if $dm->entrytype_is_skipout($bee);
-  $acc .= "    \\entry{$key}{$outtype}{" . join(',', filter_entry_options($secnum, $be)->@*) . "}\n";
+  my $kc = $section->get_citecount($key);
+  $acc .= "    \\entry{$key}{$outtype}{" . join(',', filter_entry_options($secnum, $be)->@*) . '}{' .
+      ($kc==-1 ? '' : $kc) . "}\n";
 
   # Generate set information.
   # Set parents are special and need very little
@@ -246,6 +248,11 @@ sub set_output_entry {
     # Annotation can be in set parents
     if (my $ann = $be->get_field('annotation')) {
       $acc .= "      \\field{annotation}{$ann}\n";
+    }
+
+    # Sets can have shorthands
+    if ( my $sh = $be->get_field('shorthand') ) {
+      $acc .= "      \\field{shorthand}{$sh}\n";
     }
 
     # Keyword is necessary in some cases
@@ -340,19 +347,17 @@ sub set_output_entry {
 
   # Output labelname hashes
   $acc .= "      <BDS>NAMEHASH</BDS>\n";
-  my $fullhash = $be->get_field('fullhash');
-  $acc .= "      \\strng{fullhash}{$fullhash}\n" if $fullhash;
+  $acc .= "      <BDS>FULLHASH</BDS>\n";
+  $acc .= "      <BDS>FULLHASHRAW</BDS>\n";
   $acc .= "      <BDS>BIBNAMEHASH</BDS>\n";
-
 
   # Output namelist hashes
   foreach my $namefield ($dmh->{namelists}->@*) {
     next unless $be->get_field($namefield);
     $acc .= "      <BDS>${namefield}BIBNAMEHASH</BDS>\n";
     $acc .= "      <BDS>${namefield}NAMEHASH</BDS>\n";
-    if (my $fullhash = $be->get_field("${namefield}fullhash")) {
-      $acc .= "      \\strng{${namefield}fullhash}{$fullhash}\n";
-    }
+    $acc .= "      <BDS>${namefield}FULLHASH</BDS>\n";
+    $acc .= "      <BDS>${namefield}FULLHASHRAW</BDS>\n";
   }
 
   # Output extraname if there is a labelname
@@ -545,8 +550,8 @@ sub set_output_entry {
   foreach my $vfield ($dmh->{vfields}->@*) {
     # Performance - as little as possible here - loop over DM fields for every entry
     if ( my $vf = $be->get_field($vfield) ) {
-      if ($vfield eq 'url') {
-        $acc .= "      \\verb{urlraw}\n";
+      if ($dm->get_datatype($vfield) eq 'uri') {
+        $acc .= "      \\verb{${vfield}raw}\n";
         $acc .= "      \\verb $vf\n      \\endverb\n";
         # Unicode NFC boundary (before hex encoding)
         $vf = URI->new(NFC($vf))->as_string;
@@ -564,9 +569,20 @@ sub set_output_entry {
         pop $vlf->@*; # remove the last element in the array
       }
       my $total = $vlf->$#* + 1;
+
+      # Raw URL list - special case
+      if ($dm->get_datatype($vlist) eq 'uri') {
+        $acc .= "      \\lverb{${vlist}raw}{$total}\n";
+        foreach my $f ($vlf->@*) {
+          $acc .= "      \\lverb $f\n";
+        }
+        $acc .= "      \\endlverb\n";
+      }
+
       $acc .= "      \\lverb{$vlist}{$total}\n";
       foreach my $f ($vlf->@*) {
-        if ($vlist eq 'urls') {
+        # Encode URL lists
+        if ($dm->get_datatype($vlist) eq 'uri') {
           # Unicode NFC boundary (before hex encoding)
           $f = URI->new(NFC($f))->as_string;
         }
@@ -781,7 +797,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2023 Philip Kime, all rights reserved.
+Copyright 2012-2024 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

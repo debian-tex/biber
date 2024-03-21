@@ -13,7 +13,7 @@ use List::Util qw( first );
 
 =head1 NAME
 
-Biber::DataList - Biber::DataLists objects
+Biber::DataList - Biber::DataList objects
 
 =head2 new
 
@@ -1176,7 +1176,8 @@ sub get_attrs {
                     $self->{sortingnamekeytemplatename},
                     $self->{labelprefix},
                     $self->{uniquenametemplatename},
-                    $self->{labelalphanametemplatename}));
+                    $self->{labelalphanametemplatename},
+                    $self->{namehashtemplatename}));
 }
 
 =head2 get_sortingtemplatename
@@ -1261,6 +1262,31 @@ sub get_labelalphanametemplatename {
   my $self = shift;
   return $self->{labelalphanametemplatename};
 }
+
+=head2 set_namehashtemplatename
+
+    Sets the namehashtemplate name of a data list
+
+=cut
+
+sub set_namehashtemplatename {
+  my $self = shift;
+  my $nhtn = shift;
+  $self->{namehashtemplatename} = lc($nhtn);
+  return;
+}
+
+=head2 get_namehashtemplatename
+
+    Gets the namehashtemplate name of a data list
+
+=cut
+
+sub get_namehashtemplatename {
+  my $self = shift;
+  return $self->{namehashtemplatename};
+}
+
 
 =head2 set_sortinit_collator
 
@@ -1910,8 +1936,32 @@ sub instantiate_entry {
       if (my $e = $self->get_entryfield($key, "${namefield}namehash")) {
         my $str = "\\strng{${namefield}namehash}{$e}";
         $entry_string =~ s|<BDS>${namefield}NAMEHASH</BDS>|$str|gxms;
-
       }
+
+      # per-namelist fullhash
+      if (my $e = $self->get_entryfield($key, "${namefield}fullhash")) {
+        my $str = "\\strng{${namefield}fullhash}{$e}";
+        $entry_string =~ s|<BDS>${namefield}FULLHASH</BDS>|$str|gxms;
+      }
+
+      # per-namelist fullhashraw
+      if (my $e = $self->get_entryfield($key, "${namefield}fullhashraw")) {
+        my $str = "\\strng{${namefield}fullhashraw}{$e}";
+        $entry_string =~ s|<BDS>${namefield}FULLHASHRAW</BDS>|$str|gxms;
+      }
+
+    }
+
+    # fullhash
+    if (my $e = $self->get_entryfield($key, 'fullhash')) {
+      my $str = "\\strng{fullhash}{$e}";
+      $entry_string =~ s|<BDS>FULLHASH</BDS>|$str|gxms;
+    }
+
+    # fullhashraw
+    if (my $e = $self->get_entryfield($key, 'fullhashraw')) {
+      my $str = "\\strng{fullhashraw}{$e}";
+      $entry_string =~ s|<BDS>FULLHASHRAW</BDS>|$str|gxms;
     }
 
     # bibnamehash
@@ -2289,7 +2339,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2023 Philip Kime, all rights reserved.
+Copyright 2012-2024 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

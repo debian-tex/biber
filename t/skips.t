@@ -40,12 +40,12 @@ Biber::Config->setoption('sortlocale', 'en_GB.UTF-8');
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->datalists->get_list('custom/global//global/global');
-my $shs = $biber->datalists->get_list('shorthands/global//global/global', 0, 'list');
+my $main = $biber->datalists->get_list('custom/global//global/global/global');
+my $shs = $biber->datalists->get_list('shorthands/global//global/global/global', 0, 'list');
 
 my $bibentries = $section->bibentries;
 
-my $set1 = q|    \entry{seta}{set}{}
+my $set1 = q|    \entry{seta}{set}{}{}
       \set{set:membera,set:memberb,set:memberc}
       \field{labelalpha}{Doe10}
       \field{extraalpha}{1}
@@ -55,7 +55,7 @@ my $set1 = q|    \entry{seta}{set}{}
     \endentry
 |;
 
-my $set2 = q|    \entry{set:membera}{book}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
+my $set2 = q|    \entry{set:membera}{book}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}{}
       \inset{seta}
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
@@ -66,10 +66,12 @@ my $set2 = q|    \entry{set:membera}{book}{skipbib=true,skipbiblist=true,skiplab
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{fullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorfullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
       \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
       \field{labeldatesource}{}
@@ -82,7 +84,7 @@ my $set2 = q|    \entry{set:membera}{book}{skipbib=true,skipbiblist=true,skiplab
     \endentry
 |;
 
-my $set3 = q|    \entry{set:memberb}{book}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
+my $set3 = q|    \entry{set:memberb}{book}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}{}
       \inset{seta}
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
@@ -93,10 +95,12 @@ my $set3 = q|    \entry{set:memberb}{book}{skipbib=true,skipbiblist=true,skiplab
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{fullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorfullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
       \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
       \field{labeldatesource}{}
@@ -108,7 +112,7 @@ my $set3 = q|    \entry{set:memberb}{book}{skipbib=true,skipbiblist=true,skiplab
     \endentry
 |;
 
-my $set4 = q|    \entry{set:memberc}{book}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
+my $set4 = q|    \entry{set:memberc}{book}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}{}
       \inset{seta}
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
@@ -119,10 +123,12 @@ my $set4 = q|    \entry{set:memberc}{book}{skipbib=true,skipbiblist=true,skiplab
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{fullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorfullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
       \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
       \field{labeldatesource}{}
@@ -134,7 +140,7 @@ my $set4 = q|    \entry{set:memberc}{book}{skipbib=true,skipbiblist=true,skiplab
     \endentry
 |;
 
-my $noset1 = q|    \entry{noseta}{book}{}
+my $noset1 = q|    \entry{noseta}{book}{}{}
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
            family={Doe},
@@ -144,10 +150,12 @@ my $noset1 = q|    \entry{noseta}{book}{}
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{fullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorfullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{extraname}{3}
       \field{labelalpha}{Doe10}
       \field{sortinit}{D}
@@ -164,7 +172,7 @@ my $noset1 = q|    \entry{noseta}{book}{}
     \endentry
 |;
 
-my $noset2 = q|    \entry{nosetb}{book}{}
+my $noset2 = q|    \entry{nosetb}{book}{}{}
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
            family={Doe},
@@ -174,10 +182,12 @@ my $noset2 = q|    \entry{nosetb}{book}{}
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{fullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorfullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{extraname}{4}
       \field{labelalpha}{Doe10}
       \field{sortinit}{D}
@@ -194,7 +204,7 @@ my $noset2 = q|    \entry{nosetb}{book}{}
     \endentry
 |;
 
-my $noset3 = q|    \entry{nosetc}{book}{}
+my $noset3 = q|    \entry{nosetc}{book}{}{}
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
            family={Doe},
@@ -204,10 +214,12 @@ my $noset3 = q|    \entry{nosetc}{book}{}
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{fullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorfullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{extraname}{5}
       \field{labelalpha}{Doe10}
       \field{sortinit}{D}
@@ -224,7 +236,7 @@ my $noset3 = q|    \entry{nosetc}{book}{}
     \endentry
 |;
 
-my $sk4 = q|    \entry{skip4}{article}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}
+my $sk4 = q|    \entry{skip4}{article}{skipbib=true,skipbiblist=true,skiplab=true,uniquelist=false,uniquename=false}{}
       \name{author}{1}{}{%
         {{hash=bd051a2f7a5f377e3a62581b0e0f8577}{%
            family={Doe},
@@ -240,10 +252,12 @@ my $sk4 = q|    \entry{skip4}{article}{skipbib=true,skipbiblist=true,skiplab=tru
       }
       \strng{namehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{fullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{fullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{bibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorbibnamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authornamehash}{bd051a2f7a5f377e3a62581b0e0f8577}
       \strng{authorfullhash}{bd051a2f7a5f377e3a62581b0e0f8577}
+      \strng{authorfullhashraw}{bd051a2f7a5f377e3a62581b0e0f8577}
       \field{sortinit}{D}
       \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
       \field{labeldatesource}{}

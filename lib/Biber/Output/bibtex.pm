@@ -14,7 +14,7 @@ use IO::File;
 use Log::Log4perl qw( :no_extra_logdie_message );
 use Scalar::Util qw(looks_like_number);
 use Text::Wrap;
-$Text::Wrap::columns = 80;
+$Text::Wrap::unexpand = 0;
 use Unicode::Normalize;
 my $logger = Log::Log4perl::get_logger('main');
 
@@ -458,13 +458,14 @@ sub output {
 
   # Bibtex output uses just one special section, always sorted by global sorting spec
   foreach my $key ($Biber::MASTER->datalists->get_lists_by_attrs(section => 99999,
-                                                                 name => Biber::Config->getblxoption(undef, 'sortingtemplatename') . '/global//global/global',
+                                                                 name => Biber::Config->getblxoption(undef, 'sortingtemplatename') . '/global//global/global/global',
                                                                  type => 'entry',
                                                                  sortingtemplatename => Biber::Config->getblxoption(undef, 'sortingtemplatename'),
                                                                  sortingnamekeytemplatename => 'global',
                                                                  labelprefix => '',
                                                                  uniquenametemplatename => 'global',
-                                                                 labelalphanametemplatename => 'global')->[0]->get_keys->@*) {
+                                                                 labelalphanametemplatename => 'global',
+                                                                 namehashtemplatename       => 'global')->[0]->get_keys->@*) {
     out($target, ${$data->{ENTRIES}{99999}{index}{$key}});
   }
 
@@ -573,9 +574,16 @@ sub bibfield {
   else {
     $acc .= "\{$value\},\n";
   }
-  return $acc;
-}
 
+  if ($Text::Wrap::columns = Biber::Config->getoption('wraplines')) {
+    # +4 is for ' = {'
+    my $indent = $inum + ($max_field_len // Unicode::GCString->new($field)->length) + 4;
+    return wrap('', $ichar x $indent, $acc);
+  }
+  else {
+    return $acc;
+  }
+}
 
 =head2 construct_annotation
 
@@ -839,7 +847,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2023 Philip Kime, all rights reserved.
+Copyright 2012-2024 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

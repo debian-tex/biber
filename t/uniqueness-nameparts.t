@@ -61,7 +61,7 @@ my $un7nlid = $bibentries->entry('un7')->get_field($bibentries->entry('un7')->ge
 my $un7nid = $bibentries->entry('un7')->get_field($bibentries->entry('un7')->get_labelname_info)->nth_name(1)->get_id;
 
 my $out = $biber->get_output_obj;
-my $un1 = q|    \entry{un1}{article}{}
+my $un1 = q|    \entry{un1}{article}{}{}
       \name{author}{1}{}{%
         {{un=1,uniquepart=middle,hash=329d8f9192ea3349d700160c9ddb505d}{%
            family={Smith},
@@ -75,10 +75,12 @@ my $un1 = q|    \entry{un1}{article}{}
       }
       \strng{namehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{fullhash}{329d8f9192ea3349d700160c9ddb505d}
+      \strng{fullhashraw}{329d8f9192ea3349d700160c9ddb505d}
       \strng{bibnamehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{authorbibnamehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{authornamehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{authorfullhash}{329d8f9192ea3349d700160c9ddb505d}
+      \strng{authorfullhashraw}{329d8f9192ea3349d700160c9ddb505d}
       \field{labelalpha}{SmiJohSim}
       \field{sortinit}{S}
       \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
@@ -86,7 +88,7 @@ my $un1 = q|    \entry{un1}{article}{}
     \endentry
 |;
 
-my $un2 = q|    \entry{un2}{article}{}
+my $un2 = q|    \entry{un2}{article}{}{}
       \name{author}{1}{}{%
         {{un=2,uniquepart=middle,hash=7551114aede4ef69e4b3683039801706}{%
            family={Smith},
@@ -100,10 +102,12 @@ my $un2 = q|    \entry{un2}{article}{}
       }
       \strng{namehash}{7551114aede4ef69e4b3683039801706}
       \strng{fullhash}{7551114aede4ef69e4b3683039801706}
+      \strng{fullhashraw}{7551114aede4ef69e4b3683039801706}
       \strng{bibnamehash}{7551114aede4ef69e4b3683039801706}
       \strng{authorbibnamehash}{7551114aede4ef69e4b3683039801706}
       \strng{authornamehash}{7551114aede4ef69e4b3683039801706}
       \strng{authorfullhash}{7551114aede4ef69e4b3683039801706}
+      \strng{authorfullhashraw}{7551114aede4ef69e4b3683039801706}
       \field{labelalpha}{SmiJohAla}
       \field{sortinit}{S}
       \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
@@ -111,7 +115,7 @@ my $un2 = q|    \entry{un2}{article}{}
     \endentry
 |;
 
-my $un3 = q|    \entry{un3}{article}{}
+my $un3 = q|    \entry{un3}{article}{}{}
       \name{author}{1}{}{%
         {{un=2,uniquepart=middle,hash=401aebda288799a7c757526242d8c9fc}{%
            family={Smith},
@@ -125,10 +129,12 @@ my $un3 = q|    \entry{un3}{article}{}
       }
       \strng{namehash}{401aebda288799a7c757526242d8c9fc}
       \strng{fullhash}{401aebda288799a7c757526242d8c9fc}
+      \strng{fullhashraw}{401aebda288799a7c757526242d8c9fc}
       \strng{bibnamehash}{401aebda288799a7c757526242d8c9fc}
       \strng{authorbibnamehash}{401aebda288799a7c757526242d8c9fc}
       \strng{authornamehash}{401aebda288799a7c757526242d8c9fc}
       \strng{authorfullhash}{401aebda288799a7c757526242d8c9fc}
+      \strng{authorfullhashraw}{401aebda288799a7c757526242d8c9fc}
       \field{labelalpha}{SmiJohArt}
       \field{sortinit}{S}
       \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
@@ -136,7 +142,7 @@ my $un3 = q|    \entry{un3}{article}{}
     \endentry
 |;
 
-my $un4 = q|    \entry{un4}{article}{}
+my $un4 = q|    \entry{un4}{article}{}{}
       \name{author}{1}{}{%
         {{un=1,uniquepart=given,hash=f6038a264619efefd49c7daac56424ca}{%
            family={Smith},
@@ -150,10 +156,12 @@ my $un4 = q|    \entry{un4}{article}{}
       }
       \strng{namehash}{f6038a264619efefd49c7daac56424ca}
       \strng{fullhash}{f6038a264619efefd49c7daac56424ca}
+      \strng{fullhashraw}{f6038a264619efefd49c7daac56424ca}
       \strng{bibnamehash}{f6038a264619efefd49c7daac56424ca}
       \strng{authorbibnamehash}{f6038a264619efefd49c7daac56424ca}
       \strng{authornamehash}{f6038a264619efefd49c7daac56424ca}
       \strng{authorfullhash}{f6038a264619efefd49c7daac56424ca}
+      \strng{authorfullhashraw}{f6038a264619efefd49c7daac56424ca}
       \field{labelalpha}{SmiAlaSim}
       \field{sortinit}{S}
       \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
@@ -161,7 +169,7 @@ my $un4 = q|    \entry{un4}{article}{}
     \endentry
 |;
 
-my $un1a = q|    \entry{un1}{article}{}
+my $un1a = q|    \entry{un1}{article}{}{}
       \name{author}{1}{}{%
         {{un=1,uniquepart=middle,hash=329d8f9192ea3349d700160c9ddb505d}{%
            family={Smith},
@@ -175,10 +183,12 @@ my $un1a = q|    \entry{un1}{article}{}
       }
       \strng{namehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{fullhash}{329d8f9192ea3349d700160c9ddb505d}
+      \strng{fullhashraw}{329d8f9192ea3349d700160c9ddb505d}
       \strng{bibnamehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{authorbibnamehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{authornamehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{authorfullhash}{329d8f9192ea3349d700160c9ddb505d}
+      \strng{authorfullhashraw}{329d8f9192ea3349d700160c9ddb505d}
       \field{labelalpha}{SmiJohSim}
       \field{sortinit}{S}
       \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
@@ -186,7 +196,7 @@ my $un1a = q|    \entry{un1}{article}{}
     \endentry
 |;
 
-my $un2a = q|    \entry{un2}{article}{}
+my $un2a = q|    \entry{un2}{article}{}{}
       \name{author}{1}{}{%
         {{un=2,uniquepart=middle,hash=7551114aede4ef69e4b3683039801706}{%
            family={Smith},
@@ -200,10 +210,12 @@ my $un2a = q|    \entry{un2}{article}{}
       }
       \strng{namehash}{7551114aede4ef69e4b3683039801706}
       \strng{fullhash}{7551114aede4ef69e4b3683039801706}
+      \strng{fullhashraw}{7551114aede4ef69e4b3683039801706}
       \strng{bibnamehash}{7551114aede4ef69e4b3683039801706}
       \strng{authorbibnamehash}{7551114aede4ef69e4b3683039801706}
       \strng{authornamehash}{7551114aede4ef69e4b3683039801706}
       \strng{authorfullhash}{7551114aede4ef69e4b3683039801706}
+      \strng{authorfullhashraw}{7551114aede4ef69e4b3683039801706}
       \field{labelalpha}{SmiJohAla}
       \field{sortinit}{S}
       \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
@@ -211,7 +223,7 @@ my $un2a = q|    \entry{un2}{article}{}
     \endentry
 |;
 
-my $un3a = q|    \entry{un3}{article}{}
+my $un3a = q|    \entry{un3}{article}{}{}
       \name{author}{1}{}{%
         {{un=2,uniquepart=middle,hash=401aebda288799a7c757526242d8c9fc}{%
            family={Smith},
@@ -225,10 +237,12 @@ my $un3a = q|    \entry{un3}{article}{}
       }
       \strng{namehash}{401aebda288799a7c757526242d8c9fc}
       \strng{fullhash}{401aebda288799a7c757526242d8c9fc}
+      \strng{fullhashraw}{401aebda288799a7c757526242d8c9fc}
       \strng{bibnamehash}{401aebda288799a7c757526242d8c9fc}
       \strng{authorbibnamehash}{401aebda288799a7c757526242d8c9fc}
       \strng{authornamehash}{401aebda288799a7c757526242d8c9fc}
       \strng{authorfullhash}{401aebda288799a7c757526242d8c9fc}
+      \strng{authorfullhashraw}{401aebda288799a7c757526242d8c9fc}
       \field{labelalpha}{SmiJohArt}
       \field{sortinit}{S}
       \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
@@ -237,7 +251,7 @@ my $un3a = q|    \entry{un3}{article}{}
 |;
 
 
-my $un4a = q|    \entry{un4}{article}{}
+my $un4a = q|    \entry{un4}{article}{}{}
       \name{author}{1}{}{%
         {{un=2,uniquepart=given,hash=f6038a264619efefd49c7daac56424ca}{%
            family={Smith},
@@ -251,10 +265,12 @@ my $un4a = q|    \entry{un4}{article}{}
       }
       \strng{namehash}{f6038a264619efefd49c7daac56424ca}
       \strng{fullhash}{f6038a264619efefd49c7daac56424ca}
+      \strng{fullhashraw}{f6038a264619efefd49c7daac56424ca}
       \strng{bibnamehash}{f6038a264619efefd49c7daac56424ca}
       \strng{authorbibnamehash}{f6038a264619efefd49c7daac56424ca}
       \strng{authornamehash}{f6038a264619efefd49c7daac56424ca}
       \strng{authorfullhash}{f6038a264619efefd49c7daac56424ca}
+      \strng{authorfullhashraw}{f6038a264619efefd49c7daac56424ca}
       \field{labelalpha}{SmiAlaSim}
       \field{sortinit}{S}
       \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
@@ -264,7 +280,7 @@ my $un4a = q|    \entry{un4}{article}{}
 
 # because given is ignored and middle does not disambiguate even on full
 # extradate is calculated on "Smith" only
-my $un1b = q|    \entry{un1}{article}{}
+my $un1b = q|    \entry{un1}{article}{}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=329d8f9192ea3349d700160c9ddb505d}{%
            family={Smith},
@@ -278,10 +294,12 @@ my $un1b = q|    \entry{un1}{article}{}
       }
       \strng{namehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{fullhash}{329d8f9192ea3349d700160c9ddb505d}
+      \strng{fullhashraw}{329d8f9192ea3349d700160c9ddb505d}
       \strng{bibnamehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{authorbibnamehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{authornamehash}{329d8f9192ea3349d700160c9ddb505d}
       \strng{authorfullhash}{329d8f9192ea3349d700160c9ddb505d}
+      \strng{authorfullhashraw}{329d8f9192ea3349d700160c9ddb505d}
       \field{extraname}{5}
       \field{labelalpha}{SmiJohSim}
       \field{sortinit}{S}
@@ -291,7 +309,7 @@ my $un1b = q|    \entry{un1}{article}{}
     \endentry
 |;
 
-my $un2b = q|    \entry{un2}{article}{}
+my $un2b = q|    \entry{un2}{article}{}{}
       \name{author}{1}{}{%
         {{un=2,uniquepart=middle,hash=7551114aede4ef69e4b3683039801706}{%
            family={Smith},
@@ -305,10 +323,12 @@ my $un2b = q|    \entry{un2}{article}{}
       }
       \strng{namehash}{7551114aede4ef69e4b3683039801706}
       \strng{fullhash}{7551114aede4ef69e4b3683039801706}
+      \strng{fullhashraw}{7551114aede4ef69e4b3683039801706}
       \strng{bibnamehash}{7551114aede4ef69e4b3683039801706}
       \strng{authorbibnamehash}{7551114aede4ef69e4b3683039801706}
       \strng{authornamehash}{7551114aede4ef69e4b3683039801706}
       \strng{authorfullhash}{7551114aede4ef69e4b3683039801706}
+      \strng{authorfullhashraw}{7551114aede4ef69e4b3683039801706}
       \field{labelalpha}{SmiJohAla}
       \field{sortinit}{S}
       \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
@@ -316,7 +336,7 @@ my $un2b = q|    \entry{un2}{article}{}
     \endentry
 |;
 
-my $un3b = q|    \entry{un3}{article}{}
+my $un3b = q|    \entry{un3}{article}{}{}
       \name{author}{1}{}{%
         {{un=2,uniquepart=middle,hash=401aebda288799a7c757526242d8c9fc}{%
            family={Smith},
@@ -330,10 +350,12 @@ my $un3b = q|    \entry{un3}{article}{}
       }
       \strng{namehash}{401aebda288799a7c757526242d8c9fc}
       \strng{fullhash}{401aebda288799a7c757526242d8c9fc}
+      \strng{fullhashraw}{401aebda288799a7c757526242d8c9fc}
       \strng{bibnamehash}{401aebda288799a7c757526242d8c9fc}
       \strng{authorbibnamehash}{401aebda288799a7c757526242d8c9fc}
       \strng{authornamehash}{401aebda288799a7c757526242d8c9fc}
       \strng{authorfullhash}{401aebda288799a7c757526242d8c9fc}
+      \strng{authorfullhashraw}{401aebda288799a7c757526242d8c9fc}
       \field{labelalpha}{SmiJohArt}
       \field{sortinit}{S}
       \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
@@ -343,7 +365,7 @@ my $un3b = q|    \entry{un3}{article}{}
 
 # because given is ignored and middle does not disambiguate even on full
 # extradate is calculated on "Smith" only
-my $un4b = q|    \entry{un4}{article}{}
+my $un4b = q|    \entry{un4}{article}{}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=f6038a264619efefd49c7daac56424ca}{%
            family={Smith},
@@ -357,10 +379,12 @@ my $un4b = q|    \entry{un4}{article}{}
       }
       \strng{namehash}{f6038a264619efefd49c7daac56424ca}
       \strng{fullhash}{f6038a264619efefd49c7daac56424ca}
+      \strng{fullhashraw}{f6038a264619efefd49c7daac56424ca}
       \strng{bibnamehash}{f6038a264619efefd49c7daac56424ca}
       \strng{authorbibnamehash}{f6038a264619efefd49c7daac56424ca}
       \strng{authornamehash}{f6038a264619efefd49c7daac56424ca}
       \strng{authorfullhash}{f6038a264619efefd49c7daac56424ca}
+      \strng{authorfullhashraw}{f6038a264619efefd49c7daac56424ca}
       \field{extraname}{1}
       \field{labelalpha}{SmiAlaSim}
       \field{sortinit}{S}
@@ -372,7 +396,7 @@ my $un4b = q|    \entry{un4}{article}{}
 
 # because given is ignored and middle does not disambiguate on full
 # extradate is calculated on "Smith" only
-my $un5 = q|    \entry{un5}{article}{uniquenametemplatename=test3}
+my $un5 = q|    \entry{un5}{article}{uniquenametemplatename=test3}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=74fba0d07ca65976bbff1034f9bb22e6}{%
            family={Smith},
@@ -386,10 +410,12 @@ my $un5 = q|    \entry{un5}{article}{uniquenametemplatename=test3}
       }
       \strng{namehash}{74fba0d07ca65976bbff1034f9bb22e6}
       \strng{fullhash}{74fba0d07ca65976bbff1034f9bb22e6}
+      \strng{fullhashraw}{74fba0d07ca65976bbff1034f9bb22e6}
       \strng{bibnamehash}{74fba0d07ca65976bbff1034f9bb22e6}
       \strng{authorbibnamehash}{74fba0d07ca65976bbff1034f9bb22e6}
       \strng{authornamehash}{74fba0d07ca65976bbff1034f9bb22e6}
       \strng{authorfullhash}{74fba0d07ca65976bbff1034f9bb22e6}
+      \strng{authorfullhashraw}{74fba0d07ca65976bbff1034f9bb22e6}
       \field{extraname}{2}
       \field{labelalpha}{SmiArtSim}
       \field{sortinit}{S}
@@ -401,7 +427,7 @@ my $un5 = q|    \entry{un5}{article}{uniquenametemplatename=test3}
 
 # because given is ignored and middle does not disambiguate on init
 # extradate is calculated on "Smith" only
-my $un6 = q|    \entry{un6}{article}{}
+my $un6 = q|    \entry{un6}{article}{}{}
       \name{author}{1}{uniquenametemplatename=test4}{%
         {{un=0,uniquepart=base,hash=8100e7d06d05938e91bf8863f5c20e33}{%
            family={Smith},
@@ -415,10 +441,12 @@ my $un6 = q|    \entry{un6}{article}{}
       }
       \strng{namehash}{8100e7d06d05938e91bf8863f5c20e33}
       \strng{fullhash}{8100e7d06d05938e91bf8863f5c20e33}
+      \strng{fullhashraw}{8100e7d06d05938e91bf8863f5c20e33}
       \strng{bibnamehash}{8100e7d06d05938e91bf8863f5c20e33}
       \strng{authorbibnamehash}{8100e7d06d05938e91bf8863f5c20e33}
       \strng{authornamehash}{8100e7d06d05938e91bf8863f5c20e33}
       \strng{authorfullhash}{8100e7d06d05938e91bf8863f5c20e33}
+      \strng{authorfullhashraw}{8100e7d06d05938e91bf8863f5c20e33}
       \field{extraname}{3}
       \field{labelalpha}{SmiArtSmy}
       \field{sortinit}{S}
@@ -430,7 +458,7 @@ my $un6 = q|    \entry{un6}{article}{}
 
 # because there is nothing to disambiguate the base at all
 # extradate is calculated on "Smith" only
-my $un7 = q|    \entry{un7}{article}{}
+my $un7 = q|    \entry{un7}{article}{}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,uniquenametemplatename=test5,hash=c21736158273b6f2f368818459734e04}{%
            family={Smith},
@@ -444,10 +472,12 @@ my $un7 = q|    \entry{un7}{article}{}
       }
       \strng{namehash}{c21736158273b6f2f368818459734e04}
       \strng{fullhash}{c21736158273b6f2f368818459734e04}
+      \strng{fullhashraw}{c21736158273b6f2f368818459734e04}
       \strng{bibnamehash}{c21736158273b6f2f368818459734e04}
       \strng{authorbibnamehash}{c21736158273b6f2f368818459734e04}
       \strng{authornamehash}{c21736158273b6f2f368818459734e04}
       \strng{authorfullhash}{c21736158273b6f2f368818459734e04}
+      \strng{authorfullhashraw}{c21736158273b6f2f368818459734e04}
       \field{extraname}{4}
       \field{labelalpha}{SmiArtSme}
       \field{sortinit}{S}
@@ -457,7 +487,7 @@ my $un7 = q|    \entry{un7}{article}{}
     \endentry
 |;
 
-my $main = $biber->datalists->get_list('nty/global//global/global');
+my $main = $biber->datalists->get_list('nty/global//global/global/global');
 my $main1 = $biber->datalists->get_list('nty/global//test1/global');
 my $main2 = $biber->datalists->get_list('nty/global//test2/global');
 

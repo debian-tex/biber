@@ -47,11 +47,11 @@ Biber::Config->setoption('bcf', 'biblatexml.bcf');
 $biber->prepare;
 my $out = $biber->get_output_obj;
 my $section = $biber->sections->get_section(0);
-my $main = $biber->datalists->get_list('custom/global//global/global');
+my $main = $biber->datalists->get_list('custom/global//global/global/global');
 
 my $bibentries = $section->bibentries;
 
-my $l1 = q|    \entry{bltx1}{misc}{useprefix=false}
+my $l1 = q|    \entry{bltx1}{misc}{useprefix=false}{}
       \true{moreauthor}
       \true{morelabelname}
       \name{author}{3}{useprefix=true}{%
@@ -76,7 +76,7 @@ my $l1 = q|    \entry{bltx1}{misc}{useprefix=false}
            giveni={A\\bibinitperiod\\bibinitdelim А\\bibinitperiod}}}%
       }
       \name{foreword}{1}{}{%
-        {{hash=a7a73749ea467229221b7e9cbf870988}{%
+        {{hash=88354d4ba914f2ded2574386a2493996}{%
            family={Brown},
            familyi={B\\bibinitperiod},
            given={John},
@@ -100,16 +100,20 @@ my $l1 = q|    \entry{bltx1}{misc}{useprefix=false}
       }
       \strng{namehash}{3400c73d7bf3e361d36350deb4832ad7}
       \strng{fullhash}{3400c73d7bf3e361d36350deb4832ad7}
+      \strng{fullhashraw}{3400c73d7bf3e361d36350deb4832ad7}
       \strng{bibnamehash}{3400c73d7bf3e361d36350deb4832ad7}
       \strng{authorbibnamehash}{3400c73d7bf3e361d36350deb4832ad7}
       \strng{authornamehash}{3400c73d7bf3e361d36350deb4832ad7}
       \strng{authorfullhash}{3400c73d7bf3e361d36350deb4832ad7}
-      \strng{forewordbibnamehash}{a7a73749ea467229221b7e9cbf870988}
-      \strng{forewordnamehash}{a7a73749ea467229221b7e9cbf870988}
-      \strng{forewordfullhash}{a7a73749ea467229221b7e9cbf870988}
+      \strng{authorfullhashraw}{3400c73d7bf3e361d36350deb4832ad7}
+      \strng{forewordbibnamehash}{88354d4ba914f2ded2574386a2493996}
+      \strng{forewordnamehash}{88354d4ba914f2ded2574386a2493996}
+      \strng{forewordfullhash}{88354d4ba914f2ded2574386a2493996}
+      \strng{forewordfullhashraw}{a7a73749ea467229221b7e9cbf870988}
       \strng{translatorbibnamehash}{b44eba830fe9817fbe8e53c82f1cbe04}
       \strng{translatornamehash}{b44eba830fe9817fbe8e53c82f1cbe04}
       \strng{translatorfullhash}{b44eba830fe9817fbe8e53c82f1cbe04}
+      \strng{translatorfullhashraw}{b44eba830fe9817fbe8e53c82f1cbe04}
       \field{sortinit}{v}
       \field{sortinithash}{afb52128e5b4dc4b843768c0113d673b}
       \field{extradatescope}{labelyear}
@@ -125,8 +129,6 @@ my $l1 = q|    \entry{bltx1}{misc}{useprefix=false}
       \field{eventyear}{1990}
       \field{origyear}{356}
       \field{pagetotal}{240}
-      \field{relatedstring}{Somestring}
-      \field{relatedtype}{reprint}
       \field{series}{Научно-биографическая литература}
       \field{title}{Мухаммад ибн муса ал-Хорезми. Около 783 – около 850}
       \field{urlendyear}{}
@@ -156,7 +158,7 @@ my $l1 = q|    \entry{bltx1}{misc}{useprefix=false}
     \endentry
 |;
 
-my $l2 = q|    \entry{loopkey:a}{book}{}
+my $l2 = q|    \entry{loopkey:a}{book}{}{}
       \field{sortinit}{0}
       \field{sortinithash}{c5602f03f17cc894ea7a6362c3cb0e13}
     \endentry

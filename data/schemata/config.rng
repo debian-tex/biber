@@ -362,7 +362,9 @@
         </optional>
         <optional>
           <element name="output_indent">
-            <data type="unsignedByte"/>
+            <data type="string">
+              <param name="pattern">\d+t?</param>
+            </data>
           </element>
         </optional>
         <optional>
@@ -486,6 +488,9 @@
         </optional>
         <zeroOrMore>
           <ref name="uniquenametemplate"/>
+        </zeroOrMore>
+        <zeroOrMore>
+          <ref name="namehashtemplate"/>
         </zeroOrMore>
         <optional>
           <ref name="sortingnamekeytemplate"/>
@@ -1503,6 +1508,29 @@
       </oneOrMore>
     </element>
   </define>
+  <define name="namehashtemplate">
+    <element name="namehashtemplate">
+      <attribute name="name">
+        <data type="string">
+          <param name="minLength">1</param>
+        </data>
+      </attribute>
+      <oneOrMore>
+        <element name="namepart">
+          <attribute name="order">
+            <data type="integer"/>
+          </attribute>
+          <attribute name="hashscope">
+            <choice>
+              <value>init</value>
+              <value>full</value>
+            </choice>
+          </attribute>
+          <text/>
+        </element>
+      </oneOrMore>
+    </element>
+  </define>
   <define name="sortingnamekeytemplate">
     <element name="sortingnamekeytemplate">
       <attribute name="name"/>
@@ -1699,7 +1727,7 @@
     </choice>
   </define>
 </grammar>
-<!-- Copyright 2012-2023 Philip Kime, all rights reserved. -->
+<!-- Copyright 2012-2024 Philip Kime, all rights reserved. -->
 <!--
   This code is free software.  You can redistribute it and/or
   modify it under the terms of the Artistic License 2.0.

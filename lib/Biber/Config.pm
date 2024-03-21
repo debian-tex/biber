@@ -22,7 +22,7 @@ use Unicode::Normalize;
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
-our $VERSION = '2.19';
+our $VERSION = '2.20';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -195,6 +195,7 @@ sub _initopts {
   # Set log file name
   my $biberlog;
   if (my $log = Biber::Config->getoption('logfile')) { # user specified logfile name
+    $log = Biber::Utils::biber_decode_utf8($log);
     # Sanitise user-specified log name
     $log =~ s/\.blg\z//xms;
     $biberlog = $log . '.blg';
@@ -206,7 +207,7 @@ sub _initopts {
     my $bcf = $ARGV[0];         # ARGV is ok even in a module
     # Sanitise control file name
     $bcf =~ s/\.bcf\z//xms;
-    $biberlog = $bcf . '.blg';
+    $biberlog = Biber::Utils::biber_decode_utf8($bcf . '.blg');
   }
 
   # prepend output directory for log, if specified
@@ -306,8 +307,8 @@ sub _initopts {
 
   $logger->info("This is Biber $vn$tool") unless Biber::Config->getoption('nolog');
 
-  $logger->info("Config file is '" . $opts->{configfile} . "'") if $opts->{configfile};
-  $logger->info("Logfile is '$biberlog'") unless Biber::Config->getoption('nolog');
+  $logger->info("Config file is '" . NFC($opts->{configfile}) . "'") if $opts->{configfile};
+  $logger->info("Logfile is '" . NFC($biberlog) . "'") unless Biber::Config->getoption('nolog');
 
   if (Biber::Config->getoption('debug')) {
     $screen->info("DEBUG mode: all messages are logged to '$biberlog'")
@@ -354,6 +355,7 @@ sub _config_file_set {
                                                             qr/\Aentrytype\z/,
                                                             qr/\Aentryfields\z/,
                                                             qr/\Adatetype\z/,
+                                                            qr/\Adatafieldset\z/,
                                                             qr/\Acondition\z/,
                                                             qr/\A(?:or)?filter\z/,
                                                             qr/\Asortexclusion\z/,
@@ -364,6 +366,7 @@ sub _config_file_set {
                                                             qr/\Alabelalpha(?:name)?template\z/,
                                                             qr/\Asortitem\z/,
                                                             qr/\Auniquenametemplate\z/,
+                                                            qr/\Anamehashtemplate\z/,
                                                             qr/\Apresort\z/,
                                                             qr/\Aoptionscope\z/,
                                                             qr/\Asortingnamekeytemplate\z/,
@@ -464,6 +467,18 @@ sub _config_file_set {
         $unts->{$unt->{name}} = $untval;
       }
       Biber::Config->setblxoption(0, 'uniquenametemplate', $unts);
+    }
+    elsif (lc($k) eq 'namehashtemplate') {
+      my $nhts;
+      foreach my $nht ($v->@*) {
+        my $nhtval = [];
+        foreach my $np (sort {$a->{order} <=> $b->{order}} $nht->{namepart}->@*) {
+          push $nhtval->@*, {namepart        => $np->{content},
+                             hashscope       => $np->{hashscope}};
+        }
+        $nhts->{$nht->{name}} = $nhtval;
+      }
+      Biber::Config->setblxoption(0, 'namehashtemplate', $nhts);
     }
     elsif (lc($k) eq 'sortingnamekeytemplate') {
       my $snss;
@@ -1334,7 +1349,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2023 Philip Kime, all rights reserved.
+Copyright 2012-2024 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

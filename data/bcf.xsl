@@ -935,6 +935,23 @@
           </tbody>
         </table>
         <br/>
+        <h4>Name hash Template</h4>
+        <table>
+          <thead>
+            <tr><td>Order</td><td>Scope</td><td>Namepart</td></tr>
+          </thead>
+          <tbody>
+            <xsl:for-each select="/bcf:controlfile/bcf:namehashtemplate/bcf:namepart">
+              <xsl:sort select="./@order"/>
+              <tr>
+                <td><xsl:value-of select="./@order"/></td>
+                <td><xsl:value-of select="./@hashscope"/></td>
+                <td><xsl:value-of select="./text()"/></td>
+              </tr>
+            </xsl:for-each>
+          </tbody>
+        </table>
+        <br/>
         <h4>Sorting Name Key Template</h4>
         <xsl:for-each select="/bcf:controlfile/bcf:sortingnamekeytemplate">
           <table>
@@ -1317,8 +1334,8 @@
   </xsl:template>
 </xsl:stylesheet>
 <!--
-    Copyright 2012-2023 Philip Kime, all rights reserved.
-    
+    Copyright 2012-2024 Philip Kime, all rights reserved.
+
     This code is free software.  You can redistribute it and/or
     modify it under the terms of the Artistic License 2.0.
 
