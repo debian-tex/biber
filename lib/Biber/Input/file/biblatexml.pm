@@ -1262,6 +1262,7 @@ sub _name {
       nameinitstring    => 'Doe_JF',
       gender            => sm,
       useprefix         => 1,
+      hashid            => 'someid',
       sortingnamekeytemplatename => 'templatename'
     }
 
@@ -1313,19 +1314,20 @@ sub parsename {
     }
   }
 
-  my %nameparts;
+  my %nameinfo;
   foreach my $np ($dm->get_constant_value('nameparts')) { # list type so returns list
-    $nameparts{$np} = {string  => $namec{$np} // undef,
+    $nameinfo{$np} = {string  => $namec{$np} // undef,
                        initial => exists($namec{$np}) ? $namec{"${np}-i"} : undef};
 
     # Record max namepart lengths
-    $section->set_np_length($np, length($nameparts{$np}{string}))  if $nameparts{$np}{string};
-    $section->set_np_length("${np}-i", length(join('', $nameparts{$np}{initial}->@*))) if $nameparts{$np}{initial};
+    $section->set_np_length($np, length($nameinfo{$np}{string}))  if $nameinfo{$np}{string};
+    $section->set_np_length("${np}-i", length(join('', $nameinfo{$np}{initial}->@*))) if $nameinfo{$np}{initial};
   }
 
   my $newname = Biber::Entry::Name->new(
-                                        %nameparts,
-                                        gender => $node->getAttribute('gender')
+                                        %nameinfo,
+                                        gender => $node->getAttribute('gender'),
+                                        hashid => $node->getAttribute('id')
                                        );
 
   # per-name options
@@ -1578,7 +1580,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2023 Philip Kime, all rights reserved.
+Copyright 2012-2024 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

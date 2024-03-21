@@ -64,7 +64,7 @@ $biber->tool_mode_setup;
 $biber->prepare_tool;
 $out->output;
 my $main = $biber->datalists->get_lists_by_attrs(section                    => 99999,
-                                       name                       => 'tool/global//global/global',
+                                       name                       => 'tool/global//global/global/global',
                                        type                       => 'entry',
                                        sortingtemplatename             => 'tool',
                                        sortingnamekeytemplatename      => 'global',
@@ -144,8 +144,6 @@ my $bltxml1 = q|<?xml version="1.0" encoding="UTF-8"?>
       </bltx:list>
     </bltx:publisher>
     <bltx:pagetotal>240</bltx:pagetotal>
-    <bltx:relatedstring>Somestring</bltx:relatedstring>
-    <bltx:relatedtype>reprint</bltx:relatedtype>
     <bltx:series>Научно-биографическая литература</bltx:series>
     <bltx:title>Мухаммад ибн муса ал-Хорезми. Около 783 – около 850</bltx:title>
     <bltx:usera>usera</bltx:usera>

@@ -46,9 +46,9 @@ our @EXPORT = qw{
 
 # Version of biblatex control file which this release expects. Matched against version
 # passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '3.10';
+our $BCF_VERSION = '3.11';
 # Format version of the .bbl. Used when writing the .bbl
-our $BBL_VERSION = '3.2';
+our $BBL_VERSION = '3.3';
 
 # Global flags needed for sorting
 our $BIBER_SORT_FINAL;
@@ -218,13 +218,15 @@ our %DS_EXTENSIONS = (
                       );
 
 # Mapping of biblatex uniquename option to disambiguation level
-our %UNIQUENAME_CONTEXTS = ('false' => 'none',
-                            'init' => 'init',
-                            'full' => 'initorfull',
-                            'allinit' => 'init',
-                            'allfull' => 'initorfull',
-                            'mininit' => 'init',
-                            'minfull' => 'initorfull');
+our %UNIQUENAME_CONTEXTS = ('false'       => 'none',
+                            'init'        => 'init',
+                            'full'        => 'initorfull',
+                            'allinit'     => 'init',
+                            'allfull'     => 'initorfull',
+                            'mininit'     => 'init',
+                            'minfull'     => 'initorfull',
+                            'minyearinit' => 'init',
+                            'minyearfull' => 'initorfull');
 
 # Mapping of strings to numeric uniquename values for easier biblatex processing
 our %UNIQUENAME_VALUES = ('none' => 0, 'init' => 1, full => 2);
@@ -680,7 +682,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2023 Philip Kime, all rights reserved.
+Copyright 2012-2024 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

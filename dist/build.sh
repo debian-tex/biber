@@ -8,7 +8,7 @@
 # Example: build.sh ~/Desktop/b development dev biber 1
 
 # <dir> is where the binaries are
-# <release> is a SF subdir of /home/frs/project/biblatex-biber/biblatex-biber/
+# <release> is a SF subdir of /home/frs/project/biblatex-biber/
 # <branch> is a git branch to checkout on the build farm servers
 # <binaryname> is the name of the biber binary to use for the release.
 # <justbuild> is a boolean which says to just build and stop without uploading
@@ -69,9 +69,9 @@ fi
 if [ ! -e $DIR/biber-darwinlegacy_x86_64.tar.gz ]; then
   vmon osx10.6
   sleep 5
-  ssh philkime@bbf-osx10.6 "sudo ntpdate ch.pool.ntp.org;cd biblatex-biber;git checkout $BRANCH;git pull;perl ./Build.PL;sudo ./Build installdeps;sudo ./Build install;cd dist/darwinlegacy_x86_64;$SCANCACHE./build.sh;~/pp_osx_codesign_fix biber-darwinlegacy_x86_64;cd ~/biblatex-biber;sudo ./Build realclean"
-  scp philkime@bbf-osx10.6:biblatex-biber/dist/darwinlegacy_x86_64/biber-darwinlegacy_x86_64 $DIR/
-  ssh philkime@bbf-osx10.6 "\\rm -f biblatex-biber/dist/darwinlegacy_x86_64/biber-darwinlegacy_x86_64"
+  ssh philkime@bbf-osx106 "sudo ntpdate ch.pool.ntp.org;cd biblatex-biber;git checkout $BRANCH;git pull;perl ./Build.PL;sudo ./Build installdeps;sudo ./Build install;cd dist/darwinlegacy_x86_64;$SCANCACHE./build.sh;~/pp_osx_codesign_fix biber-darwinlegacy_x86_64;cd ~/biblatex-biber;sudo ./Build realclean"
+  scp philkime@bbf-osx106:biblatex-biber/dist/darwinlegacy_x86_64/biber-darwinlegacy_x86_64 $DIR/
+  ssh philkime@bbf-osx106 "\\rm -f biblatex-biber/dist/darwinlegacy_x86_64/biber-darwinlegacy_x86_64"
   vmoff osx10.6
   cd $DIR
   mv biber-darwinlegacy_x86_64 $BINARYNAME
@@ -84,16 +84,16 @@ fi
 
 # Build farm OSX 64-bit intel
 if [ ! -e $DIR/biber-darwin_x86_64.tar.gz ]; then
-  vmon osx10.12
+  vmon osx10.12 # VM name contains a '.' hostname does not
   sleep 5
-  ssh philkime@bbf-osx10.12 "cd biblatex-biber;git checkout $BRANCH;git pull;perl ./Build.PL;sudo ./Build installdeps;sudo ./Build install;cd dist/darwin_x86_64;$SCANCACHE./build.sh;~/pp_osx_codesign_fix biber-darwin_x86_64;cd ~/biblatex-biber;sudo ./Build realclean"
-  scp philkime@bbf-osx10.12:biblatex-biber/dist/darwin_x86_64/biber-darwin_x86_64 $DIR/
-  ssh philkime@bbf-osx10.12 "\\rm -f biblatex-biber/dist/darwin_x86_64/biber-darwin_x86_64"
+  ssh philkime@bbf-osx1012 "cd biblatex-biber;git checkout $BRANCH;git pull;perl ./Build.PL;sudo ./Build installdeps;sudo ./Build install;cd dist/darwin_x86_64;$SCANCACHE./build.sh;~/pp_osx_codesign_fix biber-darwin_x86_64;cd ~/biblatex-biber;sudo ./Build realclean"
+  scp philkime@bbf-osx1012:biblatex-biber/dist/darwin_x86_64/biber-darwin_x86_64 $DIR/
+  ssh philkime@bbf-osx1012 "\\rm -f biblatex-biber/dist/darwin_x86_64/biber-darwin_x86_64"
   vmoff osx10.12
   cd $DIR
   if [ "$CODESIGN" = "1" ]; then
     # Special - copy biber back to local OSX to codesign and then back again
-    # codesign in Xcode for osx10.12 does not have the runtime hardening options
+    # codesign in Xcode for osx1012 does not have the runtime hardening options
     # --------------------------------------------------------------------------
     scp $DIR/biber-darwin_x86_64 philkime@tree:/tmp/
     ssh philkime@tree "cd /tmp;security unlock-keychain -p \$(</Users/philkime/.pw) login.keychain;codesign --verbose  --sign 45MA3H23TG --force --timestamp --options runtime biber-darwin_x86_64"
@@ -164,7 +164,7 @@ if [ ! -e $DIR/biber-linux_x86_32.tar.gz ]; then
   cd $BASE
 fi
 
-# Build farm Linux 64-bit (built on Ubuntu 10.10)
+# Build farm Linux 64-bit (built on Ubuntu 16.04)
 if [ ! -e $DIR/biber-linux_x86_64.tar.gz ]; then
   vmon l64
   sleep 10
