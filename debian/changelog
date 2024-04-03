@@ -1,6 +1,7 @@
 biber (2.20-1) UNRELEASED; urgency=medium
 
   * New upstream release, disable upstreamed patch.
+  * Bump Breaks version of texlive-bibtex-extra.
 
  -- Hilmar Preusse <hille42@web.de>  Thu, 21 Mar 2024 23:02:06 +0100
 
