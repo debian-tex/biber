@@ -1,10 +1,10 @@
-biber (2.20-1) UNRELEASED; urgency=medium
+biber (2.20-1) experimental; urgency=medium
 
   * New upstream release, disable upstreamed patch.
   * Bump Breaks version of texlive-bibtex-extra.
   * Bump Standards version, no changes needed.
 
- -- Hilmar Preusse <hille42@web.de>  Thu, 21 Mar 2024 23:02:06 +0100
+ -- Hilmar Preusse <hille42@web.de>  Sun, 21 Apr 2024 23:30:39 +0200
 
 biber (2.19-2) unstable; urgency=medium
 
