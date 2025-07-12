@@ -772,7 +772,7 @@ sub _process_label_attributes {
             }
 
             # Now set a new global index for the name part index which is the maximum of those
-            # occuring above a certain threshold
+            # occurring above a certain threshold
             foreach my $s (keys %$lcache) {
               foreach my $ind (keys %$is) {
                 next unless $indices{$s} == $ind;
@@ -1322,7 +1322,7 @@ sub _sort_citeorder {
       return $ko || $biborder;
     }
   }
-  # otherwise, we need to take account of citations with simulataneous order like
+  # otherwise, we need to take account of citations with simultaneous order like
   # \cite{key1, key2} so this tied sorting order can be further sorted with other fields
   # Note the fallback of '' - this is for auto-generated entries which are not cited
   # and so never have a keyorder entry
@@ -1674,19 +1674,21 @@ sub _namestring {
                 # The namepart is padded to the longest namepart in the ref
                 # section as this is the only way to make sorting work
                 # properly. The padding is spaces as this sorts before all
-                # glyphs but it also of variable weight and ignorable in
+                # glyphs but is also of variable weight and ignorable in
                 # DUCET so we have to set U::C to variable=>'non-ignorable'
                 # as sorting default so that spaces are non-ignorable
                 $nps = normalise_string_sort(join('', $npistring->@*), $field);
 
                 # pad all nameparts
-                $nps = sprintf("%-*s", $section->get_np_length("${namepart}-i"), $nps);
+                # have to NFC for the padding otherwise the glyph length calculations are wrong
+                $nps = NFD(sprintf("%-*s", $section->get_np_length("${namepart}-i"), NFC($nps)));
               }
               else {
                 $nps = normalise_string_sort($npstring, $field);
 
                 # pad all nameparts
-                $nps = sprintf("%-*s", $section->get_np_length($namepart), $nps);
+                # have to NFC for the padding otherwise the glyph length calculations are wrong
+                $nps = NFD(sprintf("%-*s", $section->get_np_length($namepart), NFC($nps)));
               }
               $kps .= $nps;
             }
@@ -1731,7 +1733,7 @@ sub _liststring {
 
   # These should be symbols which can't appear in lists and which sort before all alphanum
   # so that "Alan Smith" sorts after "Al Smith". This means, symbols which normalise_string_sort()
-  # strips out. Unfortuately, this means using punctuation and these are by default variable
+  # strips out. Unfortunately, this means using punctuation and these are by default variable
   # weight and ignorable in DUCET so we have to redefine these these symbols after loading DUCET
   # when sorting so that they are non-ignorable (see Biber.pm)
   my $lsi    = '!';          # list separator, internal
@@ -1800,7 +1802,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2024 Philip Kime, all rights reserved.
+Copyright 2012-2025 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

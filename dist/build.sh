@@ -96,7 +96,7 @@ if [ ! -e $DIR/biber-darwin_x86_64.tar.gz ]; then
     # codesign in Xcode for osx1012 does not have the runtime hardening options
     # --------------------------------------------------------------------------
     scp $DIR/biber-darwin_x86_64 philkime@tree:/tmp/
-    ssh philkime@tree "cd /tmp;security unlock-keychain -p \$(</Users/philkime/.pw) login.keychain;codesign --verbose  --sign 45MA3H23TG --force --timestamp --options runtime biber-darwin_x86_64"
+    ssh philkime@tree "cd /tmp;security unlock-keychain -p \$(</Users/philkime/.pw) login.keychain;codesign --verbose --sign 45MA3H23TG --force --timestamp --options runtime biber-darwin_x86_64"
     \rm $DIR/biber-darwin_x86_64
     scp philkime@tree:/tmp/biber-darwin_x86_64 $DIR/
     ssh philkime@tree "\\rm -f /tmp/biber-darwin_x86_64"
@@ -113,20 +113,20 @@ fi
 # Build farm WMSWIN32
 # DON'T FORGET THAT installdeps WON'T WORK FOR STRAWBERRY INSIDE CYGWIN
 # SO YOU HAVE TO INSTALL MODULE UPDATES MANUALLY
-if [ ! -e $DIR/biber-MSWIN32.zip ]; then
-  vmon wxp32
-  sleep 10
-  ssh philkime@bbf-wxp32 "cd biblatex-biber;git checkout $BRANCH;git pull;perl ./Build.PL;perl Build install;cd dist/MSWIN32;$SCANCACHE./build.bat;cd ~/biblatex-biber;perl Build realclean"
-  scp philkime@bbf-wxp32:biblatex-biber/dist/MSWIN32/biber-MSWIN32.exe $DIR/
-  ssh philkime@bbf-wxp32 "\\rm -f biblatex-biber/dist/MSWIN32/biber-MSWIN32.exe"
-  vmoff wxp32
-  cd $DIR
-  mv biber-MSWIN32.exe $BINARYNAME.exe
-  chmod +x $BINARYNAME.exe
-  /usr/bin/zip biber-MSWIN32.zip $BINARYNAME.exe
-  \rm -f $BINARYNAME.exe
-  cd $BASE
-fi
+# if [ ! -e $DIR/biber-MSWIN32.zip ]; then
+#   vmon wxp32
+#   sleep 10
+#   ssh philkime@bbf-wxp32 "cd biblatex-biber;git checkout $BRANCH;git pull;perl ./Build.PL;perl Build install;cd dist/MSWIN32;$SCANCACHE./build.bat;cd ~/biblatex-biber;perl Build realclean"
+#   scp philkime@bbf-wxp32:biblatex-biber/dist/MSWIN32/biber-MSWIN32.exe $DIR/
+#   ssh philkime@bbf-wxp32 "\\rm -f biblatex-biber/dist/MSWIN32/biber-MSWIN32.exe"
+#   vmoff wxp32
+#   cd $DIR
+#   mv biber-MSWIN32.exe $BINARYNAME.exe
+#   chmod +x $BINARYNAME.exe
+#   /usr/bin/zip biber-MSWIN32.zip $BINARYNAME.exe
+#   \rm -f $BINARYNAME.exe
+#   cd $BASE
+# fi
 
 # Build farm WMSWIN64
 # DON'T FORGET THAT installdeps WON'T WORK FOR STRAWBERRY INSIDE CYGWIN
@@ -181,6 +181,23 @@ if [ ! -e $DIR/biber-linux_x86_64.tar.gz ]; then
   cd $BASE
 fi
 
+# Build farm Linux MUSL 64-bit (Alpine)
+# if [ ! -e $DIR/biber-linux-musl_x86_64.tar.gz ]; then
+#   vmon musll64
+#   sleep 10
+#   ssh philkime@bbf-musll64 "sudo ntpdate ch.pool.ntp.org;cd biblatex-biber;git checkout $BRANCH;git pull;/usr/local/perl/bin/perl ./Build.PL;sudo ./Build installdeps;sudo ./Build install;cd dist/linux-musl_x86_64;$SCANCACHE./build.sh;cd ~/biblatex-biber;sudo ./Build realclean"
+#   scp philkime@bbf-musll64:biblatex-biber/dist/linux-musl_x86_64/biber-linux-musl_x86_64 $DIR/
+#   ssh philkime@bbf-musll64 "\\rm -f biblatex-biber/dist/linux-musl_x86_64/biber-linux-musl_x86_64"
+#   vmoff musll64
+#   cd $DIR
+#   mv biber-linux-musl_x86_64 $BINARYNAME
+#   chmod +x $BINARYNAME
+#   tar cf biber-linux-musl_x86_64.tar $BINARYNAME
+#   gzip biber-linux-musl_x86_64.tar
+#   \rm $BINARYNAME
+#   cd $BASE
+# fi
+
 # Stop here if JUSTBUILD is set
 if [ "$JUSTBUILD" = "1" ]; then
   echo "JUSTBUILD is set, will not upload anything";
@@ -199,9 +216,9 @@ if [ -e $DIR/biber-darwin_x86_64.tar.gz ]; then
 fi
 
 # Windows 32-bit
-if [ -e $DIR/biber-MSWIN32.zip ]; then
-  scp biber-MSWIN32.zip philkime,biblatex-biber@frs.sourceforge.net:/home/frs/project/biblatex-biber/biblatex-biber/$RELEASE/binaries/Windows/biber-MSWIN32.zip
-fi
+# if [ -e $DIR/biber-MSWIN32.zip ]; then
+#   scp biber-MSWIN32.zip philkime,biblatex-biber@frs.sourceforge.net:/home/frs/project/biblatex-biber/biblatex-biber/$RELEASE/binaries/Windows/biber-MSWIN32.zip
+# fi
 
 # Windows 64-bit
 if [ -e $DIR/biber-MSWIN64.zip ]; then
@@ -217,6 +234,11 @@ fi
 if [ -e $DIR/biber-linux_x86_64.tar.gz ]; then
   scp biber-linux_x86_64.tar.gz philkime,biblatex-biber@frs.sourceforge.net:/home/frs/project/biblatex-biber/biblatex-biber/$RELEASE/binaries/Linux/biber-linux_x86_64.tar.gz
 fi
+
+# Linux MUSL 64-bit
+# if [ -e $DIR/biber-linux-musl_x86_64.tar.gz ]; then
+#   scp biber-linux-musl_x86_64.tar.gz philkime,biblatex-biber@frs.sourceforge.net:/home/frs/project/biblatex-biber/biblatex-biber/$RELEASE/binaries/Linux/biber-linux-musl_x86_64.tar.gz
+# fi
 
 # Doc
 cd $DOCDIR
