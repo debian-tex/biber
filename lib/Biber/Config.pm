@@ -1,6 +1,12 @@
 package Biber::Config;
 use v5.24;
 
+use constant {
+  EXIT_OK => 0,
+  EXIT_ERROR => 2
+};
+
+use Biber::CodePage qw( :DEFAULT );
 use Biber::Constants;
 use Biber::Utils;
 use IPC::Cmd qw( can_run );
@@ -8,7 +14,7 @@ use IPC::Run3; # This works with PAR::Packer and Windows. IPC::Run doesn't
 use Cwd qw( abs_path );
 use Data::Compare;
 use Data::Dump;
-use Encode;
+use Encode qw(decode_utf8);
 use File::Slurper;
 use File::Spec;
 use Carp;
@@ -18,11 +24,11 @@ use Log::Log4perl::Appender::Screen;
 use Log::Log4perl::Appender::File;
 use Log::Log4perl::Layout::SimpleLayout;
 use Log::Log4perl::Layout::PatternLayout;
-use Unicode::Normalize;
+use Unicode::Normalize qw(normalize NFC NFD checkNFC checkNFD);
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
-our $VERSION = '2.20';
+our $VERSION = '2.21';
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -161,13 +167,12 @@ sub _initopts {
   # Command-line overrides everything else
   foreach my $copt (keys $opts->%*) {
     # This is a tricky option as we need to keep non-overriden defaults
-    # If we don't we can get errors when contructing the sorting call to eval() later
+    # If we don't we can get errors when constructing the sorting call to eval() later
     if (lc($copt) eq 'collate_options') {
       my $collopts = Biber::Config->getoption('collate_options');
-      my $copt_h = eval "{ $opts->{$copt} }" or croak('Bad command-line collation options');
       # Override defaults with any cmdline settings
-      foreach my $co (keys $copt_h->%*) {
-        $collopts->{$co} = $copt_h->{$co};
+      foreach my $co (keys $opts->{$copt}->%*) {
+        $collopts->{$co} = $opts->{$copt}{$co};
       }
       Biber::Config->setconfigfileoption('collate_options', $collopts);
     }
@@ -175,6 +180,11 @@ sub _initopts {
       Biber::Config->setcmdlineoption($copt, $opts->{$copt});
     }
   }
+
+  # Decode ARGV according to system CS.
+  # On entry to a program, @ARGV is always a byte string encoded by system CS.
+  # We use it as a proper Unicode string.
+  @ARGV =  map { decode_CS_system( $_ );  } @ARGV;
 
   # Record the $ARGV[0] name for future use
   if (Biber::Config->getoption('tool')) {
@@ -186,6 +196,7 @@ sub _initopts {
   else {
     # Set control file name. In a conditional as @ARGV might not be set in tests
     if (defined($ARGV[0])) {         # ARGV is ok even in a module
+
       my $bcf = $ARGV[0];
       $bcf .= '.bcf' unless $bcf =~ m/\.bcf$/;
       Biber::Config->setoption('bcf', $bcf);
@@ -194,8 +205,11 @@ sub _initopts {
 
   # Set log file name
   my $biberlog;
+  my $biberlog_bytes;
   if (my $log = Biber::Config->getoption('logfile')) { # user specified logfile name
-    $log = Biber::Utils::biber_decode_utf8($log);
+      # Note: $log is byte string in system CS obtained from @ARGV,
+      # presumably before @ARGV was decoded
+    $log = decode_CS_system( $log );
     # Sanitise user-specified log name
     $log =~ s/\.blg\z//xms;
     $biberlog = $log . '.blg';
@@ -207,7 +221,7 @@ sub _initopts {
     my $bcf = $ARGV[0];         # ARGV is ok even in a module
     # Sanitise control file name
     $bcf =~ s/\.bcf\z//xms;
-    $biberlog = Biber::Utils::biber_decode_utf8($bcf . '.blg');
+    $biberlog = $bcf . '.blg';
   }
 
   # prepend output directory for log, if specified
@@ -222,6 +236,10 @@ sub _initopts {
       my ($f, $fr) = $ofr =~ m/^([^:]+):([^:]+)$/;
       $CONFIG_OUTPUT_FIELDREPLACE{$f} = $fr;
     }
+  }
+
+  if ($biberlog) {
+      $biberlog_bytes = encode_CS_system( $biberlog ); 
   }
 
   # cache meta markers since they are referenced in the oft-called _get_handler
@@ -286,13 +304,15 @@ sub _initopts {
 |;
 
   # Only want a logfile appender if --nolog isn't set
+  # Use byte string for name of log file, since that is what is passed to 
+  # calls for opening files, etc.
   if ($LOGLEVEL_F ne 'OFF') {
     $l4pconf .= qq|
     log4perl.category.logfile                          = $LOGLEVEL_F, Logfile
     log4perl.appender.Logfile                          = Log::Log4perl::Appender::File
     log4perl.appender.Logfile.utf8                     = 1
     log4perl.appender.Logfile.Threshold                = $LOGLEVEL_F
-    log4perl.appender.Logfile.filename                 = $biberlog
+    log4perl.appender.Logfile.filename                 = $biberlog_bytes
     log4perl.appender.Logfile.mode                     = clobber
     log4perl.appender.Logfile.layout                   = Log::Log4perl::Layout::PatternLayout
     log4perl.appender.Logfile.layout.ConversionPattern = [%r] %F{1}:%L> %p - %m%n
@@ -308,10 +328,18 @@ sub _initopts {
   $logger->info("This is Biber $vn$tool") unless Biber::Config->getoption('nolog');
 
   $logger->info("Config file is '" . NFC($opts->{configfile}) . "'") if $opts->{configfile};
-  $logger->info("Logfile is '" . NFC($biberlog) . "'") unless Biber::Config->getoption('nolog');
+  $logger->info("Logfile is '$biberlog'") unless Biber::Config->getoption('nolog');
 
   if (Biber::Config->getoption('debug')) {
     $screen->info("DEBUG mode: all messages are logged to '$biberlog'")
+  }
+  if ($^O eq 'MSWin32') {
+      # Find what CodePage did about code page settings, and add to biber's
+      # tracing information.
+      my $CPlog = Biber::CodePage::get_CS_log();
+      # Indent the lines:
+      $CPlog = join( "\n", map { "  $_" } split("\n", $CPlog, -1) );
+      $logger->trace( "CodePage log:\n$CPlog" );
   }
 
   return;
@@ -1349,7 +1377,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2024 Philip Kime, all rights reserved.
+Copyright 2012-2025 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

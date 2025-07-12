@@ -665,7 +665,7 @@ sub output {
     my $enc_out;
     if (Biber::Config->getoption('output_encoding')) {
       $enc_out = ':encoding(' . Biber::Config->getoption('output_encoding') . ')';
-  }
+    }
     $target = new IO::File ">-$enc_out";
   }
 
@@ -797,7 +797,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2024 Philip Kime, all rights reserved.
+Copyright 2012-2025 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

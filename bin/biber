@@ -3,6 +3,9 @@
 use v5.24;
 use strict;
 use warnings;
+use utf8;
+use FindBin;
+use lib $FindBin::RealBin;
 
 use constant {
   EXIT_OK => 0,
@@ -14,15 +17,20 @@ use IPC::Cmd qw( can_run run );
 use Log::Log4perl qw(:no_extra_logdie_message);
 use Log::Log4perl::Level;
 use POSIX qw(strftime);
+
 use Biber;
 use Biber::Utils;
+use Biber::CodePage qw( :DEFAULT );
 use Encode;
+
 use File::Spec;
 use Pod::Usage;
 use List::AllUtils qw( first );
+use Unicode::Normalize qw(NFC);
 
 use Getopt::Long qw/:config no_ignore_case/;
-my $opts = {};
+my %collateoptions = (); # This is a special case
+my $opts = {'collate_options' => \%collateoptions};
 GetOptions(
            $opts,
            'annotation_marker|annotation-marker=s',
@@ -167,12 +175,6 @@ if (exists $opts->{'tool_config'}) {
 unless (@ARGV) {
   pod2usage(-verbose => 0,
             -exitval => EXIT_ERROR);
-}
-
-# Make sure ARGV is decoded UTF8 as this is important on Windows when using
-# the Windows 10 1803+ UTF8 system locale option
-if ($opts->{winunicode}) {
-  @ARGV = map {decode('UTF-8', $_)} @ARGV;
 }
 
 # Resolve some option shortcuts and legacy aliases
@@ -342,7 +344,7 @@ $logfile->info("=== $time_string");
 my $bcf = Biber::Config->getoption('bcf');
 
 if (Biber::Config->getoption('output_file')) {
-  $outfile = Biber::Config->getoption('output_file')
+  $outfile = decode_CS_system( Biber::Config->getoption('output_file') );
 }
 else {
   if (Biber::Config->getoption('tool')) {
@@ -503,9 +505,9 @@ several times for different refsections.
 
 =item B<--collate-options|-c [options]>
 
-Options to pass to the C<Unicode::Collate> object used for sorting
-(default is 'level => "4", variable => "non-ignorable"').
-See C<perldoc Unicode::Collate> for details.
+Options to pass to the C<Unicode::Collate> object used for sorting (default is
+"--collate-options level=4 --collate-options variable='non-ignorable'"). See
+C<perldoc Unicode::Collate> for details.
 
 =item B<--configfile|-g [file]>
 
@@ -695,7 +697,7 @@ be obtained with the B<--show-tmp-dir> option.
 
 =item B<--noxname>
 
-Disable exended name processing in bibtex data sources. Can be useful if
+Disable extended name processing in bibtex data sources. Can be useful if
 you don't use this and it causes problems due to auto-detection of extended
 name format.
 
@@ -1054,7 +1056,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2024 Philip Kime, all rights reserved.
+Copyright 2012-2025 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

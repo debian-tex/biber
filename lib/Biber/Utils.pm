@@ -15,6 +15,7 @@ use File::Find;
 use File::Spec;
 use IPC::Cmd qw( can_run );
 use IPC::Run3; # This works with PAR::Packer and Windows. IPC::Run doesn't
+use Biber::CodePage qw ( :DEFAULT string_analysis );
 use Biber::Constants;
 use Biber::LaTeX::Recode;
 use Biber::Entry::Name;
@@ -26,7 +27,7 @@ use Scalar::Util qw(looks_like_number);
 use Text::Balanced qw(extract_bracketed);
 use Text::CSV;
 use Text::Roman qw(isroman roman2int);
-use Unicode::Normalize;
+use Unicode::Normalize qw( :DEFAULT checkNFC checkNFD );
 use Unicode::GCString;
 my $logger = Log::Log4perl::get_logger('main');
 
@@ -45,7 +46,7 @@ All functions are exported by default.
 =cut
 
 our @EXPORT = qw{ check_empty check_exists slurp_switchr slurp_switchw
-  glob_data_file locate_data_file makenamesid makenameid stringify_hash
+  glob_data_file globU globU1 locate_data_file makenamesid makenameid stringify_hash
   normalise_string normalise_string_hash normalise_string_underscore
   normalise_string_sort normalise_string_label reduce_array remove_outer
   has_outer add_outer ucinit strip_nosort strip_nonamestring strip_noinit
@@ -65,6 +66,57 @@ our @EXPORT = qw{ check_empty check_exists slurp_switchr slurp_switchw
 
 
 
+=head2 globU1
+
+  Like glob, but takes a Unicode string as its argument.
+
+=cut
+
+sub globU1 {
+    my $source = $_[0];
+    my @sources = map {decode_CS_system($_)} glob( encode_CS_system($source) );
+    return @sources;
+}
+
+=head2 globU
+
+  Like glob, but: (1) Takes a Unicode string as its argument, and (2) tries
+  NFC and NFD variants of the pattern, to give a useful approximation to a
+  normalization insensitive glob, which works when filenames are known to
+  be pure NFC or pure NFD.
+
+  This covers among others:
+
+=over 4
+
+=item *
+     Apple's HFS+ file system, where filenames are coerced to NFD, and filenames
+     \addbibresource[glob] are NFC (which is natural for keyboard entry, with
+     typical keyboard layouts).
+
+=item *
+
+  Similar situation on APFS where **some** (not all) programs made files with
+     NFD names even when user types in NFC.
+
+=item *
+
+  Related issues when transfer between OSs changes NF of filenames but not
+     of contents of files, e.g., .tex files.
+
+=back
+
+=cut
+
+sub globU {
+    my $source = $_[0];
+    my @sources = globU1($source);
+    if ( ! checkNFC($source) ) { push @sources, globU1( NFC($source) ); }
+    if ( ! checkNFD($source) ) { push @sources, globU1( NFD($source) ); }
+    return @sources;
+}
+
+
 =head2 glob_data_file
 
   Expands a data file glob to a list of filenames
@@ -73,12 +125,21 @@ our @EXPORT = qw{ check_empty check_exists slurp_switchr slurp_switchw
 
 sub glob_data_file {
   my ($source, $globflag) = @_;
+  # Note: $source is a Unicode string, i.e., a decoded string,
+  #       and **not** an encoded byte string.
+  # Returned names in @sources must also be decoded.
   my @sources;
-
+$logger->trace(
+    "glob_data_file source:\n"
+    . string_analysis( '  ', $source )
+  );
   # No globbing unless requested. No globbing for remote datasources.
   if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms or
       not _bool_norm($globflag)) {
     push @sources, $source;
+$logger->trace(
+      "glob_data_file result:\n".
+      string_analysis( '  ', join( ' ', @sources ) ) );
     return @sources;
   }
 
@@ -90,10 +151,12 @@ sub glob_data_file {
     require File::DosGlob;
     File::DosGlob->import('glob');
   }
-
-  push @sources, map {biber_decode_utf8($_)} glob NFC(qq("$source"));
+  push @sources, globU($source);
 
   $logger->info("Globbed data source '$source' to '" . join(',', @sources) . "'");
+$logger->trace(
+      "glob_data_file result:\n".
+      string_analysis( '  ', join( ' ', @sources ) ) );
   return @sources;
 }
 
@@ -108,9 +171,9 @@ sub slurp_switchr {
   my ($filename, $encoding) = @_;
   my $slurp;
   $encoding //= 'UTF-8';
-  if ($^O =~ /Win/ and not Biber::Config->getoption('winunicode')) {
+  if ($^O =~ /Win/ and not is_Unicode_system() ) {
     require Win32::Unicode::File;
-    my $fh = Win32::Unicode::File->new('<', NFC($filename));
+    my $fh = Win32::Unicode::File->new('<', $filename);
     $fh->binmode(":encoding($encoding)");
     # 100MB block size as the loop over the default 1MB block size seems to fail for
     # files > 1Mb
@@ -132,16 +195,16 @@ sub slurp_switchr {
 
 sub slurp_switchw {
   my ($filename, $string) = @_;
-  if ($^O =~ /Win/ and not Biber::Config->getoption('winunicode')) {
+  if ($^O =~ /Win/ and not is_Unicode_system() ) {
     require Win32::Unicode::File;
-    my $fh = Win32::Unicode::File->new('>', NFC($filename));
+    my $fh = Win32::Unicode::File->new('>', $filename);
     $fh->binmode(':encoding(UTF-8)');
     $fh->write($string);
     $fh->flush;
     $fh->close;
   }
   else {
-    File::Slurper::write_text($filename, NFC($string));
+    File::Slurper::write_text($filename, $string);
   }
   return;
 }
@@ -328,8 +391,11 @@ sub locate_data_file {
 
 sub file_exist_check {
   my $filename = shift;
-  if ($^O =~ /Win/ and not Biber::Config->getoption('winunicode')) {
+  if ($^O =~ /Win/ and not is_Unicode_system() ) {
     require Win32::Unicode::File;
+    if (Win32::Unicode::File::statW($filename)) {
+      return $filename;
+    }
     if (Win32::Unicode::File::statW(NFC($filename))) {
       return NFC($filename);
     }
@@ -338,6 +404,9 @@ sub file_exist_check {
     }
   }
   else {
+    if (-e "$filename") {
+      return $filename;
+    }
     if (-e NFC("$filename")) {
       return NFC("$filename");
     }
@@ -357,9 +426,9 @@ sub file_exist_check {
 
 sub check_empty {
   my $filename = shift;
-  if ($^O =~ /Win/ and not Biber::Config->getoption('winunicode')) {
+  if ($^O =~ /Win/ and not is_Unicode_system() ) {
     require Win32::Unicode::File;
-    return (Win32::Unicode::File::file_size(NFC($filename))) ? 1 : 0;
+    return (Win32::Unicode::File::file_size($filename)) ? 1 : 0;
   }
   else {
     return (-s $filename) ? 1 : 0;
@@ -374,9 +443,9 @@ sub check_empty {
 
 sub check_exists {
   my $filename = shift;
-  if ($^O =~ /Win/ and not Biber::Config->getoption('winunicode')) {
+  if ($^O =~ /Win/ and not is_Unicode_system() ) {
     require Win32::Unicode::File;
-    return Win32::Unicode::File::statW(NFC($filename)) ? 1 : 0;
+    return Win32::Unicode::File::statW($filename) ? 1 : 0;
   }
   else {
     return (-e $filename) ? 1 : 0;
@@ -1019,7 +1088,7 @@ sub inits {
   # The map {} is there to remove broken hyphenated initials returned from btparse
   # For example, in the, admittedly strange 'al- Hassan, John', we want the 'al-'
   # interpreted as a prefix (because of the following space) but because of the
-  # hypen, this is intialised as "a-" by btparse. So we correct such edge cases here by
+  # hyphen, this is initialised as "a-" by btparse. So we correct such edge cases here by
   # removing any trailing dashes in initials
   return [ map {s/\p{Pd}$//r} split(/(?<!\\)~/, $istring) ];
 }
@@ -1778,8 +1847,8 @@ sub gen_initials {
   foreach my $str (@strings) {
     # Deal with hyphenated name parts and normalise to a '-' character for easy
     # replacement with macro later
-    # Dont' split a name part if it's brace-wrapped
-    # Dont' split a name part if the hyphen in a hyphenated name is protected like:
+    # Don't split a name part if it's brace-wrapped
+    # Don't split a name part if the hyphen in a hyphenated name is protected like:
     # Hans{-}Peter as this is an old BibTeX way of suppressing hyphenated names
     if ($str !~ m/^\{.+\}$/ and $str =~ m/[^{]\p{Dash}[^}]/) {
       push @strings_out, join('-', gen_initials(split(/\p{Dash}/, $str)));
@@ -1937,7 +2006,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2024 Philip Kime, all rights reserved.
+Copyright 2012-2025 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

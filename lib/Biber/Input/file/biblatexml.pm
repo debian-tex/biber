@@ -919,7 +919,7 @@ sub _literal {
   }
 
   # eprint is special case
-  if ($f eq "$NS:eprint") {
+  if (fc(_norm($f) eq "$NS:eprint")) {
     $bibentry->set_datafield('eprinttype', $node->getAttribute('type'));
     if (my $ec = $node->getAttribute('class')) {
       $bibentry->set_datafield('eprintclass', $ec);
@@ -1438,7 +1438,7 @@ sub _changenode {
     # set attribute value
     if ($n->nodeType == XML_ATTRIBUTE_NODE) {
       if ($nodeval) {
-        $$error = "Tried to replace '$xp_target_s' Atribute node with complex data";
+        $$error = "Tried to replace '$xp_target_s' Attribute node with complex data";
         return 0;
       }
       $n->setValue(NFC($value));
@@ -1580,7 +1580,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2024 Philip Kime, all rights reserved.
+Copyright 2012-2025 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

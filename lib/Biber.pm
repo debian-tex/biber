@@ -10,6 +10,7 @@ use constant {
 };
 
 use Biber::Config;
+use Biber::CodePage qw( :DEFAULT );
 use Biber::DataLists;
 use Biber::DataList;
 use Biber::DataModel;
@@ -35,7 +36,7 @@ use File::Slurper;
 use File::Spec;
 use File::Temp;
 use IO::File;
-use List::AllUtils qw( first uniq max first_index );
+use List::AllUtils qw( first uniq min max first_index );
 use Log::Log4perl qw( :no_extra_logdie_message );
 use POSIX qw( locale_h ); # for lc()
 use Scalar::Util qw(looks_like_number);
@@ -419,8 +420,13 @@ sub parse_ctrlfile {
  LOADCF:
   $logger->info("Reading '$ctrl_file_path'");
   my $buf = slurp_switchr($ctrl_file_path)->$*;
-  $buf = NFD($buf);# Unicode NFD boundary
-
+  # Unicode NFD boundary, but not for filenames - leave these in OS form
+  # Use negative 3rd argument to split.  Then null strings at end are retained,
+  # and join puts them together
+  $buf = join("\n",
+              map {m/<bcf:datasource.+>([^<]+)/ ? $_ : NFD($_)}
+              split(/\R/, $buf, -1)
+      );
   # Read control file
   require XML::LibXML::Simple;
 
@@ -859,7 +865,7 @@ sub parse_ctrlfile {
   }
   Biber::Config->setblxoption(undef, 'sortingtemplate', $sortingtemplates);
 
-  # DATAMODEL schema (always global and is an array to accomodate multiple
+  # DATAMODEL schema (always global and is an array to accommodate multiple
   # datamodels in tool mode)
 
   # Because in tests, parse_ctrlfile() is called several times so we need to sanitise this here
@@ -946,11 +952,13 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
           $bib_section->set_allkeys_nocite(1);
         }
         $key_flag = 1; # There is at least one key, used for error reporting below
+        $bib_section->incr_seenkey($key); # increment cited key counter
       }
       elsif (not $bib_section->get_seenkey($key)) {
         # Dynamic set definition
         # Save dynamic key -> member keys mapping for set entry auto creation later
         # We still need to find these even if allkeys is set
+        # Don't increment cited key counter as this is not a cite
         if (exists($keyc->{type}) and $keyc->{type} eq 'set') {
           $bib_section->set_dynamic_set($key, split /\s*,\s*/, $keyc->{members});
           push @keys, $key;
@@ -973,9 +981,9 @@ SECTION: foreach my $section ($bcfxml->{section}->@*) {
           }
           push @keys, $key;
           $key_flag = 1; # There is at least one key, used for error reporting below
+          $bib_section->incr_seenkey($key); # increment cited key counter
         }
       }
-      $bib_section->incr_seenkey($key); # always increment
     }
 
     # Get citecounts if present
@@ -1388,14 +1396,23 @@ sub instantiate_dynamic {
       $logger->debug("Created dynamic set entry '$dset' in section $secnum");
     }
 
+    my $minorder = min grep {defined} map {Biber::Config->get_keyorder($secnum, $_);} @members;
+
     foreach my $m (@members) {
-    # Save graph information if requested
+      # Save graph information if requested
       if (Biber::Config->getoption('output_format') eq 'dot') {
         Biber::Config->set_graph('set', $dset, $m);
       }
       # Instantiate any related entry clones we need from dynamic set members
       $section->bibentry($m)->relclone;
+
+      # Make any set have the same order as the least order of any cited set member
+      # This is needed in case a dynamic set is cited by one of its members when sorting=none
+      if ($minorder) {
+        Biber::Config->set_keyorder($secnum, $dset, $minorder);
+      }
     }
+
     # Setting dataonly options for members is handled by process_sets()
   }
 
@@ -2173,6 +2190,13 @@ sub process_workuniqueness {
 
   # ignore settings from inheritance data?
   my $ignore = Biber::Config->get_uniq_ignore($citekey);
+
+  # If this is a data clone with skipbib set, don't record uniqueness info
+  if (my $options = $be->get_field('options')) {
+    if (grep {$_ eq 'skipbib'} $options->@*) {
+      return;
+    }
+  }
 
   # singletitle
   # Don't generate information for entries with no labelname or labeltitle
@@ -4845,7 +4869,7 @@ sub get_dependents {
   get_dependents($self, $new_deps, $keyswithdeps) if $new_deps->@*;
 
   # Now remove any missing entries from various places in all entries we have flagged
-  # as having dependendents. If we don't do this, many things fail later like clone creation
+  # as having dependents. If we don't do this, many things fail later like clone creation
   # for related entries etc.
   foreach my $keywithdeps ($keyswithdeps->@*) {
     foreach my $missing_key ($missing->@*) {
@@ -5050,7 +5074,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2024 Philip Kime, all rights reserved.
+Copyright 2012-2025 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
