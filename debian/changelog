@@ -1,3 +1,9 @@
+biber (2.21-1) experimental; urgency=medium
+
+  * New upstream release, refresh patches, Standards version, etc.
+
+ -- Hilmar Preuße <hille42@debian.org>  Sat, 12 Jul 2025 12:33:05 +0200
+
 biber (2.20-2) unstable; urgency=medium
 
   * Upload to unstable.
