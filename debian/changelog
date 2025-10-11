@@ -1,3 +1,9 @@
+biber (2.21-3) UNRELEASED; urgency=medium
+
+  * Use d/upstream/metadata for uscan, remove d/watch file.
+
+ -- Hilmar Preuße <hille42@debian.org>  Sat, 11 Oct 2025 23:20:34 +0200
+
 biber (2.21-2) unstable; urgency=medium
 
   * Upload to unstable.
