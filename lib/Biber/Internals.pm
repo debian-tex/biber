@@ -1480,13 +1480,13 @@ sub _sort_literal {
 
 # This is a meta-sub which uses the optional arguments to the dispatch code
 # It's done to avoid having many repetitions of almost identical sorting code
-# for literal strings which need no normalising/translit. Nosort is still honoured.
+# for literal strings which need no normalising/translit.
 sub _sort_verbatim {
   my ($self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) = @_;
-  my $literal = $args->[0]; # get actual field
-  if (my $field = $be->get_field($literal)) {
-    my $string = strip_nosort($field, $literal);
-    return _process_sort_attributes($field, $sortelementattributes);
+  my $verb = $args->[0]; # get actual field
+  if (my $field = $be->get_field($verb)) {
+    my $string = normalise_string_sort($field, $verb);
+    return _process_sort_attributes($string, $sortelementattributes);
   }
   else {
     return '';
@@ -1802,7 +1802,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2025 Philip Kime, all rights reserved.
+Copyright 2012-2026 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
