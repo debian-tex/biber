@@ -6,7 +6,7 @@ Remove Mozilla::CA dependency
 
 --- biber.orig/lib/Biber/Utils.pm
 +++ biber/lib/Biber/Utils.pm
-@@ -238,17 +238,6 @@
+@@ -239,17 +239,6 @@
          # use IO::Socket::SSL qw(debug99); # useful for debugging SSL issues
          # We have to explicitly set the cert path because otherwise the https module
          # can't find the .pem when PAR::Packer'ed
