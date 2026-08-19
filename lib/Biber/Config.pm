@@ -28,7 +28,8 @@ use Unicode::Normalize qw(normalize NFC NFD checkNFC checkNFD);
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
-our $VERSION = '2.21';
+our $VERSION = '2.22';
+
 our $BETA_VERSION = 0; # Is this a beta version?
 
 our $logger  = Log::Log4perl::get_logger('main');
@@ -1377,7 +1378,7 @@ L<https://github.com/plk/biber/issues>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2025 Philip Kime, all rights reserved.
+Copyright 2012-2026 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

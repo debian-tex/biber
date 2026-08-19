@@ -13,6 +13,8 @@ use Scalar::Util qw (blessed looks_like_number);
 use Unicode::UCD qw(num);
 
 our @EXPORT = qw{
+                  %ALLOWEDTYPES
+                  %ALLOWEDDATATYPES
                   $CONFIG_DEFAULT_BIBER
                   $CONFIG_CSV_PARSER
                   $BIBER_CONF_NAME
@@ -312,6 +314,16 @@ our $CONFIG_DEFAULT_BIBER = {
   xnamesep                                    => { content => '=' },
   xsvsep                                      => { content => q/\s*,\s*/ }
 };
+
+# Used to restrict evals on requires
+our %ALLOWEDTYPES = (
+                     file => 1
+                    );
+
+our %ALLOWEDDATATYPES = (
+                         bibtex     => 1,
+                         biblatexml => 1
+                        );
 
 # Set up some re-usable CSV parsers here for efficiency reasons
 our $CONFIG_CSV_PARSER = Text::CSV->new ( { binary           => 1,
@@ -682,7 +694,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2025 Philip Kime, all rights reserved.
+Copyright 2012-2026 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

@@ -4625,6 +4625,7 @@ sub fetch_data {
     my $name = $datasource->{name};
     my $encoding = $datasource->{encoding};
     my $datatype = $datasource->{datatype};
+
     if ($datatype eq 'biblatexml') {
       my $outfile;
       if (Biber::Config->getoption('tool')) {
@@ -4644,8 +4645,9 @@ sub fetch_data {
         validate_biber_xml($name, 'bltx', 'http://biblatex-biber.sourceforge.net/biblatexml', $outfile);
       }
     }
+
     my $package = 'Biber::Input::' . $type . '::' . $datatype;
-    unless(eval "require $package") {
+    unless($ALLOWEDTYPES{$type} and $ALLOWEDDATATYPES{$datatype} and eval "require $package") {
 
       my ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Biber.pm"} );
       $dir =~ s/\/$//;          # splitpath sometimes leaves a trailing '/'
@@ -4846,8 +4848,9 @@ sub get_dependents {
         my $encoding = $datasource->{encoding};
         my $datatype = $datasource->{datatype};
         my $package = 'Biber::Input::' . $type . '::' . $datatype;
-        eval "require $package" or
+        unless ($ALLOWEDTYPES{$type} and $ALLOWEDDATATYPES{$datatype} and eval "require $package") {
           biber_error("Error loading data source package '$package': $@");
+        }
         $missing->@* = "${package}::extract_entries"->(locate_data_file($name), $encoding, $missing);
       }
     }
@@ -5074,7 +5077,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2025 Philip Kime, all rights reserved.
+Copyright 2012-2026 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.

@@ -36,7 +36,7 @@ then
   dyld-shared-cache-extractor /System/Volumes/Preboot/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_arm64e /tmp/libraries
 fi
 
-declare -r perlv='5.38.2_1'
+declare -r perlv='5.42.0'
 declare -r perlvc=$(echo "$perlv" | perl -pe 's/^(.+)\.\d+(?:_\d+)?$/$1/')
 declare ucpath="/opt/homebrew/Cellar/perl/${perlv}/lib/perl5/${perlvc}/Unicode/Collate"
 
@@ -68,6 +68,7 @@ PAR_VERBATIM=1 /opt/homebrew/Cellar/perl/${perlv}/bin/pp \
   --module=List::MoreUtils::PP \
   --module=HTTP::Status \
   --module=HTTP::Date \
+  --module=Specio::XS \
   --module=Encode:: \
   --module=File::Find::Rule \
   --module=IO::Socket::SSL \
@@ -85,9 +86,9 @@ PAR_VERBATIM=1 /opt/homebrew/Cellar/perl/${perlv}/bin/pp \
   --link=/tmp/libraries/usr/lib/libcrypto.dylib \
   --link=/tmp/libraries/usr/lib/liblzma.5.dylib \
   --link=/opt/homebrew/Cellar/perl/${perlv}/lib/libbtparse.dylib \
-  --link=/opt/homebrew/Cellar/icu4c@77/77.1/lib/libicui18n.77.dylib \
-  --link=/opt/homebrew/Cellar/icu4c@77/77.1/lib/libicuuc.77.dylib \
-  --link=/opt/homebrew/Cellar/icu4c@77/77.1/lib/libicudata.77.dylib \
+  --link=/opt/homebrew/Cellar/icu4c@78/78.2/lib/libicui18n.78.dylib \
+  --link=/opt/homebrew/Cellar/icu4c@78/78.2/lib/libicuuc.78.dylib \
+  --link=/opt/homebrew/Cellar/icu4c@78/78.2/lib/libicudata.78.dylib \
   --addfile="../../data/biber-tool.conf;lib/Biber/biber-tool.conf" \
   --addfile="../../data/schemata/config.rnc;lib/Biber/config.rnc" \
   --addfile="../../data/schemata/config.rng;lib/Biber/config.rng" \

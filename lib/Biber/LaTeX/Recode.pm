@@ -209,6 +209,9 @@ sub latex_decode {
     my $norm      = exists $opts{normalize} ? $opts{normalize} : 1;
     my $norm_form = exists $opts{normalization} ? $opts{normalization} : 'NFD';
 
+    # Special case for \h?box which requires braces around single chars
+    $text =~ s/\\(h?box)\s+\{(\X)\}/\\$1\{$2\}/g;
+
     # Deal with raw TeX \char macros.
     $text =~ s/\\char"(\p{ASCII_Hex_Digit}+)/"chr(0x$1)"/gee; # hex chars
     $text =~ s/\\char'(\d+)/"chr(0$1)"/gee;  # octal chars
@@ -436,7 +439,7 @@ L<https://github.com/plk/biber/issues>.
 =head1 COPYRIGHT & LICENSE
 
 Copyright 2009-2012 François Charette and Philip Kime, all rights reserved.
-Copyright 2012-2025 Philip Kime, all rights reserved.
+Copyright 2012-2026 Philip Kime, all rights reserved.
 
 This module is free software.  You can redistribute it and/or
 modify it under the terms of the Artistic License 2.0.
